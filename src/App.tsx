@@ -7,10 +7,11 @@ import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
-const EducationPage = lazy(() => import("@/pages/education"));
-const LoginPage     = lazy(() => import("@/pages/login"));
-const RegisterPage  = lazy(() => import("@/pages/register"));
-const NotFound      = lazy(() => import("@/pages/not-found"));
+const EducationPage      = lazy(() => import("@/pages/education"));
+const LoginPage          = lazy(() => import("@/pages/login"));
+const RegisterPage       = lazy(() => import("@/pages/register"));
+const NotificationsPage  = lazy(() => import("@/pages/notifications"));
+const NotFound           = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,8 +52,6 @@ function PageLoader() {
   );
 }
 
-const BARE_ROUTES = ["/login", "/register"];
-
 function AppInner() {
   const authState = useAuthState();
   useScrollToTop();
@@ -62,26 +61,30 @@ function AppInner() {
   return (
     <AuthContext.Provider value={authState}>
       <Switch>
-        {BARE_ROUTES.map(path => (
-          <Route key={path} path={path}>
-            <Suspense fallback={<PageLoader />}>
-              {path === "/login" && <LoginPage />}
-              {path === "/register" && <RegisterPage />}
-            </Suspense>
-          </Route>
-        ))}
+        {/* Bare routes — no layout wrapper */}
+        <Route path="/login">
+          <Suspense fallback={<PageLoader />}><LoginPage /></Suspense>
+        </Route>
+        <Route path="/register">
+          <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>
+        </Route>
+
+        {/* Layout-wrapped routes */}
         <Route path="/">
           <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <EducationPage />
-            </Suspense>
+            <Suspense fallback={<PageLoader />}><EducationPage /></Suspense>
           </Layout>
         </Route>
+        <Route path="/notifications">
+          <Layout>
+            <Suspense fallback={<PageLoader />}><NotificationsPage /></Suspense>
+          </Layout>
+        </Route>
+
+        {/* 404 */}
         <Route>
           <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <NotFound />
-            </Suspense>
+            <Suspense fallback={<PageLoader />}><NotFound /></Suspense>
           </Layout>
         </Route>
       </Switch>
