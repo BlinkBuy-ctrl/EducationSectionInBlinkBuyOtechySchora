@@ -27,7 +27,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "esbuild": "^0.28.2",
+    "esbuild": "^0.28.0",
     "next-themes": "^0.4.6",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.2",
@@ -35,6 +35,6 @@
     "vite": "^8.0.8"
   },
   "overrides": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.0"
   }
 }
