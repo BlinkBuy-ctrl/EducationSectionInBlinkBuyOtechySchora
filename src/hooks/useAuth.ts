@@ -35,67 +35,54 @@ function normalizeProfile(data: Record<string, unknown>): Record<string, unknown
 export function useAuthState(): AuthContextType {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<any | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // FIX: Start false — no auth gate needed; resolve immediately
+  const [isLoading, setIsLoading] = useState(false)
 
   const lastFetchedUserId = useRef<string | null>(null)
   const isFetchingRef = useRef(false)
-  const initResolvedRef = useRef(false)
 
   const fetchProfile = useCallback(async (userId: string, force = false): Promise<void> => {
     if (!force && lastFetchedUserId.current === userId) return
     if (isFetchingRef.current) return
     isFetchingRef.current = true
     try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 8000)
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
-        .abortSignal(controller.signal)
-      clearTimeout(timer)
       if (error) throw error
       lastFetchedUserId.current = userId
       setProfile(normalizeProfile(data as Record<string, unknown>))
     } catch (e) {
       console.error('Failed to fetch profile:', e)
-      setProfile((prev: any) => prev ?? null)
     } finally {
       isFetchingRef.current = false
     }
   }, [])
 
   useEffect(() => {
-    const safetyTimer = setTimeout(() => {
-      if (!initResolvedRef.current) {
-        initResolvedRef.current = true
-        setIsLoading(false)
+    // FIX: Silently try to restore existing session, no loading gate
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user)
+        fetchProfile(session.user.id)
       }
-    }, 10000)
+    })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
-      if (session?.user) {
-        if (['INITIAL_SESSION', 'SIGNED_IN', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(event)) {
-          const force = event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN'
-          await fetchProfile(session.user.id, force)
-        }
-      } else {
+      if (session?.user && ['SIGNED_IN', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(event)) {
+        fetchProfile(session.user.id, event === 'SIGNED_IN')
+      }
+      if (!session?.user) {
         lastFetchedUserId.current = null
         isFetchingRef.current = false
         setProfile(null)
       }
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
-        if (!initResolvedRef.current) {
-          initResolvedRef.current = true
-          clearTimeout(safetyTimer)
-          setIsLoading(false)
-        }
-      }
     })
 
-    return () => { clearTimeout(safetyTimer); subscription.unsubscribe() }
+    return () => { subscription.unsubscribe() }
   }, [fetchProfile])
 
   const login = async (email: string, password: string) => {
