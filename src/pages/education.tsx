@@ -1,52 +1,19 @@
 import { useState, useEffect, useContext } from "react";
-import { useLocation, Link } from "wouter";
 import {
   GraduationCap, BookOpen, Upload, Award, Search,
-  X, Download, TrendingUp, Users, FileText, LogIn, Loader2
+  X, TrendingUp, FileText, Loader2, LogIn
 } from "lucide-react";
+import { Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { UploadModal } from "@/components/education/UploadModal";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships";
 
-// ─── Locked screen shown to guests ────────────────────────────────────────────
-function GuestWall() {
-  return (
-    <div className="w-full max-w-sm mx-auto flex flex-col items-center gap-5 py-24 px-6 text-center">
-      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
-        <GraduationCap className="w-10 h-10 text-white" />
-      </div>
-      <div>
-        <h2 className="text-xl font-black text-foreground">OtechySchora</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Sign in to access resources, scholarships, and the student marketplace.
-        </p>
-      </div>
-      {/* Use the app's existing login — no separate auth here */}
-      <Link
-        href="/login"
-        className="flex items-center justify-center gap-2 w-full max-w-xs bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold py-3 rounded-xl transition-all active:scale-[0.98] shadow-md"
-      >
-        <LogIn className="w-4 h-4" />
-        Sign In to Continue
-      </Link>
-      <p className="text-xs text-muted-foreground">
-        No account?{" "}
-        <Link href="/register" className="text-purple-500 font-semibold hover:underline">
-          Create one here
-        </Link>
-      </p>
-    </div>
-  );
-}
-
-// ─── Loading skeleton ──────────────────────────────────────────────────────────
 function GridSkeleton() {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -57,9 +24,9 @@ function GridSkeleton() {
   );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
 export default function EducationPage() {
-  const { user, isLoading: authLoading } = useContext(AuthContext);
+  // FIX: auth is optional — page loads for everyone
+  const { user } = useContext(AuthContext);
   const { toast } = useToast();
 
   const [resources,    setResources]    = useState<any[]>([]);
@@ -73,59 +40,59 @@ export default function EducationPage() {
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
   const [tab,         setTab]         = useState<Tab>("resources");
 
-  // ── Fetch all data (only when user is logged in) ───────────────────────────
-  // ── Fetch all data (only when user is logged in) ───────────────────────────
+  // FIX: fetchAll runs for ALL users — no auth gate
   const fetchAll = async () => {
-    if (!user) return;
     setDataLoading(true);
     try {
       const tableNotFound = (e: any) =>
         e?.code === "42P01" || e?.message?.includes("does not exist");
 
-      const [rRes, sRes, pRes] = await Promise.all([
+      const queries: Promise<any>[] = [
         supabase
           .from("otechy_resources")
           .select("*")
-          // NOTE: .eq("is_approved", true) removed — column does not exist in schema yet.
-          // Add it back after running the otechy migration SQL below.
           .order("created_at", { ascending: false }),
-
         supabase
           .from("otechy_scholarships")
           .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
+      ];
 
-        supabase
-          .from("otechy_purchases")
-          .select("resource_id")
-          .eq("buyer_id", user.id),
-      ]);
+      // Only fetch purchases if user is logged in
+      if (user) {
+        queries.push(
+          supabase
+            .from("otechy_purchases")
+            .select("resource_id")
+            .eq("buyer_id", user.id)
+        );
+      }
 
-      // If tables don't exist yet (pre-migration), treat as empty — don't throw
+      const [rRes, sRes, pRes] = await Promise.all(queries);
+
       if (rRes.error && !tableNotFound(rRes.error)) throw rRes.error;
       if (sRes.error && !tableNotFound(sRes.error)) throw sRes.error;
 
       setResources(rRes.data ?? []);
       setScholarships(sRes.data ?? []);
-      setPurchases(new Set((pRes.data ?? []).map((p: any) => p.resource_id)));
+      if (pRes) setPurchases(new Set((pRes.data ?? []).map((p: any) => p.resource_id)));
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
     } finally {
-      setDataLoading(false); // ALWAYS fires — prevents infinite spinner
+      // FIX: always resolves — no infinite spinner possible
+      setDataLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (user) fetchAll();
-  }, [user]);
+  // FIX: fetch on mount for everyone, re-fetch when user logs in
+  useEffect(() => { fetchAll(); }, [user?.id]);
 
-  // ── Derived: filtered resources ────────────────────────────────────────────
   const filtered = resources.filter(r => {
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
-      r.title.toLowerCase().includes(q) ||
+      r.title?.toLowerCase().includes(q) ||
       (r.description ?? "").toLowerCase().includes(q);
     const matchCat   = catFilter === "All" || r.category === catFilter;
     const matchPrice =
@@ -134,9 +101,11 @@ export default function EducationPage() {
     return matchSearch && matchCat && matchPrice;
   });
 
-  // ── Buy flow — records purchase, then unlocks download ────────────────────
   const handleBuy = async (resource: any) => {
-    // user is guaranteed here (guest sees GuestWall)
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please sign in to purchase resources.", variant: "destructive" });
+      return;
+    }
     const confirmed = window.confirm(
       `Purchase "${resource.title}" for MK ${Number(resource.price).toLocaleString()}?\n\nYour payment will be processed via your registered payment method.`
     );
@@ -144,17 +113,14 @@ export default function EducationPage() {
 
     try {
       const { error } = await supabase.from("otechy_purchases").insert({
-        buyer_id:    user!.id,
+        buyer_id:    user.id,
         resource_id: resource.id,
         amount_paid: resource.price,
       });
       if (error) throw error;
-
-      // Optimistic update — unlock instantly
       setPurchases(prev => new Set([...prev, resource.id]));
       toast({ title: "✅ Purchase successful!", description: "You can now download this resource." });
     } catch (e: any) {
-      // Handle duplicate (already bought)
       if (e.message?.includes("unique") || e.code === "23505") {
         setPurchases(prev => new Set([...prev, resource.id]));
         toast({ title: "Already purchased", description: "You already own this resource." });
@@ -164,19 +130,17 @@ export default function EducationPage() {
     }
   };
 
-  // ── Download flow — generate 60s signed URL ───────────────────────────────
   const handleDownload = async (resource: any) => {
+    if (!user && Number(resource.price) > 0) {
+      toast({ title: "Sign in required", description: "Please sign in to download paid resources.", variant: "destructive" });
+      return;
+    }
     try {
       const { data, error } = await supabase.storage
         .from("otechy-docs")
-        .createSignedUrl(resource.file_url, 60); // 60s expiry for security
-
+        .createSignedUrl(resource.file_url, 60);
       if (error) throw error;
-
-      // Non-blocking download counter increment
       supabase.rpc("increment_download", { resource_id: resource.id }).catch(() => {});
-
-      // Trigger browser download
       const a = document.createElement("a");
       a.href = data.signedUrl;
       a.download = resource.file_name ?? "document";
@@ -188,31 +152,24 @@ export default function EducationPage() {
     }
   };
 
-  // ── Auth is still resolving (prevents flash of GuestWall) ─────────────────
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-      </div>
-    );
-  }
+  const handleUploadClick = () => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Please sign in to upload resources." });
+      return;
+    }
+    setShowUpload(true);
+  };
 
-  // ── Guest: show sign-in prompt — uses the app's existing /login & /register
-  if (!user) return <GuestWall />;
-
-  // ── Authenticated view ─────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 pb-28">
 
       {/* ─── HERO ─── */}
       <div className="relative rounded-2xl overflow-hidden bg-[hsl(215,55%,12%)] p-5 mb-6">
-        {/* Decorative blobs */}
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/25 via-blue-600/15 to-transparent pointer-events-none" />
         <div className="absolute -top-10 -right-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative flex items-start justify-between gap-4">
           <div className="flex-1">
-            {/* Brand */}
             <div className="flex items-center gap-2.5 mb-2">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
                 <GraduationCap className="w-6 h-6 text-white" />
@@ -229,11 +186,10 @@ export default function EducationPage() {
               Download resources, sell your notes, and discover scholarships — all in one place.
             </p>
 
-            {/* Quick stats */}
             <div className="flex flex-wrap gap-3 mt-3">
               {[
-                { icon: FileText, label: `${resources.length} Resources` },
-                { icon: Award,    label: `${scholarships.length} Scholarships` },
+                { icon: FileText,   label: `${resources.length} Resources` },
+                { icon: Award,      label: `${scholarships.length} Scholarships` },
                 { icon: TrendingUp, label: "Growing daily" },
               ].map(({ icon: Icon, label }) => (
                 <div key={label} className="flex items-center gap-1.5">
@@ -246,18 +202,29 @@ export default function EducationPage() {
 
           {/* Upload CTA */}
           <button
-            onClick={() => setShowUpload(true)}
+            onClick={handleUploadClick}
             className="shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-400 hover:to-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all active:scale-[0.97] shadow-lg shadow-purple-500/30"
           >
             <Upload className="w-3.5 h-3.5" />
             Upload
           </button>
         </div>
+
+        {/* Guest soft prompt — non-blocking */}
+        {!user && (
+          <div className="relative mt-4 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
+            <LogIn className="w-4 h-4 text-purple-300 shrink-0" />
+            <p className="text-xs text-white/60 flex-1">
+              <Link href="/login" className="text-purple-300 font-semibold hover:text-purple-200">Sign in</Link>
+              {" "}to upload, purchase, and track your downloads.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ─── TABS ─── */}
       <div className="flex gap-2 bg-muted/50 p-1 rounded-xl mb-5">
-        {([ 
+        {([
           { key: "resources",    emoji: "📚", label: "Resources",    count: resources.length },
           { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
         ] as const).map(t => (
@@ -281,7 +248,6 @@ export default function EducationPage() {
       {/* ─── RESOURCES TAB ─── */}
       {tab === "resources" && (
         <>
-          {/* Search */}
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
@@ -300,7 +266,6 @@ export default function EducationPage() {
             )}
           </div>
 
-          {/* Price filter */}
           <div className="flex gap-2 mb-3">
             {(["all", "free", "paid"] as PriceFilter[]).map(f => (
               <button
@@ -317,7 +282,6 @@ export default function EducationPage() {
             ))}
           </div>
 
-          {/* Category pills */}
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
             {CATS.map(c => (
               <button
@@ -334,7 +298,6 @@ export default function EducationPage() {
             ))}
           </div>
 
-          {/* Grid */}
           {dataLoading ? (
             <GridSkeleton />
           ) : filtered.length === 0 ? (
@@ -345,7 +308,7 @@ export default function EducationPage() {
               <p className="font-semibold text-foreground">No resources found</p>
               <p className="text-sm text-muted-foreground">Be the first to upload one!</p>
               <button
-                onClick={() => setShowUpload(true)}
+                onClick={handleUploadClick}
                 className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl mt-1 active:scale-[0.98] transition-all"
               >
                 <Upload className="w-4 h-4" /> Upload Resource
@@ -433,8 +396,8 @@ export default function EducationPage() {
         </div>
       )}
 
-      {/* ─── Upload Modal ─── */}
-      {showUpload && (
+      {/* ─── Upload Modal (auth-gated inside handleUploadClick) ─── */}
+      {showUpload && user && (
         <UploadModal
           userId={user.id}
           onClose={() => setShowUpload(false)}
