@@ -1,89 +1,153 @@
 import { useState, useRef } from "react";
-import { X, Upload, FileText, Loader2 } from "lucide-react";
+import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = ["Past Papers", "Textbooks", "Notes", "Research", "Other"];
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
 interface UploadModalProps {
-  /** Supabase user.id of the currently logged-in user */
   userId: string;
   onClose: () => void;
-  /** Called after a successful upload so the parent can refresh the list */
   onSuccess: () => void;
 }
+
+type UploadStatus = "idle" | "uploading" | "saving" | "done" | "error";
 
 export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [file, setFile]     = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [form, setForm]     = useState({
-    title: "",
-    description: "",
-    category: "Notes",
-    price: "0",
+  const [file,     setFile]     = useState<File | null>(null);
+  const [status,   setStatus]   = useState<UploadStatus>("idle");
+  const [progress, setProgress] = useState(0);
+  const [errMsg,   setErrMsg]   = useState("");
+  const [form,     setForm]     = useState({
+    title: "", description: "", category: "Notes", price: "0",
   });
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const isLoading = status === "uploading" || status === "saving";
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFile(e.target.files?.[0] ?? null);
+    const f = e.target.files?.[0] ?? null;
+    if (f && f.size > MAX_FILE_SIZE) {
+      setErrMsg("File exceeds 50 MB limit. Please choose a smaller file.");
+      setFile(null);
+      return;
+    }
+    setErrMsg("");
+    setFile(f);
+    setStatus("idle");
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (!f) return;
+    if (f.size > MAX_FILE_SIZE) {
+      setErrMsg("File exceeds 50 MB limit.");
+      return;
+    }
+    setErrMsg("");
+    setFile(f);
+    setStatus("idle");
   };
 
   const handleSubmit = async () => {
+    // — Validation —
     if (!file) {
-      toast({ title: "No file selected", description: "Please pick a PDF or DOC.", variant: "destructive" });
+      setErrMsg("Please select a file before uploading.");
       return;
     }
     if (!form.title.trim()) {
-      toast({ title: "Title required", variant: "destructive" });
+      setErrMsg("A title is required.");
+      return;
+    }
+    const price = parseFloat(form.price);
+    if (isNaN(price) || price < 0) {
+      setErrMsg("Price must be a positive number or 0 for free.");
       return;
     }
 
-    setLoading(true);
+    setErrMsg("");
+    setProgress(0);
+
     try {
-      // 1. Upload file to Storage — path: userId/timestamp.ext
-      const ext  = file.name.split(".").pop() ?? "pdf";
-      const path = `${userId}/${Date.now()}.${ext}`;
+      // ── Step 1: Upload file to Supabase Storage ──
+      setStatus("uploading");
+      setProgress(20);
+
+      const ext  = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
+      const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       const { error: storageErr } = await supabase.storage
         .from("otechy-docs")
-        .upload(path, file, { upsert: false, contentType: file.type });
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type || "application/octet-stream",
+        });
 
-      if (storageErr) throw storageErr;
+      // FIX: explicit throw on storage error — prevents silent hang
+      if (storageErr) {
+        throw new Error(`Storage error: ${storageErr.message}`);
+      }
 
-      // 2. Save metadata — store the storage path, NOT a signed URL
-      //    Signed URLs are generated fresh on every download request
+      setProgress(70);
+
+      // ── Step 2: Save metadata to DB ──
+      setStatus("saving");
+
       const { error: dbErr } = await supabase
         .from("otechy_resources")
         .insert({
-          uploader_id:    userId,
-          title:          form.title.trim(),
-          description:    form.description.trim() || null,
-          category:       form.category,
-          price:          parseFloat(form.price) || 0,
-          file_url:       path,         // storage path
-          file_name:      file.name,
-          file_size:      file.size,
+          uploader_id: userId,
+          title:       form.title.trim(),
+          description: form.description.trim() || null,
+          category:    form.category,
+          price:       price,
+          file_url:    path,        // storage path, NOT a signed URL
+          file_name:   file.name,
+          file_size:   file.size,
         });
 
-      if (dbErr) throw dbErr;
+      // FIX: explicit throw on DB error
+      if (dbErr) {
+        // Rollback: clean up orphaned file in storage
+        await supabase.storage.from("otechy-docs").remove([path]).catch(() => {});
+        throw new Error(`Database error: ${dbErr.message}`);
+      }
+
+      setProgress(100);
+      setStatus("done");
 
       toast({ title: "✅ Published!", description: "Your resource is now live on OtechySchora." });
-      onSuccess();
-      onClose();
+
+      // Short delay so user sees success state before modal closes
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 800);
+
     } catch (e: any) {
+      // FIX: ALWAYS land here — never hangs
+      setStatus("error");
+      setErrMsg(e.message ?? "Something went wrong. Please try again.");
       toast({ title: "Upload failed", description: e.message, variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
+    // NOTE: no finally needed — every code path above sets status explicitly
   };
 
-  // Close on backdrop click
   const onBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) onClose();
+    if (e.target === e.currentTarget && !isLoading) onClose();
+  };
+
+  const statusLabel: Record<UploadStatus, string> = {
+    idle:      "Publish Resource",
+    uploading: "Uploading file…",
+    saving:    "Saving to database…",
+    done:      "Published! ✅",
+    error:     "Retry Upload",
   };
 
   return (
@@ -105,8 +169,9 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            onClick={() => { if (!isLoading) onClose(); }}
+            disabled={isLoading}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
           >
             <X className="w-4 h-4" />
           </button>
@@ -115,19 +180,35 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
         {/* ── Body ── */}
         <div className="p-5 flex flex-col gap-4">
 
+          {/* Error banner */}
+          {errMsg && (
+            <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-500 font-medium">{errMsg}</p>
+            </div>
+          )}
+
           {/* File Drop Zone */}
           <div
-            onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-purple-500/30 hover:border-purple-500/70 rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer transition-colors group"
+            onClick={() => !isLoading && fileRef.current?.click()}
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+            className={`border-2 border-dashed rounded-xl p-5 flex flex-col items-center gap-2 transition-colors ${
+              isLoading
+                ? "border-border cursor-not-allowed opacity-60"
+                : "border-purple-500/30 hover:border-purple-500/70 cursor-pointer group"
+            }`}
           >
             <div className="w-10 h-10 rounded-xl bg-purple-500/10 group-hover:bg-purple-500/20 flex items-center justify-center transition-colors">
-              {file
+              {status === "done"
+                ? <CheckCircle2 className="w-5 h-5 text-green-500" />
+                : file
                 ? <FileText className="w-5 h-5 text-purple-500" />
                 : <Upload className="w-5 h-5 text-purple-400" />
               }
             </div>
             <p className="text-sm font-medium text-foreground">
-              {file ? file.name : "Click to select file"}
+              {file ? file.name : "Click or drag file here"}
             </p>
             <p className="text-[11px] text-muted-foreground">
               {file
@@ -142,7 +223,18 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
             className="hidden"
             accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={handleFile}
+            disabled={isLoading}
           />
+
+          {/* Upload progress bar */}
+          {isLoading && (
+            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
 
           {/* Title */}
           <div>
@@ -153,7 +245,8 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
               value={form.title}
               onChange={e => set("title", e.target.value)}
               placeholder="e.g. MSCE Biology Past Papers 2023"
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-shadow"
+              disabled={isLoading}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-shadow disabled:opacity-60"
             />
           </div>
 
@@ -167,7 +260,8 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
               onChange={e => set("description", e.target.value)}
               rows={2}
               placeholder="What's inside this document?"
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-shadow"
+              disabled={isLoading}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none transition-shadow disabled:opacity-60"
             />
           </div>
 
@@ -178,7 +272,8 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
               <select
                 value={form.category}
                 onChange={e => set("category", e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                disabled={isLoading}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60"
               >
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
@@ -193,7 +288,8 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
                 step="50"
                 value={form.price}
                 onChange={e => set("price", e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                disabled={isLoading}
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60"
               />
             </div>
           </div>
@@ -201,13 +297,22 @@ export function UploadModal({ userId, onClose, onSuccess }: UploadModalProps) {
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-all duration-150 active:scale-[0.98] shadow-md"
+            disabled={isLoading || status === "done"}
+            className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all duration-150 active:scale-[0.98] shadow-md disabled:cursor-not-allowed ${
+              status === "done"
+                ? "bg-green-500 text-white opacity-90"
+                : status === "error"
+                ? "bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-400 hover:to-orange-400 text-white"
+                : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-60 text-white"
+            }`}
           >
-            {loading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
-              : <><Upload className="w-4 h-4" /> Publish Resource</>
-            }
+            {isLoading ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> {statusLabel[status]}</>
+            ) : status === "done" ? (
+              <><CheckCircle2 className="w-4 h-4" /> {statusLabel[status]}</>
+            ) : (
+              <><Upload className="w-4 h-4" /> {statusLabel[status]}</>
+            )}
           </button>
         </div>
       </div>
