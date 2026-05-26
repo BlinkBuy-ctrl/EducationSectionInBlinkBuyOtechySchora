@@ -7,11 +7,11 @@ import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
-const EducationPage      = lazy(() => import("@/pages/education"));
-const LoginPage          = lazy(() => import("@/pages/login"));
-const RegisterPage       = lazy(() => import("@/pages/register"));
-const NotificationsPage  = lazy(() => import("@/pages/notifications"));
-const NotFound           = lazy(() => import("@/pages/not-found"));
+const EducationPage     = lazy(() => import("@/pages/education"));
+const LoginPage         = lazy(() => import("@/pages/login"));
+const RegisterPage      = lazy(() => import("@/pages/register"));
+const NotificationsPage = lazy(() => import("@/pages/notifications"));
+const NotFound          = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,23 +27,6 @@ const queryClient = new QueryClient({
   },
 });
 
-function AuthLoader() {
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-background z-50">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-700 flex items-center justify-center animate-pulse">
-          <span className="text-white font-black text-base">O</span>
-        </div>
-        <div className="flex gap-1">
-          <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-          <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-          <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -52,16 +35,15 @@ function PageLoader() {
   );
 }
 
+// FIX: AppInner no longer blocks on auth loading — page renders immediately
+// Auth state hydrates in background; user-specific UI updates reactively
 function AppInner() {
   const authState = useAuthState();
   useScrollToTop();
 
-  if (authState.isLoading) return <AuthLoader />;
-
   return (
     <AuthContext.Provider value={authState}>
       <Switch>
-        {/* Bare routes — no layout wrapper */}
         <Route path="/login">
           <Suspense fallback={<PageLoader />}><LoginPage /></Suspense>
         </Route>
@@ -69,7 +51,7 @@ function AppInner() {
           <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>
         </Route>
 
-        {/* Layout-wrapped routes */}
+        {/* FIX: / is now always accessible — no auth gate */}
         <Route path="/">
           <Layout>
             <Suspense fallback={<PageLoader />}><EducationPage /></Suspense>
@@ -81,7 +63,6 @@ function AppInner() {
           </Layout>
         </Route>
 
-        {/* 404 */}
         <Route>
           <Layout>
             <Suspense fallback={<PageLoader />}><NotFound /></Suspense>
