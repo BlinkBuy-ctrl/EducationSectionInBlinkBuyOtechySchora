@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from "react";
 import {
   GraduationCap, BookOpen, Upload, Award, Search,
   X, TrendingUp, FileText, LogIn, Bookmark,
-  BarChart2, Users
+  BarChart2, Users, UserPlus
 } from "lucide-react";
 import { Link } from "wouter";
 import { supabase } from "@/lib/supabase";
@@ -12,10 +12,12 @@ import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
 import { UploadModal } from "@/components/education/UploadModal";
 import { SellerDashboard } from "@/components/education/SellerDashboard";
+import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
+import { TutorsTab } from "@/components/education/TutorsTab";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
-type Tab = "resources" | "scholarships" | "bookmarks" | "dashboard";
+type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard";
 
 function GridSkeleton() {
   return (
@@ -33,6 +35,7 @@ export default function EducationPage() {
 
   const [resources,    setResources]    = useState<any[]>([]);
   const [scholarships, setScholarships] = useState<any[]>([]);
+  const [tutors,       setTutors]       = useState<any[]>([]);
   const [purchases,    setPurchases]    = useState<Set<string>>(new Set());
   const [bookmarks,    setBookmarks]    = useState<Set<string>>(new Set());
   const [dataLoading,  setDataLoading]  = useState(false);
@@ -51,13 +54,17 @@ export default function EducationPage() {
         e?.code === "42P01" || e?.message?.includes("does not exist");
 
       const base: Promise<any>[] = [
-        // Join uploader profile to get verified status
         supabase
           .from("otechy_resources")
           .select("*, profiles!uploader_id(name, is_verified)")
           .order("created_at", { ascending: false }),
         supabase
           .from("otechy_scholarships")
+          .select("*, profiles!posted_by(name, avatar_url)")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("otechy_tutors")
           .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
@@ -70,12 +77,12 @@ export default function EducationPage() {
         );
       }
 
-      const [rRes, sRes, pRes, bRes] = await Promise.all(base);
+      const [rRes, sRes, tRes, pRes, bRes] = await Promise.all(base);
 
       if (rRes.error  && !tableNotFound(rRes.error))  throw rRes.error;
       if (sRes.error  && !tableNotFound(sRes.error))  throw sRes.error;
+      if (tRes.error  && !tableNotFound(tRes.error))  throw tRes.error;
 
-      // Flatten uploader_verified flag onto each resource
       const enriched = (rRes.data ?? []).map((r: any) => ({
         ...r,
         uploader_verified: r.profiles?.is_verified ?? false,
@@ -84,6 +91,7 @@ export default function EducationPage() {
 
       setResources(enriched);
       setScholarships(sRes.data ?? []);
+      setTutors(tRes.data ?? []);
       if (pRes) setPurchases(new Set((pRes.data ?? []).map((p: any) => p.resource_id)));
       if (bRes) setBookmarks(new Set((bRes.data ?? []).map((b: any) => b.resource_id)));
     } catch (e: any) {
@@ -106,7 +114,41 @@ export default function EducationPage() {
 
   const bookmarkedResources = resources.filter(r => bookmarks.has(r.id));
 
-  // ── Actions ──────────────────────────────────────────────────────
+  // ── FIX: PDF Download — fetch blob via signed URL, force download ─
+  const handleDownload = async (resource: any) => {
+    if (!user && Number(resource.price) > 0) {
+      toast({ title: "Sign in required", variant: "destructive" }); return;
+    }
+    try {
+      // 1. Get a 60-second signed URL for the private bucket
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("otechy-docs")
+        .createSignedUrl(resource.file_url, 60);
+      if (signErr) throw signErr;
+
+      // 2. Fetch as blob so the browser always downloads (avoids CORS/redirect issues)
+      const resp = await fetch(signed.signedUrl);
+      if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
+      const blob = await resp.blob();
+
+      // 3. Trigger download
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = resource.file_name ?? "document";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+
+      // 4. Increment counter (fire-and-forget)
+      supabase.rpc("increment_download", { resource_id: resource.id }).catch(() => {});
+      toast({ title: "✅ Download started!" });
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e.message, variant: "destructive" });
+    }
+  };
+
   const handleBuy = async (resource: any) => {
     if (!user) { toast({ title: "Sign in required", description: "Please sign in to purchase.", variant: "destructive" }); return; }
     const confirmed = window.confirm(`Purchase "${resource.title}" for MK ${Number(resource.price).toLocaleString()}?`);
@@ -125,22 +167,6 @@ export default function EducationPage() {
       } else {
         toast({ title: "Purchase failed", description: e.message, variant: "destructive" });
       }
-    }
-  };
-
-  const handleDownload = async (resource: any) => {
-    if (!user && Number(resource.price) > 0) {
-      toast({ title: "Sign in required", variant: "destructive" }); return;
-    }
-    try {
-      const { data, error } = await supabase.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
-      if (error) throw error;
-      supabase.rpc("increment_download", { resource_id: resource.id }).catch(() => {});
-      const a = document.createElement("a");
-      a.href = data.signedUrl; a.download = resource.file_name ?? "document";
-      a.target = "_blank"; a.rel = "noopener noreferrer"; a.click();
-    } catch (e: any) {
-      toast({ title: "Download failed", description: e.message, variant: "destructive" });
     }
   };
 
@@ -169,10 +195,11 @@ export default function EducationPage() {
 
   // ── Tabs config ───────────────────────────────────────────────────
   const tabs = [
-    { key: "resources",    emoji: "📚", label: "Browse",     count: resources.length,    authOnly: false },
-    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length, authOnly: false },
-    { key: "bookmarks",    emoji: "🔖", label: "Saved",       count: bookmarkedResources.length, authOnly: true },
-    { key: "dashboard",    emoji: "📊", label: "My Stats",    count: null,                authOnly: true },
+    { key: "resources",    emoji: "📚", label: "Browse",      count: resources.length,     authOnly: false },
+    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length,  authOnly: false },
+    { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",      count: tutors.length,         authOnly: false },
+    { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: bookmarkedResources.length, authOnly: true },
+    { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null,                  authOnly: true },
   ].filter(t => !t.authOnly || user) as { key: Tab; emoji: string; label: string; count: number | null }[];
 
   return (
@@ -195,13 +222,13 @@ export default function EducationPage() {
               </div>
             </div>
             <p className="text-sm text-white/65 max-w-xs leading-relaxed">
-              Download resources, sell your notes, and discover scholarships.
+              Download resources, find tutors, and discover scholarships.
             </p>
             <div className="flex flex-wrap gap-3 mt-3">
               {[
                 { icon: FileText,   label: `${resources.length} Resources` },
                 { icon: Award,      label: `${scholarships.length} Scholarships` },
-                { icon: TrendingUp, label: "Growing daily" },
+                { icon: Users,      label: `${tutors.length} Tutors` },
               ].map(({ icon: Icon, label }) => (
                 <div key={label} className="flex items-center gap-1.5">
                   <Icon className="w-3.5 h-3.5 text-purple-400" />
@@ -223,7 +250,7 @@ export default function EducationPage() {
             <LogIn className="w-4 h-4 text-purple-300 shrink-0" />
             <p className="text-xs text-white/60 flex-1">
               <Link href="/login" className="text-purple-300 font-semibold hover:text-purple-200">Sign in</Link>
-              {" "}to upload, purchase, bookmark, and track downloads.
+              {" "}to upload, purchase, bookmark, and post as a tutor.
             </p>
           </div>
         )}
@@ -318,43 +345,22 @@ export default function EducationPage() {
 
       {/* ─── SCHOLARSHIPS TAB ─── */}
       {tab === "scholarships" && (
-        <div className="flex flex-col gap-3">
-          {dataLoading ? (
-            Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-28 rounded-2xl bg-muted/50 animate-pulse" />)
-          ) : scholarships.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center">
-                <Award className="w-7 h-7 text-yellow-500" />
-              </div>
-              <p className="font-semibold text-foreground">No scholarships yet</p>
-              <p className="text-sm text-muted-foreground">Check back soon.</p>
-            </div>
-          ) : scholarships.map(s => (
-            <div key={s.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md hover:shadow-yellow-500/10 hover:-translate-y-0.5 transition-all duration-200">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shrink-0 shadow-sm">
-                  <Award className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-sm text-foreground line-clamp-1">{s.title}</h3>
-                    {s.amount && <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">{s.amount}</span>}
-                  </div>
-                  <p className="text-xs text-purple-500 font-semibold mt-0.5">{s.provider}</p>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{s.description}</p>
-                  <div className="flex items-center justify-between mt-2.5">
-                    {s.deadline && (
-                      <span className="text-[11px] text-muted-foreground">
-                        Deadline: <span className="font-semibold text-foreground">{new Date(s.deadline).toLocaleDateString("en-MW", { day: "numeric", month: "short", year: "numeric" })}</span>
-                      </span>
-                    )}
-                    {s.link && <a href={s.link} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-purple-500 hover:text-purple-400">Apply →</a>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ScholarshipsTab
+          scholarships={scholarships}
+          loading={dataLoading}
+          user={user}
+          onRefresh={fetchAll}
+        />
+      )}
+
+      {/* ─── TUTORS TAB ─── */}
+      {tab === "tutors" && (
+        <TutorsTab
+          tutors={tutors}
+          loading={dataLoading}
+          user={user}
+          onRefresh={fetchAll}
+        />
       )}
 
       {/* ─── BOOKMARKS TAB ─── */}
