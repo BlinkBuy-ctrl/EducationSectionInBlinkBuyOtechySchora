@@ -1,10 +1,9 @@
 import { useState, useEffect, useContext } from "react";
 import {
   GraduationCap, BookOpen, Upload, Award, Search,
-  X, TrendingUp, FileText, LogIn, Bookmark,
-  BarChart2, Users, UserPlus
+  X, FileText, Bookmark,
+  Users,
 } from "lucide-react";
-import { Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +29,8 @@ function GridSkeleton() {
 }
 
 export default function EducationPage() {
-  const { user } = useContext(AuthContext);
+  // user is now always defined (anonymous UUID-based identity)
+  const { user, ensureProfile } = useContext(AuthContext);
   const { toast } = useToast();
 
   const [resources,    setResources]    = useState<any[]>([]);
@@ -46,6 +46,20 @@ export default function EducationPage() {
   const [catFilter,   setCatFilter]   = useState<typeof CATS[number]>("All");
   const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
   const [tab,         setTab]         = useState<Tab>("resources");
+
+  // ── Listen for bottom-nav Post button ────────────────────────────
+  useEffect(() => {
+    const handler = () => handleUploadClick();
+    window.addEventListener("otechy:open-upload", handler);
+    return () => window.removeEventListener("otechy:open-upload", handler);
+  }, []);
+
+  // ── Read ?tab= from URL (bottom nav My Stats link) ───────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab") as Tab | null;
+    if (t) setTab(t);
+  }, []);
 
   const fetchAll = async () => {
     setDataLoading(true);
@@ -68,14 +82,10 @@ export default function EducationPage() {
           .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
+        // Always fetch user-specific data — user is always present
+        supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
+        supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
       ];
-
-      if (user) {
-        base.push(
-          supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
-          supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
-        );
-      }
 
       const [rRes, sRes, tRes, pRes, bRes] = await Promise.all(base);
 
@@ -101,7 +111,7 @@ export default function EducationPage() {
     }
   };
 
-  useEffect(() => { fetchAll(); }, [user?.id]);
+  useEffect(() => { fetchAll(); }, [user.id]);
 
   // ── Filters ──────────────────────────────────────────────────────
   const filtered = resources.filter(r => {
@@ -114,24 +124,18 @@ export default function EducationPage() {
 
   const bookmarkedResources = resources.filter(r => bookmarks.has(r.id));
 
-  // ── FIX: PDF Download — fetch blob via signed URL, force download ─
+  // ── Download ─────────────────────────────────────────────────────
   const handleDownload = async (resource: any) => {
-    if (!user && Number(resource.price) > 0) {
-      toast({ title: "Sign in required", variant: "destructive" }); return;
-    }
     try {
-      // 1. Get a 60-second signed URL for the private bucket
       const { data: signed, error: signErr } = await supabase.storage
         .from("otechy-docs")
         .createSignedUrl(resource.file_url, 60);
       if (signErr) throw signErr;
 
-      // 2. Fetch as blob so the browser always downloads (avoids CORS/redirect issues)
       const resp = await fetch(signed.signedUrl);
       if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
       const blob = await resp.blob();
 
-      // 3. Trigger download
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -141,16 +145,17 @@ export default function EducationPage() {
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
 
-      // 4. Increment counter (fire-and-forget)
-      supabase.rpc("increment_download", { resource_id: resource.id }).catch(() => {});
+      supabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id }).catch(() => {});
       toast({ title: "✅ Download started!" });
     } catch (e: any) {
       toast({ title: "Download failed", description: e.message, variant: "destructive" });
     }
   };
 
+  // ── Buy ───────────────────────────────────────────────────────────
   const handleBuy = async (resource: any) => {
-    if (!user) { toast({ title: "Sign in required", description: "Please sign in to purchase.", variant: "destructive" }); return; }
+    // Auto-create account before first purchase
+    await ensureProfile();
     const confirmed = window.confirm(`Purchase "${resource.title}" for MK ${Number(resource.price).toLocaleString()}?`);
     if (!confirmed) return;
     try {
@@ -170,8 +175,9 @@ export default function EducationPage() {
     }
   };
 
+  // ── Bookmark ──────────────────────────────────────────────────────
   const handleBookmarkToggle = async (resource: any) => {
-    if (!user) { toast({ title: "Sign in to bookmark", variant: "destructive" }); return; }
+    await ensureProfile();
     const isBookmarked = bookmarks.has(resource.id);
     try {
       if (isBookmarked) {
@@ -188,19 +194,20 @@ export default function EducationPage() {
     }
   };
 
-  const handleUploadClick = () => {
-    if (!user) { toast({ title: "Sign in to upload" }); return; }
+  // ── Upload — auto-create account, then open modal ────────────────
+  const handleUploadClick = async () => {
+    await ensureProfile();
     setShowUpload(true);
   };
 
-  // ── Tabs config ───────────────────────────────────────────────────
-  const tabs = [
-    { key: "resources",    emoji: "📚", label: "Browse",      count: resources.length,     authOnly: false },
-    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length,  authOnly: false },
-    { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",      count: tutors.length,         authOnly: false },
-    { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: bookmarkedResources.length, authOnly: true },
-    { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null,                  authOnly: true },
-  ].filter(t => !t.authOnly || user) as { key: Tab; emoji: string; label: string; count: number | null }[];
+  // ── Tabs config — all tabs visible (no authOnly gate needed) ──────
+  const tabs: { key: Tab; emoji: string; label: string; count: number | null }[] = [
+    { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length    },
+    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
+    { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
+    { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: bookmarkedResources.length },
+    { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
+  ];
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 pb-28">
@@ -244,16 +251,6 @@ export default function EducationPage() {
             <Upload className="w-3.5 h-3.5" /> Upload
           </button>
         </div>
-
-        {!user && (
-          <div className="relative mt-4 flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5">
-            <LogIn className="w-4 h-4 text-purple-300 shrink-0" />
-            <p className="text-xs text-white/60 flex-1">
-              <Link href="/login" className="text-purple-300 font-semibold hover:text-purple-200">Sign in</Link>
-              {" "}to upload, purchase, bookmark, and post as a tutor.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* ─── TABS ─── */}
@@ -391,13 +388,13 @@ export default function EducationPage() {
         </>
       )}
 
-      {/* ─── SELLER DASHBOARD TAB ─── */}
-      {tab === "dashboard" && user && (
+      {/* ─── MY STATS TAB ─── */}
+      {tab === "dashboard" && (
         <SellerDashboard userId={user.id} onRefresh={fetchAll} />
       )}
 
       {/* ─── Modals ─── */}
-      {showUpload && user && (
+      {showUpload && (
         <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />
       )}
 
