@@ -1,24 +1,39 @@
 import { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { User } from '@supabase/supabase-js'
+
+// ── Anonymous identity ─────────────────────────────────────────────────────
+// A UUID is generated once and persisted in localStorage.
+// On first use (upload/post), a row is auto-inserted into `profiles`.
+// No login, no register, no password ever required.
+
+const ANON_ID_KEY = 'otechyschora_anon_id'
+
+function getOrCreateAnonId(): string {
+  let id = localStorage.getItem(ANON_ID_KEY)
+  if (!id) {
+    // crypto.randomUUID is available in all modern browsers
+    id = crypto.randomUUID()
+    localStorage.setItem(ANON_ID_KEY, id)
+  }
+  return id
+}
+
+export interface AnonUser {
+  id: string
+  isAnon: true
+}
 
 export interface AuthContextType {
-  user: User | null
+  user: AnonUser
   profile: any | null
   isLoading: boolean
   setProfile: (profile: any | null) => void
-  login: (email: string, password: string) => Promise<void>
-  register: (data: RegisterData) => Promise<void>
+  /** No-op stubs kept for backward compat — nothing calls these anymore */
+  login: () => Promise<void>
+  register: () => Promise<void>
   logout: () => Promise<void>
-}
-
-export interface RegisterData {
-  email: string
-  password: string
-  name: string
-  phone?: string
-  role: 'customer' | 'worker' | 'both'
-  location?: string
+  /** Call this before the first upload/post to ensure the profile row exists */
+  ensureProfile: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType)
@@ -33,84 +48,67 @@ function normalizeProfile(data: Record<string, unknown>): Record<string, unknown
 }
 
 export function useAuthState(): AuthContextType {
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<any | null>(null)
-  // FIX: Start false — no auth gate needed; resolve immediately
-  const [isLoading, setIsLoading] = useState(false)
+  // Stable anonymous user — never null, always has an id
+  const anonId = useRef<string>(getOrCreateAnonId())
+  const user: AnonUser = { id: anonId.current, isAnon: true }
 
-  const lastFetchedUserId = useRef<string | null>(null)
+  const [profile, setProfile] = useState<any | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
   const isFetchingRef = useRef(false)
 
-  const fetchProfile = useCallback(async (userId: string, force = false): Promise<void> => {
-    if (!force && lastFetchedUserId.current === userId) return
+  const fetchProfile = useCallback(async (): Promise<void> => {
     if (isFetchingRef.current) return
     isFetchingRef.current = true
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
-        .single()
-      if (error) throw error
-      lastFetchedUserId.current = userId
-      setProfile(normalizeProfile(data as Record<string, unknown>))
+        .eq('id', anonId.current)
+        .maybeSingle()
+      if (!error && data) {
+        setProfile(normalizeProfile(data as Record<string, unknown>))
+      }
     } catch (e) {
       console.error('Failed to fetch profile:', e)
     } finally {
       isFetchingRef.current = false
+      setIsLoading(false)
     }
   }, [])
 
-  useEffect(() => {
-    // FIX: Silently try to restore existing session, no loading gate
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user)
-        fetchProfile(session.user.id)
-      }
-    })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user && ['SIGNED_IN', 'USER_UPDATED', 'TOKEN_REFRESHED'].includes(event)) {
-        fetchProfile(session.user.id, event === 'SIGNED_IN')
-      }
-      if (!session?.user) {
-        lastFetchedUserId.current = null
-        isFetchingRef.current = false
-        setProfile(null)
-      }
-    })
-
-    return () => { subscription.unsubscribe() }
+  /**
+   * Upserts a profile row the first time the user does anything that writes to
+   * the DB (upload, purchase, bookmark, tutor registration).
+   * Safe to call multiple times — upsert is idempotent.
+   */
+  const ensureProfile = useCallback(async (): Promise<void> => {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id:         anonId.current,
+          name:       `User-${anonId.current.slice(0, 6)}`,
+          role:       'customer',
+          is_anon:    true,
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
+      )
+    if (error) console.error('ensureProfile error:', error)
+    // Re-fetch so the UI shows the new profile
+    await fetchProfile()
   }, [fetchProfile])
 
-  const login = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw new Error(error.message)
-  }
+  useEffect(() => {
+    fetchProfile()
+  }, [fetchProfile])
 
-  const register = async (data: RegisterData) => {
-    const { data: signUpData, error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-      options: { data: { name: data.name, phone: data.phone, role: data.role, location: data.location } },
-    })
-    if (error) throw new Error(error.message)
-    if (signUpData.user && !signUpData.session) {
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email: data.email, password: data.password })
-      if (loginError) throw new Error(loginError.message)
-    }
-  }
+  // No-op stubs — kept so any residual call sites don't throw
+  const login    = async () => {}
+  const register = async () => {}
+  const logout   = async () => {}
 
-  const logout = async () => {
-    await supabase.auth.signOut()
-    lastFetchedUserId.current = null
-    isFetchingRef.current = false
-    setProfile(null)
-  }
-
-  return { user, profile, isLoading, setProfile, login, register, logout }
+  return { user, profile, isLoading, setProfile, login, register, logout, ensureProfile }
 }
 
 export function useAuth() {
