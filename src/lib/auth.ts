@@ -1,15 +1,7 @@
-import { supabase } from "./supabase";
+// Google sign-in removed — users are identified anonymously via localStorage UUID.
+// Theme helpers kept unchanged.
 
 const THEME_KEY = "otechyschora_theme";
-
-export async function signInWithGoogle(): Promise<void> {
-  const redirectTo = `${window.location.origin}/`;
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo, queryParams: { prompt: "select_account" } },
-  });
-  if (error) throw new Error(error.message || "Google sign-in failed.");
-}
 
 export function getTheme(): "light" | "dark" {
   return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "light";
