@@ -7,9 +7,8 @@ import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
+// login.tsx and register.tsx are deleted — no routes for them
 const EducationPage     = lazy(() => import("@/pages/education"));
-const LoginPage         = lazy(() => import("@/pages/login"));
-const RegisterPage      = lazy(() => import("@/pages/register"));
 const NotificationsPage = lazy(() => import("@/pages/notifications"));
 const NotFound          = lazy(() => import("@/pages/not-found"));
 
@@ -35,8 +34,6 @@ function PageLoader() {
   );
 }
 
-// FIX: AppInner no longer blocks on auth loading — page renders immediately
-// Auth state hydrates in background; user-specific UI updates reactively
 function AppInner() {
   const authState = useAuthState();
   useScrollToTop();
@@ -44,14 +41,6 @@ function AppInner() {
   return (
     <AuthContext.Provider value={authState}>
       <Switch>
-        <Route path="/login">
-          <Suspense fallback={<PageLoader />}><LoginPage /></Suspense>
-        </Route>
-        <Route path="/register">
-          <Suspense fallback={<PageLoader />}><RegisterPage /></Suspense>
-        </Route>
-
-        {/* FIX: / is now always accessible — no auth gate */}
         <Route path="/">
           <Layout>
             <Suspense fallback={<PageLoader />}><EducationPage /></Suspense>
@@ -62,7 +51,6 @@ function AppInner() {
             <Suspense fallback={<PageLoader />}><NotificationsPage /></Suspense>
           </Layout>
         </Route>
-
         <Route>
           <Layout>
             <Suspense fallback={<PageLoader />}><NotFound /></Suspense>
