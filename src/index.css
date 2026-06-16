@@ -429,3 +429,16 @@ main > * {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* ── Bottom mobile nav — body padding so content never hides behind it ──*/
+@media (max-width: 639px) {
+  /* 64px nav height + 8px breathing room */
+  body {
+    padding-bottom: 72px;
+  }
+}
+
+/* iOS safe-area support (notch phones) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
