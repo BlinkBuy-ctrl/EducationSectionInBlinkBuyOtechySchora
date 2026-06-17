@@ -22,7 +22,7 @@ const ONBOARDING_KEY = "otechy_onboarding_done";
 
 function GridSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    <div data-tour="resource-grid" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="h-52 rounded-2xl bg-muted/50 animate-pulse" />
       ))}
@@ -242,7 +242,7 @@ export default function EducationPage() {
           </div>
           <button
             onClick={handleUploadClick}
-            className="shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-400 hover:to-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all active:scale-[0.97] shadow-lg shadow-purple-500/30"
+            data-tour="upload-btn" className="shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-400 hover:to-blue-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all active:scale-[0.97] shadow-lg shadow-purple-500/30"
           >
             <Upload className="w-3.5 h-3.5" /> Upload
           </button>
@@ -250,7 +250,7 @@ export default function EducationPage() {
       </div>
 
       {/* ── TABS ── */}
-      <div className="flex gap-1.5 bg-muted/50 p-1 rounded-xl mb-5 overflow-x-auto scrollbar-hide">
+      <div data-tour="tabs" className="flex gap-1.5 bg-muted/50 p-1 rounded-xl mb-5 overflow-x-auto scrollbar-hide">
         {tabs.map(t => (
           <button
             key={t.key}
