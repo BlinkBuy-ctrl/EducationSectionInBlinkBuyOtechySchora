@@ -149,7 +149,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
   };
 
   const send = async () => {
-    if (!body.trim() || !user) return;
+    if (!body.trim()) return;
     setSending(true);
     try {
       const { error } = await supabase.from("otechy_scholarship_comments").insert({
@@ -184,8 +184,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
           </div>
         </div>
       ))}
-      {user && (
-        <div className="flex gap-2 mt-1">
+      <div className="flex gap-2 mt-1">
           <input value={body} onChange={e => setBody(e.target.value)} placeholder="Write a comment…" onKeyDown={e => e.key === "Enter" && send()}
             className="flex-1 bg-background border border-border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
           <button onClick={send} disabled={sending || !body.trim()}
@@ -193,7 +192,6 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
-      )}
     </div>
   );
 }
@@ -207,7 +205,7 @@ function ScholarshipCard({ s, user }: { s: any; user: any }) {
   const [showComments, setShowComments] = useState(false);
 
   const toggleLike = async () => {
-    if (!user) { toast({ title: "Sign in to like", variant: "destructive" }); return; }
+    
     if (liked) {
       await supabase.from("otechy_scholarship_likes").delete().eq("scholarship_id", s.id).eq("user_id", user.id);
       setLikes((p: number) => p - 1); setLiked(false);
@@ -319,12 +317,10 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh }: Prop
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{scholarships.length} scholarship{scholarships.length !== 1 ? "s" : ""}</p>
-        {user && (
-          <button onClick={() => setShowForm(true)}
+        <button onClick={() => setShowForm(true)}
             className="flex items-center gap-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all active:scale-[0.97] shadow-sm shadow-yellow-500/30">
             <Plus className="w-3.5 h-3.5" /> Post Scholarship
           </button>
-        )}
       </div>
 
       {loading ? (
@@ -336,18 +332,16 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh }: Prop
           </div>
           <p className="font-semibold text-foreground">No scholarships yet</p>
           <p className="text-sm text-muted-foreground">Be the first to post one!</p>
-          {user && (
-            <button onClick={() => setShowForm(true)}
+          <button onClick={() => setShowForm(true)}
               className="flex items-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-[0.98] transition-all">
               <Plus className="w-4 h-4" /> Post Scholarship
             </button>
-          )}
         </div>
       ) : (
         scholarships.map(s => <ScholarshipCard key={s.id} s={s} user={user} />)
       )}
 
-      {showForm && user && (
+      {showForm && (
         <ScholarshipPostForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} />
       )}
     </div>
