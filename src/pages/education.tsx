@@ -1,8 +1,7 @@
 import { useState, useEffect, useContext } from "react";
 import {
-  GraduationCap, BookOpen, Upload, Award, Search,
-  X, FileText, Bookmark,
-  Users,
+  GraduationCap, BookOpen, Upload, Award,
+  Search, X, FileText, Bookmark, Users,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
@@ -13,10 +12,13 @@ import { UploadModal } from "@/components/education/UploadModal";
 import { SellerDashboard } from "@/components/education/SellerDashboard";
 import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
 import { TutorsTab } from "@/components/education/TutorsTab";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard";
+
+const ONBOARDING_KEY = "otechy_onboarding_done";
 
 function GridSkeleton() {
   return (
@@ -29,7 +31,6 @@ function GridSkeleton() {
 }
 
 export default function EducationPage() {
-  // user is now always defined (anonymous UUID-based identity)
   const { user, ensureProfile } = useContext(AuthContext);
   const { toast } = useToast();
 
@@ -40,41 +41,53 @@ export default function EducationPage() {
   const [bookmarks,    setBookmarks]    = useState<Set<string>>(new Set());
   const [dataLoading,  setDataLoading]  = useState(false);
 
-  const [showUpload,  setShowUpload]  = useState(false);
-  const [detailRes,   setDetailRes]   = useState<any | null>(null);
-  const [search,      setSearch]      = useState("");
-  const [catFilter,   setCatFilter]   = useState<typeof CATS[number]>("All");
-  const [priceFilter, setPriceFilter] = useState<PriceFilter>("all");
-  const [tab,         setTab]         = useState<Tab>("resources");
+  const [showUpload,    setShowUpload]    = useState(false);
+  const [detailRes,     setDetailRes]     = useState<any | null>(null);
+  const [search,        setSearch]        = useState("");
+  const [catFilter,     setCatFilter]     = useState<typeof CATS[number]>("All");
+  const [priceFilter,   setPriceFilter]   = useState<PriceFilter>("all");
+  const [tab,           setTab]           = useState<Tab>("resources");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // ── Listen for bottom-nav Post button ────────────────────────────
+  // Show onboarding once per device
+  useEffect(() => {
+    if (!localStorage.getItem(ONBOARDING_KEY)) {
+      setTimeout(() => setShowOnboarding(true), 600);
+    }
+  }, []);
+
+  const dismissOnboarding = () => {
+    localStorage.setItem(ONBOARDING_KEY, "1");
+    setShowOnboarding(false);
+  };
+
+  // Bottom nav post button event
   useEffect(() => {
     const handler = () => handleUploadClick();
     window.addEventListener("otechy:open-upload", handler);
     return () => window.removeEventListener("otechy:open-upload", handler);
   }, []);
 
-  // ── Read ?tab= from URL (bottom nav My Stats link) ───────────────
+  // URL tab param (My Stats link)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const t = params.get("tab") as Tab | null;
+    const t = new URLSearchParams(window.location.search).get("tab") as Tab | null;
     if (t) setTab(t);
   }, []);
 
   const fetchAll = async () => {
     setDataLoading(true);
     try {
-      const tableNotFound = (e: any) =>
-        e?.code === "42P01" || e?.message?.includes("does not exist");
+      const notFound = (e: any) => e?.code === "42P01" || e?.message?.includes("does not exist");
 
-      const base: Promise<any>[] = [
+      // Fetch resources WITHOUT the broken join — separate uploader name lookup
+      const [rRes, sRes, tRes, pRes, bRes] = await Promise.all([
         supabase
           .from("otechy_resources")
-          .select("*, profiles!uploader_id(name, is_verified)")
+          .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,created_at")
           .order("created_at", { ascending: false }),
         supabase
           .from("otechy_scholarships")
-          .select("*, profiles!posted_by(name, avatar_url)")
+          .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
         supabase
@@ -82,28 +95,19 @@ export default function EducationPage() {
           .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false }),
-        // Always fetch user-specific data — user is always present
         supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
         supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
-      ];
+      ]);
 
-      const [rRes, sRes, tRes, pRes, bRes] = await Promise.all(base);
+      if (rRes.error && !notFound(rRes.error)) throw rRes.error;
+      if (sRes.error && !notFound(sRes.error)) throw sRes.error;
+      if (tRes.error && !notFound(tRes.error)) throw tRes.error;
 
-      if (rRes.error  && !tableNotFound(rRes.error))  throw rRes.error;
-      if (sRes.error  && !tableNotFound(sRes.error))  throw sRes.error;
-      if (tRes.error  && !tableNotFound(tRes.error))  throw tRes.error;
-
-      const enriched = (rRes.data ?? []).map((r: any) => ({
-        ...r,
-        uploader_verified: r.profiles?.is_verified ?? false,
-        uploader_name:     r.profiles?.name ?? "",
-      }));
-
-      setResources(enriched);
+      setResources(rRes.data ?? []);
       setScholarships(sRes.data ?? []);
       setTutors(tRes.data ?? []);
-      if (pRes) setPurchases(new Set((pRes.data ?? []).map((p: any) => p.resource_id)));
-      if (bRes) setBookmarks(new Set((bRes.data ?? []).map((b: any) => b.resource_id)));
+      if (!pRes?.error) setPurchases(new Set((pRes?.data ?? []).map((p: any) => p.resource_id)));
+      if (!bRes?.error) setBookmarks(new Set((bRes?.data ?? []).map((b: any) => b.resource_id)));
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
     } finally {
@@ -113,7 +117,6 @@ export default function EducationPage() {
 
   useEffect(() => { fetchAll(); }, [user.id]);
 
-  // ── Filters ──────────────────────────────────────────────────────
   const filtered = resources.filter(r => {
     const q = search.toLowerCase();
     const matchSearch = !q || r.title?.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q);
@@ -124,7 +127,6 @@ export default function EducationPage() {
 
   const bookmarkedResources = resources.filter(r => bookmarks.has(r.id));
 
-  // ── Download ─────────────────────────────────────────────────────
   const handleDownload = async (resource: any) => {
     try {
       const { data: signed, error: signErr } = await supabase.storage
@@ -133,9 +135,8 @@ export default function EducationPage() {
       if (signErr) throw signErr;
 
       const resp = await fetch(signed.signedUrl);
-      if (!resp.ok) throw new Error(`Download failed: ${resp.status} ${resp.statusText}`);
+      if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
       const blob = await resp.blob();
-
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -152,9 +153,7 @@ export default function EducationPage() {
     }
   };
 
-  // ── Buy ───────────────────────────────────────────────────────────
   const handleBuy = async (resource: any) => {
-    // Auto-create account before first purchase
     await ensureProfile();
     const confirmed = window.confirm(`Purchase "${resource.title}" for MK ${Number(resource.price).toLocaleString()}?`);
     if (!confirmed) return;
@@ -162,26 +161,21 @@ export default function EducationPage() {
       const { error } = await supabase.from("otechy_purchases").insert({
         buyer_id: user.id, resource_id: resource.id, amount_paid: resource.price,
       });
-      if (error) throw error;
+      if (error && error.code !== "23505") throw error;
       setPurchases(prev => new Set([...prev, resource.id]));
       toast({ title: "✅ Purchase successful!" });
     } catch (e: any) {
-      if (e.message?.includes("unique") || e.code === "23505") {
-        setPurchases(prev => new Set([...prev, resource.id]));
-        toast({ title: "Already purchased" });
-      } else {
-        toast({ title: "Purchase failed", description: e.message, variant: "destructive" });
-      }
+      toast({ title: "Purchase failed", description: e.message, variant: "destructive" });
     }
   };
 
-  // ── Bookmark ──────────────────────────────────────────────────────
   const handleBookmarkToggle = async (resource: any) => {
     await ensureProfile();
     const isBookmarked = bookmarks.has(resource.id);
     try {
       if (isBookmarked) {
-        await supabase.from("otechy_bookmarks").delete().eq("user_id", user.id).eq("resource_id", resource.id);
+        await supabase.from("otechy_bookmarks").delete()
+          .eq("user_id", user.id).eq("resource_id", resource.id);
         setBookmarks(prev => { const n = new Set(prev); n.delete(resource.id); return n; });
         toast({ title: "Bookmark removed" });
       } else {
@@ -194,29 +188,31 @@ export default function EducationPage() {
     }
   };
 
-  // ── Upload — auto-create account, then open modal ────────────────
   const handleUploadClick = async () => {
     await ensureProfile();
     setShowUpload(true);
   };
 
-  // ── Tabs config — all tabs visible (no authOnly gate needed) ──────
   const tabs: { key: Tab; emoji: string; label: string; count: number | null }[] = [
-    { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length    },
-    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
-    { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
+    { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length     },
+    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length  },
+    { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length        },
     { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: bookmarkedResources.length },
-    { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
+    { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                 },
   ];
 
   return (
     <div className="w-full max-w-5xl mx-auto px-4 py-6 pb-28">
 
-      {/* ─── HERO ─── */}
+      {/* ── ONBOARDING ── */}
+      {showOnboarding && (
+        <OnboardingTutorial onDone={dismissOnboarding} onUpload={() => { dismissOnboarding(); handleUploadClick(); }} />
+      )}
+
+      {/* ── HERO ── */}
       <div className="relative rounded-2xl overflow-hidden bg-[hsl(215,55%,12%)] p-5 mb-6">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/25 via-blue-600/15 to-transparent pointer-events-none" />
         <div className="absolute -top-10 -right-10 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-
         <div className="relative flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2.5 mb-2">
@@ -233,9 +229,9 @@ export default function EducationPage() {
             </p>
             <div className="flex flex-wrap gap-3 mt-3">
               {[
-                { icon: FileText,   label: `${resources.length} Resources` },
-                { icon: Award,      label: `${scholarships.length} Scholarships` },
-                { icon: Users,      label: `${tutors.length} Tutors` },
+                { icon: FileText, label: `${resources.length} Resources`    },
+                { icon: Award,    label: `${scholarships.length} Scholarships` },
+                { icon: Users,    label: `${tutors.length} Tutors`          },
               ].map(({ icon: Icon, label }) => (
                 <div key={label} className="flex items-center gap-1.5">
                   <Icon className="w-3.5 h-3.5 text-purple-400" />
@@ -253,7 +249,7 @@ export default function EducationPage() {
         </div>
       </div>
 
-      {/* ─── TABS ─── */}
+      {/* ── TABS ── */}
       <div className="flex gap-1.5 bg-muted/50 p-1 rounded-xl mb-5 overflow-x-auto scrollbar-hide">
         {tabs.map(t => (
           <button
@@ -275,7 +271,7 @@ export default function EducationPage() {
         ))}
       </div>
 
-      {/* ─── BROWSE TAB ─── */}
+      {/* ── BROWSE ── */}
       {tab === "resources" && (
         <>
           <div className="relative mb-3">
@@ -287,16 +283,16 @@ export default function EducationPage() {
               className="w-full bg-background border border-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-shadow"
             />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
 
           <div className="flex gap-2 mb-3">
-            {(["all","free","paid"] as PriceFilter[]).map(f => (
+            {(["all", "free", "paid"] as PriceFilter[]).map(f => (
               <button key={f} onClick={() => setPriceFilter(f)}
-                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${priceFilter === f ? "bg-purple-600 border-purple-600 text-white" : "border-border text-muted-foreground hover:border-purple-400"}`}>
+                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${priceFilter === f ? "bg-purple-600 border-purple-600 text-white" : "border-border text-muted-foreground"}`}>
                 {f === "all" ? "All" : f === "free" ? "Free Only" : "Paid Only"}
               </button>
             ))}
@@ -305,7 +301,7 @@ export default function EducationPage() {
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
             {CATS.map(c => (
               <button key={c} onClick={() => setCatFilter(c)}
-                className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${catFilter === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground hover:border-blue-400"}`}>
+                className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${catFilter === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
                 {c}
               </button>
             ))}
@@ -340,27 +336,14 @@ export default function EducationPage() {
         </>
       )}
 
-      {/* ─── SCHOLARSHIPS TAB ─── */}
       {tab === "scholarships" && (
-        <ScholarshipsTab
-          scholarships={scholarships}
-          loading={dataLoading}
-          user={user}
-          onRefresh={fetchAll}
-        />
+        <ScholarshipsTab scholarships={scholarships} loading={dataLoading} user={user} onRefresh={fetchAll} />
       )}
 
-      {/* ─── TUTORS TAB ─── */}
       {tab === "tutors" && (
-        <TutorsTab
-          tutors={tutors}
-          loading={dataLoading}
-          user={user}
-          onRefresh={fetchAll}
-        />
+        <TutorsTab tutors={tutors} loading={dataLoading} user={user} onRefresh={fetchAll} />
       )}
 
-      {/* ─── BOOKMARKS TAB ─── */}
       {tab === "bookmarks" && (
         <>
           {bookmarkedResources.length === 0 ? (
@@ -369,7 +352,7 @@ export default function EducationPage() {
                 <Bookmark className="w-7 h-7 text-purple-400" />
               </div>
               <p className="font-semibold text-foreground">No saved resources</p>
-              <p className="text-sm text-muted-foreground">Tap the bookmark icon on any resource to save it here.</p>
+              <p className="text-sm text-muted-foreground">Tap the bookmark icon on any resource.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -388,12 +371,10 @@ export default function EducationPage() {
         </>
       )}
 
-      {/* ─── MY STATS TAB ─── */}
       {tab === "dashboard" && (
         <SellerDashboard userId={user.id} onRefresh={fetchAll} />
       )}
 
-      {/* ─── Modals ─── */}
       {showUpload && (
         <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />
       )}
