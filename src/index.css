@@ -64,20 +64,32 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+
     -webkit-user-select: none;
     user-select: none;
+
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     overscroll-behavior-y: none;
   }
 
-  input, textarea, p, h1, h2, h3, span, [data-selectable] {
+  input,
+  textarea,
+  p,
+  h1,
+  h2,
+  h3,
+  span,
+  [data-selectable] {
     -webkit-user-select: text;
     user-select: text;
   }
 
-  .overflow-y-auto, .overflow-x-auto {
+  .overflow-y-auto,
+  .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
 
@@ -95,7 +107,8 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-button:active, a:active {
+button:active,
+a:active {
   opacity: 0.85;
   transform: scale(0.97);
   transition: transform 0.08s, opacity 0.08s;
