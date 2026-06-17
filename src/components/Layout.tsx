@@ -116,7 +116,7 @@ export default function Layout({ children, onPostClick }: LayoutProps) {
       </footer>
 
       {/* ── Bottom Mobile Navigation (mobile only, hidden on sm+) ── */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-sidebar border-t border-sidebar-border flex items-stretch h-16 safe-bottom">
+      <nav data-tour="bottom-nav" className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-sidebar border-t border-sidebar-border flex items-stretch h-16 safe-bottom">
 
         {/* Home */}
         <Link
