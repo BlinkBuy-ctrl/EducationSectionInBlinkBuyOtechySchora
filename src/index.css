@@ -52,10 +52,12 @@
     --sidebar-border: 222 35% 14%;
   }
 
-  * { @apply border-border; box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+    border-color: hsl(var(--border));
+  }
 
   html {
-    /* Prevent pull-to-refresh & elastic bounce — feels native */
     overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
     -webkit-text-size-adjust: 100%;
@@ -64,43 +66,41 @@
   body {
     @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-    /* Native app: no user select on UI chrome */
     -webkit-user-select: none;
     user-select: none;
-    /* Bottom nav height + iOS safe area */
     padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     overscroll-behavior-y: none;
   }
 
-  /* Allow text selection inside inputs/textareas/content */
   input, textarea, p, h1, h2, h3, span, [data-selectable] {
     -webkit-user-select: text;
     user-select: text;
   }
 
-  /* Smooth momentum scroll on iOS */
   .overflow-y-auto, .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Hide scrollbar but keep scroll */
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
-  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
-/* ── Safe area bottom for iOS notch ── */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* ── Active press states — feels native ── */
 button:active, a:active {
   opacity: 0.85;
   transform: scale(0.97);
   transition: transform 0.08s, opacity 0.08s;
 }
 
-/* ── Smooth page transitions ── */
 #root {
   transition: opacity 0.15s ease;
 }
