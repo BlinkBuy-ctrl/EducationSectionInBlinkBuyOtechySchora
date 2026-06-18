@@ -33,7 +33,7 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: { user: 
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }));
 
-  const pickImg = (ref: React.RefObject<HTMLInputElement>, cb: (f: File) => void) => {
+  const pickImg = (ref: React.RefObject<HTMLInputElement | null>, cb: (f: File) => void) => {
     ref.current?.click();
     const handler = () => {
       const f = ref.current?.files?.[0];
