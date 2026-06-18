@@ -12,6 +12,7 @@ interface Props {
   loading: boolean;
   user: any;
   onRefresh: () => void;
+  ensureProfile?: () => Promise<void>;
 }
 
 // ── Registration Form ──────────────────────────────────────────────
@@ -55,6 +56,7 @@ function TutorRegisterForm({ user, onSuccess, onClose }: { user: any; onSuccess:
     }
     setSaving(true);
     try {
+      if (ensureProfile) await ensureProfile();
       const [avatar_url, banner_url] = await Promise.all([
         avatarFile ? uploadImg(avatarFile, "avatars") : Promise.resolve(null),
         bannerFile ? uploadImg(bannerFile, "banners") : Promise.resolve(null),
@@ -161,7 +163,7 @@ function TutorCard({ t, user }: { t: any; user: any }) {
   const [expanded, setExpanded] = useState(false);
 
   const toggleLike = async () => {
-    
+    // user always present - no gate needed
     if (liked) {
       await supabase.from("otechy_tutor_likes").delete().eq("tutor_id", t.id).eq("user_id", user.id);
       setLikes((p: number) => p - 1); setLiked(false);
@@ -287,10 +289,11 @@ export function TutorsTab({ tutors, loading, user, onRefresh }: Props) {
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tutors or subjects…"
             className="w-full bg-background border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50" />
         </div>
-        <button onClick={() => setShowForm(true)}
+          <button onClick={() => setShowForm(true)}
             className="shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition-all active:scale-[0.97] shadow-sm">
             <Plus className="w-3.5 h-3.5" /> Register
           </button>
+        )}
       </div>
 
       {loading ? (
@@ -302,10 +305,11 @@ export function TutorsTab({ tutors, loading, user, onRefresh }: Props) {
           </div>
           <p className="font-semibold text-foreground">{search ? "No tutors match" : "No tutors yet"}</p>
           <p className="text-sm text-muted-foreground">{search ? "Try a different search." : "Be the first to register!"}</p>
-          <button onClick={() => setShowForm(true)}
+          <button onClick={() => setShowForm(true
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-[0.98] transition-all">
               <Plus className="w-4 h-4" /> Register as Tutor
             </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

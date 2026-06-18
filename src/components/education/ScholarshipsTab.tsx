@@ -12,10 +12,11 @@ interface Props {
   loading: boolean;
   user: any;
   onRefresh: () => void;
+  ensureProfile?: () => Promise<void>;
 }
 
 // ── Post Form ──────────────────────────────────────────────────────
-function ScholarshipPostForm({ user, onSuccess, onClose }: { user: any; onSuccess: () => void; onClose: () => void }) {
+function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user: any; onSuccess: () => void; onClose: () => void; ensureProfile?: () => Promise<void> }) {
   const { toast } = useToast();
   const imgRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -40,6 +41,7 @@ function ScholarshipPostForm({ user, onSuccess, onClose }: { user: any; onSucces
     if (!form.title || !form.provider) { toast({ title: "Title & provider required", variant: "destructive" }); return; }
     setSaving(true);
     try {
+      if (ensureProfile) await ensureProfile();
       let image_url: string | null = null;
       if (imgFile) {
         const ext = imgFile.name.split(".").pop();
@@ -205,7 +207,7 @@ function ScholarshipCard({ s, user }: { s: any; user: any }) {
   const [showComments, setShowComments] = useState(false);
 
   const toggleLike = async () => {
-    
+    // user always present - no gate needed
     if (liked) {
       await supabase.from("otechy_scholarship_likes").delete().eq("scholarship_id", s.id).eq("user_id", user.id);
       setLikes((p: number) => p - 1); setLiked(false);
@@ -342,7 +344,7 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh }: Prop
       )}
 
       {showForm && (
-        <ScholarshipPostForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} />
+        <ScholarshipPostForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} ensureProfile={ensureProfile} />
       )}
     </div>
   );

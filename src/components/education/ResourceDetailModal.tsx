@@ -108,6 +108,7 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
   }, [resource.file_url, isPDF]);
 
   const submitRating = async () => {
+    
     if (!myRating) { toast({ title: "Pick a star rating first", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
@@ -165,7 +166,7 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
             )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
+              <button
                 onClick={() => onBookmarkToggle(resource)}
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
@@ -275,7 +276,7 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
               <p className="text-xs font-bold text-foreground uppercase tracking-wide mb-3">Reviews</p>
 
               {/* Write review */}
-              <div className="bg-muted/30 rounded-xl p-3 mb-4 flex flex-col gap-2.5">
+                <div className="bg-muted/30 rounded-xl p-3 mb-4 flex flex-col gap-2.5">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-foreground">
                       {submitted ? "Your review" : "Rate this resource"}
@@ -299,8 +300,8 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
                       {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Star className="w-3.5 h-3.5" />}
                       {submitting ? "Saving…" : "Submit Review"}
                     </button>
-                  )}
-              </div>
+                </div>
+              )}
 
               {/* Review list */}
               {ratings.length === 0 ? (
