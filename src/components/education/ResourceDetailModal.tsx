@@ -39,7 +39,6 @@ function StarRating({ value, onChange, readonly = false }: { value: number; onCh
   );
 }
 
-// Format bytes size function definition helper
 function formatSize(bytes?: number) {
   if (!bytes) return null;
   const kb = bytes / 1024;
@@ -75,7 +74,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
   const size       = formatSize(resource.file_size);
   const isPDF      = resource.file_name?.toLowerCase().endsWith(".pdf");
 
-  // Load ratings + uploader details metadata references
   useEffect(() => {
     const load = async () => {
       const [rRes, uRes] = await Promise.all([
@@ -94,7 +92,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
     load();
   }, [resource.id, user]);
 
-  // Load PDF preview url patterns mapping hook 
   useEffect(() => {
     if (!isPDF) return;
     const load = async () => {
@@ -157,7 +154,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
               }
             </div>
             <h2 className="font-black text-base text-foreground leading-snug line-clamp-2">{resource.title}</h2>
-            {/* Rating summary */}
             {resource.review_count > 0 && (
               <div className="flex items-center gap-1.5 mt-1">
                 <StarRating value={Math.round(resource.avg_rating ?? 0)} readonly />
@@ -185,7 +181,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
         <div className="flex-1 overflow-y-auto overscroll-contain">
           <div className="px-5 py-4 flex flex-col gap-5">
 
-            {/* Uploader profile metadata info context layout block */}
             {uploader && (
               <div className="flex items-center gap-3 bg-muted/40 rounded-xl p-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white font-black text-sm shrink-0">
@@ -204,12 +199,10 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
               </div>
             )}
 
-            {/* Description rendering structure container */}
             {resource.description && (
               <p className="text-sm text-muted-foreground leading-relaxed">{resource.description}</p>
             )}
 
-            {/* Meta chips details element */}
             <div className="flex flex-wrap gap-2">
               {[
                 { icon: Download,  label: `${resource.download_count ?? 0} downloads` },
@@ -244,7 +237,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
                       className="w-full h-64 bg-white"
                       title="PDF Preview"
                     />
-                    {/* Page nav items elements */}
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 rounded-full px-3 py-1.5">
                       <button onClick={() => setPreviewPage(p => Math.max(1,p-1))} disabled={previewPage === 1} className="text-white disabled:opacity-40">
                         <ChevronLeft className="w-3.5 h-3.5" />
@@ -254,7 +246,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    {/* Lock overlay interface screen handler */}
                     {PREVIEW_LOCKED && previewPage >= 2 && (
                       <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-2 rounded-xl">
                         <Lock className="w-7 h-7 text-white/70" />
@@ -275,7 +266,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
             <div>
               <p className="text-xs font-bold text-foreground uppercase tracking-wide mb-3">Reviews</p>
 
-              {/* Write review form component wrapper */}
               <div className="bg-muted/30 rounded-xl p-3 mb-4 flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-foreground">
@@ -303,7 +293,6 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
                 )}
               </div>
 
-              {/* Review details mapping array elements view */}
               {ratings.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">No reviews yet — be the first!</p>
               ) : (
@@ -329,7 +318,7 @@ export function ResourceDetailModal({ resource, isPurchased, isBookmarked, onClo
           </div>
         </div>
 
-        {/* ── Sticky CTA footer bar interface actions triggers ── */}
+        {/* ── Sticky CTA footer bar ── */}
         <div className="px-5 py-4 border-t border-border bg-card shrink-0">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xl font-black text-foreground">
