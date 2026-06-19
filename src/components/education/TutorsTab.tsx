@@ -5,6 +5,7 @@ import {
   MessageSquare, BadgeCheck
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { TutorDetailModal } from "@/components/education/TutorDetailModal";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
@@ -156,7 +157,7 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: { user: 
 }
 
 // ── Tutor Card ─────────────────────────────────────────────────────
-function TutorCard({ t, user }: { t: any; user: any }) {
+function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) => void }) {
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(t.likes_count ?? 0);
   const [expanded, setExpanded] = useState(false);
@@ -172,7 +173,7 @@ function TutorCard({ t, user }: { t: any; user: any }) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200">
+    <div onClick={() => onOpen(t)} className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer active:scale-[0.98]">
       {/* Banner */}
       {t.banner_url
         ? <img src={t.banner_url} alt="" className="w-full h-24 object-cover" />
@@ -267,6 +268,7 @@ function TutorCard({ t, user }: { t: any; user: any }) {
 export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<any>(null);
 
   const filtered = tutors.filter(t => {
     const q = search.toLowerCase();
@@ -309,12 +311,15 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {filtered.map(t => <TutorCard key={t.id} t={t} user={user} />)}
+          {filtered.map(t => <TutorCard key={t.id} t={t} user={user} onOpen={setSelected} />)}
         </div>
       )}
 
       {showForm && (
         <TutorRegisterForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} ensureProfile={ensureProfile} />
+      )}
+      {selected && (
+        <TutorDetailModal t={selected} user={user} onClose={() => setSelected(null)} />
       )}
     </div>
   );

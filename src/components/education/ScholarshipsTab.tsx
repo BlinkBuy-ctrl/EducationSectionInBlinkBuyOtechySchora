@@ -5,6 +5,7 @@ import {
   MapPin, BookOpen, Tag
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
@@ -199,7 +200,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
 }
 
 // ── Scholarship Card ───────────────────────────────────────────────
-function ScholarshipCard({ s, user }: { s: any; user: any }) {
+function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: any) => void }) {
   const { toast } = useToast();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(s.likes_count ?? 0);
@@ -218,7 +219,7 @@ function ScholarshipCard({ s, user }: { s: any; user: any }) {
   };
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-yellow-500/10 transition-all duration-200">
+    <div onClick={() => onOpen(s)} className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-yellow-500/10 transition-all duration-200 cursor-pointer active:scale-[0.98]">
       {/* Banner image */}
       {s.image_url && (
         <img src={s.image_url} alt={s.title} className="w-full h-40 object-cover" />
@@ -312,8 +313,9 @@ function ScholarshipCard({ s, user }: { s: any; user: any }) {
 }
 
 // ── Main export ────────────────────────────────────────────────────
-export function ScholarshipsTab({ scholarships, loading, user, onRefresh }: Props) {
+export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensureProfile }: Props) {
   const [showForm, setShowForm] = useState(false);
+  const [selected, setSelected] = useState<any>(null);
 
   return (
     <div className="flex flex-col gap-4">
@@ -340,11 +342,14 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh }: Prop
             </button>
         </div>
       ) : (
-        scholarships.map(s => <ScholarshipCard key={s.id} s={s} user={user} />)
+        scholarships.map(s => <ScholarshipCard key={s.id} s={s} user={user} onOpen={setSelected} />)
       )}
 
       {showForm && (
         <ScholarshipPostForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} ensureProfile={ensureProfile} />
+      )}
+      {selected && (
+        <ScholarshipDetailModal s={selected} user={user} onClose={() => setSelected(null)} />
       )}
     </div>
   );
