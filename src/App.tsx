@@ -1,13 +1,13 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Switch, Route } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthContext, useAuthState } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { SplashScreen } from "@/components/SplashScreen";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
-// login.tsx and register.tsx are deleted — no routes for them
 const EducationPage     = lazy(() => import("@/pages/education"));
 const NotificationsPage = lazy(() => import("@/pages/notifications"));
 const NotFound          = lazy(() => import("@/pages/not-found"));
@@ -15,12 +15,9 @@ const NotFound          = lazy(() => import("@/pages/not-found"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 60_000,
-      gcTime: 10 * 60_000,
-      retry: 1,
-      retryDelay: 2000,
-      refetchOnWindowFocus: false,
-      networkMode: "offlineFirst",
+      staleTime: 60_000, gcTime: 10 * 60_000,
+      retry: 1, retryDelay: 2000,
+      refetchOnWindowFocus: false, networkMode: "offlineFirst",
     },
     mutations: { retry: 0 },
   },
@@ -42,19 +39,13 @@ function AppInner() {
     <AuthContext.Provider value={authState}>
       <Switch>
         <Route path="/">
-          <Layout>
-            <Suspense fallback={<PageLoader />}><EducationPage /></Suspense>
-          </Layout>
+          <Layout><Suspense fallback={<PageLoader />}><EducationPage /></Suspense></Layout>
         </Route>
         <Route path="/notifications">
-          <Layout>
-            <Suspense fallback={<PageLoader />}><NotificationsPage /></Suspense>
-          </Layout>
+          <Layout><Suspense fallback={<PageLoader />}><NotificationsPage /></Suspense></Layout>
         </Route>
         <Route>
-          <Layout>
-            <Suspense fallback={<PageLoader />}><NotFound /></Suspense>
-          </Layout>
+          <Layout><Suspense fallback={<PageLoader />}><NotFound /></Suspense></Layout>
         </Route>
       </Switch>
       <Toaster />
@@ -63,9 +54,12 @@ function AppInner() {
 }
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         <AppInner />
       </QueryClientProvider>
     </ErrorBoundary>
