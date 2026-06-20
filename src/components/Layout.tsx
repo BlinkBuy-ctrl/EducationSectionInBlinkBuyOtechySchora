@@ -1,19 +1,23 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/lib/supabase";
-import { GraduationCap, Sun, Moon, LogOut, Bell, User, LogIn } from "lucide-react";
+import {
+  GraduationCap, Sun, Moon, Bell,
+  Home, BarChart2, Search, Upload,
+} from "lucide-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, profile, logout } = useAuth();
+  const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const [loc] = useLocation();
-  const [, setLocation] = useLocation();
+  const [loc, navigate] = useLocation();
   const [unread, setUnread] = useState(0);
+  // Track active tab via state so nav buttons never go stale
+  const [activeTab, setActiveTab] = useState<string>("");
 
+  /* ── Unread notifications ── */
   const fetchUnread = async () => {
-    if (!user) return;
     const { count } = await supabase
       .from("otechy_notifications")
       .select("*", { count: "exact", head: true })
@@ -23,111 +27,123 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!user) return;
     fetchUnread();
-    const channel = supabase
-      .channel("layout_notifs_" + user.id)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "otechy_notifications", filter: `user_id=eq.${user.id}` },
-        () => setUnread(prev => prev + 1))
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "otechy_notifications", filter: `user_id=eq.${user.id}` },
-        () => fetchUnread())
+    const ch = supabase
+      .channel("notif_" + user.id)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "otechy_notifications", filter: `user_id=eq.${user.id}` }, () => setUnread(p => p + 1))
+      .on("postgres_changes", { event: "UPDATE",  schema: "public", table: "otechy_notifications", filter: `user_id=eq.${user.id}` }, fetchUnread)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user]);
+    return () => { supabase.removeChannel(ch); };
+  }, [user.id]);
 
+  /* ── Sync activeTab from custom events ── */
   useEffect(() => {
-    if (loc === "/notifications") setUnread(0);
-  }, [loc]);
+    const handler = (e: Event) => setActiveTab((e as CustomEvent).detail ?? "");
+    window.addEventListener("otechy:set-tab", handler);
+    return () => window.removeEventListener("otechy:set-tab", handler);
+  }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    setLocation("/");
+  /* ── Reset tab on route change ── */
+  useEffect(() => { setActiveTab(""); }, [loc]);
+
+  /* ── Nav helpers ── */
+  const goHome = () => { navigate("/"); setActiveTab(""); };
+  const goStats = () => {
+    navigate("/");
+    setActiveTab("dashboard");
+    window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: "dashboard" }));
   };
+  const goSearch = () => {
+    navigate("/");
+    setActiveTab("resources");
+    window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: "resources" }));
+  };
+  const goAlerts = () => { navigate("/notifications"); setActiveTab(""); };
+  const goPost   = () => window.dispatchEvent(new CustomEvent("otechy:open-upload"));
+
+  const isHome   = loc === "/" && activeTab === "";
+  const isStats  = loc === "/" && activeTab === "dashboard";
+  const isSearch = loc === "/" && activeTab === "resources";
+  const isAlerts = loc === "/notifications";
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col">
+    <div style={{ display:"flex", flexDirection:"column", height:"100dvh", overflow:"hidden" }}
+         className="bg-background text-foreground">
 
-      {/* ── Top Nav ── */}
-      <header className="sticky top-0 z-40 bg-sidebar border-b border-sidebar-border shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-md">
+      {/* ── Top bar ── */}
+      <header className="shrink-0 bg-sidebar border-b border-sidebar-border z-40">
+        <div className="px-4 h-14 flex items-center justify-between">
+          <button onClick={goHome} className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-black text-sm text-white leading-tight hidden sm:block">
-              OtechySchora
-            </span>
-          </Link>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={toggleTheme}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-              aria-label="Toggle theme"
-            >
+            <span className="font-black text-white text-sm">OtechySchora</span>
+          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-
-            {user ? (
-              <>
-                <Link
-                  href="/notifications"
-                  className="relative w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-4 h-4" />
-                  {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1 leading-none">
-                      {unread > 99 ? "99+" : unread}
-                    </span>
-                  )}
-                </Link>
-
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10">
-                  <User className="w-3.5 h-3.5 text-purple-300" />
-                  <span className="text-xs text-white/80 font-medium max-w-[80px] truncate">
-                    {profile?.name || user.email?.split("@")[0]}
-                  </span>
-                </div>
-
-                <button
-                  onClick={handleLogout}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <Link
-                  href="/login"
-                  className="flex items-center gap-1 text-xs font-semibold text-white/80 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  className="text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-600 text-white px-3 py-1.5 rounded-lg transition-all hover:opacity-90"
-                >
-                  Register
-                </Link>
-              </div>
-            )}
+            <button onClick={goAlerts} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
+              <Bell className="w-4 h-4" />
+              {unread > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1">
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* ── Page content ── */}
-      <main className="flex-1 w-full">
-        {children}
+      {/* ── Scroll area ── */}
+      <main
+        className="flex-1 overflow-x-hidden"
+        style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
+      >
+        <div className="pb-24">{children}</div>
       </main>
 
-      <footer className="border-t border-border py-5 text-center text-xs text-muted-foreground">
-        OtechySchora · Education Hub · Malawi
-      </footer>
+      {/* ── Bottom nav ── */}
+      <nav
+        data-tour="bottom-nav"
+        className="shrink-0 bg-sidebar border-t border-sidebar-border z-50 flex"
+        style={{ height: "calc(64px + env(safe-area-inset-bottom,0px))", paddingBottom: "env(safe-area-inset-bottom,0px)" }}
+      >
+        <button onClick={goHome}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isHome ? "text-purple-400" : "text-white/50"}`}>
+          <Home className="w-5 h-5" />Home
+        </button>
+
+        <button onClick={goStats}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isStats ? "text-purple-400" : "text-white/50"}`}>
+          <BarChart2 className="w-5 h-5" />My Stats
+        </button>
+
+        <div className="flex-1 flex items-center justify-center">
+          <button onClick={goPost}
+            className="w-12 h-12 -mt-5 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/40 active:scale-95 transition-transform">
+            <Upload className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        <button onClick={goSearch}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isSearch ? "text-purple-400" : "text-white/50"}`}>
+          <Search className="w-5 h-5" />Search
+        </button>
+
+        <button onClick={goAlerts}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold relative transition-colors ${isAlerts ? "text-purple-400" : "text-white/50"}`}>
+          <span className="relative">
+            <Bell className="w-5 h-5" />
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center px-0.5">
+                {unread > 9 ? "9+" : unread}
+              </span>
+            )}
+          </span>
+          Alerts
+        </button>
+      </nav>
     </div>
   );
 }
