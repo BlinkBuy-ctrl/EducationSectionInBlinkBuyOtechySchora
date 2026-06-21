@@ -6,6 +6,7 @@ import { AuthContext, useAuthState } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { SplashScreen } from "@/components/SplashScreen";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const EducationPage     = lazy(() => import("@/pages/education"));
@@ -61,6 +62,7 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
         <AppInner />
+        <InstallPrompt />
       </QueryClientProvider>
     </ErrorBoundary>
   );
