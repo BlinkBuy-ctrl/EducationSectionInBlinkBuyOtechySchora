@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ArrowUp, ArrowDown, X, CheckCircle2 } from "lucide-react";
 
 interface Step {
@@ -19,7 +19,7 @@ const STEPS: Step[] = [
   {
     emoji: "⬆️",
     title: "Upload & Share",
-    desc: "Tap this Upload button to share your resources and earn money. Your account is created automatically — no sign-up needed.",
+    desc: "Tap the Upload button to share resources and earn money. Your account is created automatically — no sign-up needed.",
     target: "[data-tour='upload-btn']",
     tooltipPos: "below",
   },
@@ -47,105 +47,137 @@ const STEPS: Step[] = [
 ];
 
 interface Rect { top: number; left: number; width: number; height: number; }
-
-// Always use getBoundingClientRect — correct relative to viewport
-function getRect(selector: string): Rect | null {
-  const el = document.querySelector(selector);
-  if (!el) return null;
-  const r = el.getBoundingClientRect();
-  // Skip if element is scrolled out of view
-  if (r.bottom < 0 || r.top > window.innerHeight) return null;
-  return { top: r.top, left: r.left, width: r.width, height: r.height };
-}
-
 interface Props { onDone: () => void; onUpload: () => void; }
 
-const PAD = 10;
+const PAD = 8;
+const VH  = () => window.innerHeight;
+const VW  = () => window.innerWidth;
+
+// Scroll inside the main container (not window)
+function scrollElIntoView(el: Element) {
+  const main = document.querySelector("main");
+  if (main) {
+    const mRect = main.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    // position of el relative to main's scroll content
+    const elTop = eRect.top - mRect.top + main.scrollTop;
+    const target = elTop - (main.clientHeight / 2) + (eRect.height / 2);
+    main.scrollTo({ top: Math.max(0, target), behavior: "smooth" });
+  } else {
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
 
 export function OnboardingTutorial({ onDone, onUpload }: Props) {
-  const [step, setStep]   = useState(0);
-  const [rect, setRect]   = useState<Rect | null>(null);
-  const rafRef            = useRef<number>(0);
-  const current           = STEPS[step];
-  const isLast            = step === STEPS.length - 1;
-  const isFirst           = step === 0;
+  const [step, setStep] = useState(0);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const rafRef          = useRef<number>(0);
+  const readyRef        = useRef(false);
 
-  // Scroll target into view first, then start tracking
-  useEffect(() => {
-    setRect(null); // clear while scrolling
-    if (!current.target) return;
-    const el = document.querySelector(current.target);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-    // Wait for scroll to finish before tracking
-    const t = setTimeout(() => {
-      cancelAnimationFrame(rafRef.current);
-      const track = () => {
-        setRect(getRect(current.target!));
-        rafRef.current = requestAnimationFrame(track);
-      };
+  const current = STEPS[step];
+  const isLast  = step === STEPS.length - 1;
+  const isFirst = step === 0;
+
+  const startTracking = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    const track = () => {
+      if (!current.target) { setRect(null); return; }
+      const el = document.querySelector(current.target);
+      if (!el) { rafRef.current = requestAnimationFrame(track); return; }
+      const r = el.getBoundingClientRect();
+      // Only show highlight if element is actually visible in viewport
+      if (r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= VH() + 1) {
+        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      } else {
+        setRect(null);
+      }
       rafRef.current = requestAnimationFrame(track);
-    }, 400);
-    return () => { clearTimeout(t); cancelAnimationFrame(rafRef.current); };
-  }, [step, current.target]);
+    };
+    rafRef.current = requestAnimationFrame(track);
+  }, [current.target]);
 
-  const highlightStyle = rect ? {
-    position:     "fixed" as const,
-    top:          rect.top    - PAD,
-    left:         rect.left   - PAD,
-    width:        rect.width  + PAD * 2,
-    height:       rect.height + PAD * 2,
-    borderRadius: 14,
-    boxShadow:    "0 0 0 9999px rgba(0,0,0,0.75)",
-    border:       "2.5px solid rgba(167,139,250,0.95)",
-    pointerEvents:"none" as const,
-    zIndex:       9998,
-    transition:   "top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease",
+  useEffect(() => {
+    readyRef.current = false;
+    setRect(null);
+    cancelAnimationFrame(rafRef.current);
+
+    if (!current.target) {
+      // No target = welcome screen, no tracking needed
+      return;
+    }
+
+    const el = document.querySelector(current.target);
+    if (el) scrollElIntoView(el);
+
+    // Wait for scroll to settle, then start tracking
+    const t = setTimeout(() => {
+      readyRef.current = true;
+      startTracking();
+    }, 650);
+
+    return () => {
+      clearTimeout(t);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, [step]); // eslint-disable-line
+
+  // Highlight box
+  const highlightStyle: React.CSSProperties | undefined = rect ? {
+    position:      "fixed",
+    top:           rect.top    - PAD,
+    left:          rect.left   - PAD,
+    width:         rect.width  + PAD * 2,
+    height:        rect.height + PAD * 2,
+    borderRadius:  12,
+    boxShadow:     "0 0 0 9999px rgba(0,0,0,0.78)",
+    border:        "2px solid rgba(167,139,250,0.95)",
+    pointerEvents: "none",
+    zIndex:        9998,
+    transition:    "top .2s ease, left .2s ease, width .2s ease, height .2s ease",
   } : undefined;
 
-  // Tooltip positioning — always relative to viewport rect
+  // Tooltip position — clamped to viewport
   const tooltipStyle = (): React.CSSProperties => {
-    if (!rect || current.tooltipPos === "center") {
-      return { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
-    }
+    const W = "min(88vw, 340px)";
+    const center: React.CSSProperties = {
+      position: "fixed",
+      top: "50%", left: "50%",
+      transform: "translate(-50%,-50%)",
+      width: W,
+    };
+    if (!rect || current.tooltipPos === "center") return center;
+
     if (current.tooltipPos === "below") {
-      const top = rect.top + rect.height + PAD + 14;
-      // If tooltip would go off bottom of screen, flip to center
-      if (top + 200 > window.innerHeight) {
-        return { top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
-      }
-      return { top, left: "50%", transform: "translateX(-50%)" };
+      const top = rect.top + rect.height + PAD + 12;
+      if (top + 220 > VH()) return center;
+      return { position:"fixed", top, left:"50%", transform:"translateX(-50%)", width: W };
     }
+
     // above
-    const bottom = window.innerHeight - (rect.top - PAD - 14);
-    return { bottom, left: "50%", transform: "translateX(-50%)" };
+    const bottom = VH() - (rect.top - PAD - 12);
+    if (bottom + 220 > VH()) return center;
+    return { position:"fixed", bottom, left:"50%", transform:"translateX(-50%)", width: W };
   };
 
-  const isCentered = !rect || current.tooltipPos === "center";
   const showArrowUp   = !!rect && current.tooltipPos === "below";
   const showArrowDown = !!rect && current.tooltipPos === "above";
+  const showOverlay   = !rect;
 
   return (
     <>
-      {/* Full overlay for step 0 (no target) */}
-      {!rect && (
-        <div className="fixed inset-0 z-[9997] bg-black/75 backdrop-blur-[2px]" />
+      {showOverlay && (
+        <div className="fixed inset-0 z-[9997] bg-black/78 backdrop-blur-[2px]" />
       )}
-
-      {/* Spotlight highlight */}
       {rect && <div style={highlightStyle} />}
 
-      {/* Tooltip */}
-      <div className="fixed z-[9999] w-[88vw] max-w-[340px]" style={tooltipStyle()}>
-
+      <div style={tooltipStyle()} className="z-[9999]">
         {showArrowUp && (
-          <div className="flex justify-center mb-1.5">
+          <div className="flex justify-center mb-2">
             <ArrowUp className="w-5 h-5 text-purple-400 animate-bounce" />
           </div>
         )}
 
-        <div className="bg-[#12172b] border border-purple-500/50 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-[#0f1428] border border-purple-500/50 rounded-2xl shadow-2xl overflow-hidden">
           {/* Progress bar */}
           <div className="h-1 bg-white/10">
             <div className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300"
@@ -162,7 +194,8 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
                   }`} />
                 ))}
               </div>
-              <button onClick={onDone} className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 text-white/60">
+              <button onClick={onDone}
+                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 text-white/60 active:scale-95">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -204,7 +237,7 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
         </div>
 
         {showArrowDown && (
-          <div className="flex justify-center mt-1.5">
+          <div className="flex justify-center mt-2">
             <ArrowDown className="w-5 h-5 text-purple-400 animate-bounce" />
           </div>
         )}
