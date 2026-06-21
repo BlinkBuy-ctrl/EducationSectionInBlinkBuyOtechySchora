@@ -1,0 +1,13 @@
+{
+  "name": "OtechySchora",
+  "short_name": "OtechySchora",
+  "description": "Malawi's Education Hub — Past Papers, Textbooks, Scholarships & Tutors",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0f1e",
+  "theme_color": "#5b21b6",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
