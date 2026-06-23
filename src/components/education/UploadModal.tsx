@@ -9,23 +9,22 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 interface Props { userId: string; onClose: () => void; onSuccess: () => void; }
 type Status = "idle" | "extracting" | "uploading" | "saving" | "done" | "error";
 
-// Extract PDF first page as JPEG using canvas + pdf.js via CDN worker
+// Extract PDF first page as JPEG using locally installed pdfjs-dist (reliable on Android)
 async function extractCover(file: File): Promise<Blob | null> {
   try {
-    const script = document.createElement("script");
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-    await new Promise((res, rej) => { script.onload = res; script.onerror = rej; document.head.appendChild(script); });
+    // Use installed pdfjs-dist instead of CDN — avoids Android failures
+    const pdfjsLib = await import("pdfjs-dist");
 
-    const pdfjsLib = (window as any).pdfjsLib;
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    // Point worker to the static file copied by vite-plugin-static-copy
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     const page = await pdf.getPage(1);
     const vp = page.getViewport({ scale: 2.0 }); // higher scale = sharper cover
     const canvas = document.createElement("canvas");
-    canvas.width = vp.width; canvas.height = vp.height;
+    canvas.width = vp.width;
+    canvas.height = vp.height;
     await page.render({ canvasContext: canvas.getContext("2d")!, viewport: vp }).promise;
     return new Promise(res => canvas.toBlob(b => res(b), "image/jpeg", 0.9));
   } catch (e) {
@@ -38,16 +37,16 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [file,        setFile]        = useState<File | null>(null);
-  const [coverBlob,   setCoverBlob]   = useState<Blob | null>(null);
-  const [coverPreview,setCoverPreview]= useState<string | null>(null);
-  const [status,      setStatus]      = useState<Status>("idle");
-  const [progress,    setProgress]    = useState(0);
-  const [errMsg,      setErrMsg]      = useState("");
-  const [form,        setForm]        = useState({ title: "", description: "", category: "Notes", price: "0" });
+  const [file,         setFile]         = useState<File | null>(null);
+  const [coverBlob,    setCoverBlob]    = useState<Blob | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [status,       setStatus]       = useState<Status>("idle");
+  const [progress,     setProgress]     = useState(0);
+  const [errMsg,       setErrMsg]       = useState("");
+  const [form,         setForm]         = useState({ title: "", description: "", category: "Notes", price: "0" });
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
-  const isLoading = ["extracting","uploading","saving"].includes(status);
+  const isLoading = ["extracting", "uploading", "saving"].includes(status);
 
   const statusLabel: Record<Status, string> = {
     idle:       "Publish Resource",
@@ -62,7 +61,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     if (!f) return;
     if (f.size > MAX_FILE_SIZE) { setErrMsg("File exceeds 50 MB."); return; }
     setErrMsg(""); setFile(f); setCoverBlob(null); setCoverPreview(null);
-    // Auto title
+    // Auto title from filename
     setForm(p => ({ ...p, title: p.title || f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ") }));
 
     if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
@@ -78,7 +77,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!file)            { setErrMsg("Select a file."); return; }
+    if (!file)              { setErrMsg("Select a file."); return; }
     if (!form.title.trim()) { setErrMsg("Title required."); return; }
     const price = parseFloat(form.price);
     if (isNaN(price) || price < 0) { setErrMsg("Invalid price."); return; }
@@ -88,10 +87,10 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     try {
       setStatus("uploading");
       const ext  = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
-      const base = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+      const base = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const path = `${base}.${ext}`;
 
-      // Upload PDF with real XHR so we get progress
+      // Upload PDF with XHR for progress tracking
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         supabase.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
@@ -123,6 +122,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
           .from("otechy-docs").upload(tp, coverBlob, { upsert: false, contentType: "image/jpeg" });
         if (!tErr) thumbPath = tp;
       }
+
       setProgress(80); setStatus("saving");
 
       const { error: dbErr } = await supabase.from("otechy_resources").insert({
@@ -136,6 +136,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         file_size:     file.size,
         thumbnail_url: thumbPath,
       });
+
       if (dbErr) {
         await supabase.storage.from("otechy-docs").remove([path]).catch(() => {});
         throw new Error(dbErr.message);
@@ -191,7 +192,6 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
                         : "border-purple-500/30 hover:border-purple-500/70 cursor-pointer"
             }`}>
             {coverPreview ? (
-              /* ── Real book cover preview ── */
               <div className="relative">
                 <img src={coverPreview} alt="Book cover" className="w-full max-h-64 object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
@@ -217,7 +217,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
                     : file ? file.name : "Click or drag file here"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {file ? `${(file.size/1024/1024).toFixed(1)} MB` : "PDF, DOC, DOCX — max 50 MB"}
+                  {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : "PDF, DOC, DOCX — max 50 MB"}
                 </p>
               </div>
             )}
@@ -226,7 +226,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={e => handleFile(e.target.files?.[0] ?? null)} disabled={isLoading} />
 
-          {/* Progress bar with % */}
+          {/* Progress bar */}
           {isLoading && status !== "extracting" && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
@@ -272,7 +272,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
 
           <button onClick={handleSubmit} disabled={isLoading || status === "done"}
             className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed ${
-              status === "done" ? "bg-green-500 text-white"
+              status === "done"  ? "bg-green-500 text-white"
               : status === "error" ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
               : "bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-60 text-white"
             }`}>
