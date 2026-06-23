@@ -9,19 +9,14 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 interface Props { userId: string; onClose: () => void; onSuccess: () => void; }
 type Status = "idle" | "extracting" | "uploading" | "saving" | "done" | "error";
 
-// Extract PDF first page as JPEG using locally installed pdfjs-dist (reliable on Android)
 async function extractCover(file: File): Promise<Blob | null> {
   try {
-    // Use installed pdfjs-dist instead of CDN — avoids Android failures
     const pdfjsLib = await import("pdfjs-dist");
-
-    // Point worker to the static file copied by vite-plugin-static-copy
     pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     const page = await pdf.getPage(1);
-    const vp = page.getViewport({ scale: 2.0 }); // higher scale = sharper cover
+    const vp = page.getViewport({ scale: 2.0 });
     const canvas = document.createElement("canvas");
     canvas.width = vp.width;
     canvas.height = vp.height;
@@ -61,12 +56,10 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     if (!f) return;
     if (f.size > MAX_FILE_SIZE) { setErrMsg("File exceeds 50 MB."); return; }
     setErrMsg(""); setFile(f); setCoverBlob(null); setCoverPreview(null);
-    // Auto title from filename
     setForm(p => ({ ...p, title: p.title || f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ") }));
 
     if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
       setStatus("extracting");
-      setProgress(0);
       const blob = await extractCover(f);
       if (blob) {
         setCoverBlob(blob);
@@ -90,12 +83,11 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       const base = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const path = `${base}.${ext}`;
 
-      // Upload PDF with XHR for progress tracking
+      // Upload PDF to otechy-docs
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         supabase.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
           if (error || !data) {
-            // Fallback to normal upload
             supabase.storage.from("otechy-docs").upload(path, file, {
               upsert: false, contentType: file.type || "application/octet-stream",
             }).then(({ error: e }) => e ? reject(new Error(e.message)) : resolve());
@@ -114,13 +106,19 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
 
       setProgress(70);
 
-      // Upload cover thumbnail if extracted
-      let thumbPath: string | null = null;
+      // Upload cover thumbnail to otechy-images (PUBLIC bucket — no signed URL needed)
+      let thumbPublicUrl: string | null = null;
       if (coverBlob) {
-        const tp = `${base}_cover.jpg`;
+        const thumbPath = `covers/${userId}-${Date.now()}.jpg`;
         const { error: tErr } = await supabase.storage
-          .from("otechy-docs").upload(tp, coverBlob, { upsert: false, contentType: "image/jpeg" });
-        if (!tErr) thumbPath = tp;
+          .from("otechy-images")
+          .upload(thumbPath, coverBlob, { upsert: false, contentType: "image/jpeg" });
+        if (!tErr) {
+          const { data: urlData } = supabase.storage
+            .from("otechy-images")
+            .getPublicUrl(thumbPath);
+          thumbPublicUrl = urlData?.publicUrl ?? null;
+        }
       }
 
       setProgress(80); setStatus("saving");
@@ -134,7 +132,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         file_url:      path,
         file_name:     file.name,
         file_size:     file.size,
-        thumbnail_url: thumbPath,
+        thumbnail_url: thumbPublicUrl, // full public URL stored directly
       });
 
       if (dbErr) {
@@ -158,7 +156,6 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       onClick={e => { if (e.target === e.currentTarget && !isLoading) onClose(); }}>
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto">
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-purple-600/10 to-blue-600/10 sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
@@ -183,7 +180,6 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          {/* Drop zone — shows cover preview if extracted */}
           <div onClick={() => !isLoading && fileRef.current?.click()}
             onDragOver={e => e.preventDefault()}
             onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0] ?? null); }}
@@ -226,7 +222,6 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             onChange={e => handleFile(e.target.files?.[0] ?? null)} disabled={isLoading} />
 
-          {/* Progress bar */}
           {isLoading && status !== "extracting" && (
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">

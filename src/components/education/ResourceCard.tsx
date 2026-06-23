@@ -64,7 +64,6 @@ interface Props {
 
 export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen }: Props) {
   const [showReader,  setShowReader]  = useState(false);
-  const [thumbUrl,    setThumbUrl]    = useState<string | null>(null);
   const [thumbFailed, setThumbFailed] = useState(false);
 
   const isFree    = !resource.price || Number(resource.price) === 0;
@@ -73,33 +72,25 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen 
   const hasRating = resource.review_count > 0;
   const isPdf     = resource.file_name?.toLowerCase().endsWith(".pdf");
 
-  // Load signed thumbnail URL immediately on mount
-  useEffect(() => {
-    if (!resource.thumbnail_url) return;
-    supabase.storage.from("otechy-docs")
-      .createSignedUrl(resource.thumbnail_url, 3600)
-      .then(({ data }) => {
-        if (data?.signedUrl) setThumbUrl(data.signedUrl);
-        else setThumbFailed(true);
-      })
-      .catch(() => setThumbFailed(true));
-  }, [resource.thumbnail_url]);
-
-  const showThumb = thumbUrl && !thumbFailed;
+  // thumbnail_url is now a full public URL — no signed URL needed
+  const showThumb = !!resource.thumbnail_url && !thumbFailed;
 
   return (
     <>
       <div onClick={() => onOpen(resource)}
         className="group relative flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-purple-500/10 transition-all duration-200 cursor-pointer active:scale-[0.98]">
 
-        {/* ── Book cover / thumbnail ── */}
+        {/* Book cover / thumbnail */}
         <div className="relative w-full bg-gradient-to-br from-purple-900/30 to-blue-900/20"
           style={{ aspectRatio: "2/3", maxHeight: 180 }}>
 
           {showThumb ? (
-            <img src={thumbUrl!} alt={resource.title}
+            <img
+              src={resource.thumbnail_url}
+              alt={resource.title}
               className="w-full h-full object-cover object-top"
-              onError={() => setThumbFailed(true)} />
+              onError={() => setThumbFailed(true)}
+            />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-3">
               <div className="w-12 h-14 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg border-l-4 border-purple-400">
@@ -125,7 +116,7 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen 
             </span>
           </div>
 
-          {/* Read/preview button */}
+          {/* Read button */}
           {isPdf && (
             <button onClick={e => { e.stopPropagation(); setShowReader(true); }}
               className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/65 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full active:scale-90 transition-transform">
