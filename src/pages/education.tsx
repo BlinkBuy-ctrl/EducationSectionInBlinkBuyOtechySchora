@@ -67,7 +67,8 @@ export default function EducationPage() {
       const noTable = (e: any) => e?.code === "42P01";
       const [rRes, sRes, tRes, pRes, bRes] = await Promise.all([
         supabase.from("otechy_resources")
-          .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,created_at")
+          // ✅ thumbnail_url added to select so cards can show the cover image
+          .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
           .order("created_at", { ascending: false }),
         supabase.from("otechy_scholarships").select("*").eq("is_active", true).order("created_at", { ascending: false }),
         supabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
