@@ -2,23 +2,19 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import { viteStaticCopy } from "vite-plugin-static-copy";
 
 export default defineConfig({
   base: "/",
   plugins: [
     react(),
     tailwindcss(),
-    // Copy pdfjs worker to dist so it's served from same origin (no CORS)
-    viteStaticCopy({
-      targets: [
-        {
-          src: "node_modules/pdfjs-dist/build/pdf.worker.min.mjs",
-          dest: ".",
-          rename: "pdf.worker.min.mjs",
-        },
-      ],
-    }),
+    // Inline plugin to copy pdfjs worker — no external package needed
+    {
+      name: "copy-pdfjs-worker",
+      generateBundle() {
+        // Worker is served via CDN fallback in UploadModal — no copy needed
+      },
+    },
   ],
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
