@@ -8,13 +8,6 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    // Inline plugin to copy pdfjs worker — no external package needed
-    {
-      name: "copy-pdfjs-worker",
-      generateBundle() {
-        // Worker is served via CDN fallback in UploadModal — no copy needed
-      },
-    },
   ],
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") },
