@@ -1,33 +1,136 @@
 import { useState, useEffect } from "react";
 import {
   TrendingUp, Download, Star, DollarSign,
-  FileText, Eye, Loader2, BadgeCheck, Trash2, AlertTriangle
+  FileText, Loader2, Trash2, AlertTriangle,
+  Users, Edit3, Check, X, ChevronRight, BookOpen,
+  BadgeCheck, BarChart2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props { userId: string; onRefresh: () => void; }
 
+const CAT_COLORS: Record<string, string> = {
+  "Past Papers": "bg-blue-500/15 text-blue-400",
+  "Textbooks":   "bg-purple-500/15 text-purple-400",
+  "Notes":       "bg-green-500/15 text-green-400",
+  "Research":    "bg-orange-500/15 text-orange-400",
+  "Other":       "bg-gray-500/15 text-gray-400",
+};
+
+// ── Public name editor ────────────────────────────────────────────────────────
+function ProfileNameEditor({ userId }: { userId: string }) {
+  const { toast } = useToast();
+  const [name,    setName]    = useState("");
+  const [editing, setEditing] = useState(false);
+  const [draft,   setDraft]   = useState("");
+  const [saving,  setSaving]  = useState(false);
+
+  useEffect(() => {
+    supabase.from("profiles").select("name").eq("id", userId).single()
+      .then(({ data }) => { if (data?.name) setName(data.name); });
+  }, [userId]);
+
+  const save = async () => {
+    if (!draft.trim()) { toast({ title: "Name can't be empty", variant: "destructive" }); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("profiles").upsert({ id: userId, name: draft.trim() });
+      if (error) throw error;
+      setName(draft.trim());
+      setEditing(false);
+      toast({ title: "✅ Name updated!" });
+    } catch (e: any) {
+      toast({ title: "Failed", description: e.message, variant: "destructive" });
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {/* Header strip */}
+      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+        <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center">
+          <BadgeCheck className="w-3.5 h-3.5 text-purple-400" />
+        </div>
+        <p className="text-xs font-bold text-foreground">Public Profile</p>
+      </div>
+
+      <div className="px-4 py-3">
+        {/* Avatar initial */}
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-md shrink-0">
+            <span className="text-white font-black text-base">
+              {(name || "U")[0].toUpperCase()}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold mb-0.5">Display name</p>
+            {editing ? (
+              <input
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                autoFocus
+                maxLength={40}
+                placeholder="Your public name"
+                className="w-full bg-muted/50 border border-purple-500/40 rounded-lg px-2.5 py-1.5 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+              />
+            ) : (
+              <p className="text-sm font-bold text-foreground truncate">{name || "Not set"}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        {editing ? (
+          <div className="flex gap-2">
+            <button onClick={() => setEditing(false)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-muted border border-border text-xs font-semibold text-muted-foreground active:scale-95 transition-all">
+              <X className="w-3.5 h-3.5" /> Cancel
+            </button>
+            <button onClick={save} disabled={saving}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold active:scale-95 transition-all disabled:opacity-60 shadow-sm">
+              {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => { setDraft(name); setEditing(true); }}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-muted/50 border border-border text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all">
+            <Edit3 className="w-3.5 h-3.5" /> Change Display Name
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Main dashboard ────────────────────────────────────────────────────────────
 export function SellerDashboard({ userId, onRefresh }: Props) {
   const { toast } = useToast();
-  const [stats,    setStats]    = useState<any>(null);
-  const [myItems,  setMyItems]  = useState<any[]>([]);
-  const [loading,  setLoading]  = useState(true);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [stats,      setStats]      = useState<any>(null);
+  const [resources,  setResources]  = useState<any[]>([]);
+  const [tutors,     setTutors]     = useState<any[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [deleting,   setDeleting]   = useState<string | null>(null);
+  const [activeTab,  setActiveTab]  = useState<"resources" | "tutors">("resources");
 
   const load = async () => {
     setLoading(true);
     try {
-      const [statsRes, itemsRes] = await Promise.all([
+      const [statsRes, resourcesRes, tutorsRes] = await Promise.all([
         supabase.rpc("get_seller_stats", { p_user_id: userId }),
-        supabase
-          .from("otechy_resources")
+        supabase.from("otechy_resources")
           .select("id,title,category,price,download_count,avg_rating,review_count,created_at,file_url")
           .eq("uploader_id", userId)
           .order("created_at", { ascending: false }),
+        supabase.from("otechy_tutors")
+          .select("id,name,tagline,subjects,location,is_online,likes_count,created_at,is_active")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
       ]);
-      if (statsRes.data) setStats(statsRes.data);
-      if (itemsRes.data) setMyItems(itemsRes.data);
+      if (statsRes.data)     setStats(statsRes.data);
+      if (resourcesRes.data) setResources(resourcesRes.data);
+      if (tutorsRes.data)    setTutors(tutorsRes.data);
     } catch (e: any) {
       toast({ title: "Failed to load dashboard", description: e.message, variant: "destructive" });
     } finally { setLoading(false); }
@@ -35,112 +138,232 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
   useEffect(() => { load(); }, [userId]);
 
-  const handleDelete = async (item: any) => {
+  const handleDeleteResource = async (item: any) => {
     if (!window.confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
     setDeleting(item.id);
     try {
-      // Delete storage file
       await supabase.storage.from("otechy-docs").remove([item.file_url]);
-      // Delete DB record (cascades to ratings, purchases, download_logs)
       const { error } = await supabase.from("otechy_resources").delete().eq("id", item.id);
       if (error) throw error;
-      toast({ title: "Deleted", description: `"${item.title}" removed.` });
-      load();
-      onRefresh();
+      toast({ title: "Deleted" });
+      load(); onRefresh();
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    } finally { setDeleting(null); }
+  };
+
+  const handleDeleteTutor = async (item: any) => {
+    if (!window.confirm(`Remove tutor profile "${item.name}"?`)) return;
+    setDeleting(item.id);
+    try {
+      const { error } = await supabase.from("otechy_tutors").delete().eq("id", item.id);
+      if (error) throw error;
+      toast({ title: "Tutor profile removed" });
+      load(); onRefresh();
     } catch (e: any) {
       toast({ title: "Delete failed", description: e.message, variant: "destructive" });
     } finally { setDeleting(null); }
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center py-16">
-      <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
     </div>
   );
 
   const statCards = [
-    { icon: FileText,   label: "Resources",  value: stats?.total_resources ?? 0,  color: "from-purple-500 to-blue-600" },
-    { icon: Download,   label: "Downloads",  value: stats?.total_downloads ?? 0,  color: "from-blue-500 to-cyan-500"   },
-    { icon: DollarSign, label: "Earnings",   value: `MK ${Number(stats?.total_earnings ?? 0).toLocaleString()}`, color: "from-green-500 to-emerald-500" },
-    { icon: Star,       label: "Avg Rating", value: stats?.avg_rating > 0 ? `${Number(stats.avg_rating).toFixed(1)} ★` : "—", color: "from-yellow-500 to-orange-500" },
+    {
+      icon: FileText,
+      label: "Resources",
+      value: stats?.total_resources ?? resources.length,
+      color: "from-purple-500 to-blue-600",
+      bg: "bg-purple-500/10",
+    },
+    {
+      icon: Download,
+      label: "Downloads",
+      value: stats?.total_downloads ?? 0,
+      color: "from-blue-500 to-cyan-500",
+      bg: "bg-blue-500/10",
+    },
+    {
+      icon: DollarSign,
+      label: "Earnings",
+      value: `MK ${Number(stats?.total_earnings ?? 0).toLocaleString()}`,
+      color: "from-green-500 to-emerald-500",
+      bg: "bg-green-500/10",
+    },
+    {
+      icon: Star,
+      label: "Avg Rating",
+      value: stats?.avg_rating > 0 ? `${Number(stats.avg_rating).toFixed(1)}★` : "—",
+      color: "from-yellow-400 to-orange-500",
+      bg: "bg-yellow-500/10",
+    },
   ];
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
+
+      {/* Profile name editor */}
+      <ProfileNameEditor userId={userId} />
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
         {statCards.map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shrink-0 shadow-sm`}>
-              <s.icon className="w-5 h-5 text-white" />
+          <div key={s.label}
+            className="bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3 overflow-hidden relative">
+            {/* subtle gradient bg accent */}
+            <div className={`absolute inset-0 opacity-[0.04] bg-gradient-to-br ${s.color} pointer-events-none`} />
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shrink-0 shadow-sm`}>
+              <s.icon className="w-4 h-4 text-white" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[11px] text-muted-foreground font-medium">{s.label}</p>
-              <p className="text-base font-black text-foreground truncate">{s.value}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{s.label}</p>
+              <p className="text-sm font-black text-foreground truncate">{s.value}</p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* My uploads */}
+      {/* My content — tabs */}
       <div>
-        <p className="text-xs font-bold text-foreground uppercase tracking-wide mb-3">My Uploads ({myItems.length})</p>
+        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl mb-3">
+          <button onClick={() => setActiveTab("resources")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === "resources"
+                ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm"
+                : "text-muted-foreground"
+            }`}>
+            <BookOpen className="w-3.5 h-3.5" /> Resources
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === "resources" ? "bg-white/20" : "bg-muted"}`}>
+              {resources.length}
+            </span>
+          </button>
+          <button onClick={() => setActiveTab("tutors")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === "tutors"
+                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm"
+                : "text-muted-foreground"
+            }`}>
+            <Users className="w-3.5 h-3.5" /> Tutor Profiles
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === "tutors" ? "bg-white/20" : "bg-muted"}`}>
+              {tutors.length}
+            </span>
+          </button>
+        </div>
 
-        {myItems.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl">
-            <FileText className="w-8 h-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No uploads yet.<br />Hit Upload to share your first resource.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {myItems.map(item => (
-              <div key={item.id} className="bg-card border border-border rounded-xl p-3.5 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-600/20 to-blue-600/20 flex items-center justify-center shrink-0">
-                  <FileText className="w-4.5 h-4.5 text-purple-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground line-clamp-1">{item.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                    <span>{item.category}</span>
-                    <span>·</span>
-                    <span className="flex items-center gap-0.5">
-                      <Download className="w-3 h-3" />{item.download_count ?? 0}
-                    </span>
-                    {item.review_count > 0 && (
-                      <>
-                        <span>·</span>
-                        <span className="flex items-center gap-0.5">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />{Number(item.avg_rating).toFixed(1)}
+        {/* Resources list */}
+        {activeTab === "resources" && (
+          resources.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-purple-400" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">No uploads yet</p>
+              <p className="text-xs text-muted-foreground">Hit Upload to share your first resource.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {resources.map(item => (
+                <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-3 p-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600/20 to-blue-600/20 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4 text-purple-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-foreground line-clamp-1">{item.title}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${CAT_COLORS[item.category] ?? CAT_COLORS["Other"]}`}>
+                          {item.category}
                         </span>
-                      </>
-                    )}
-                    <span className="ml-auto font-semibold text-foreground">
-                      {Number(item.price) === 0 ? "Free" : `MK ${Number(item.price).toLocaleString()}`}
-                    </span>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                          <Download className="w-2.5 h-2.5" /> {item.download_count ?? 0}
+                        </span>
+                        {item.review_count > 0 && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
+                            {Number(item.avg_rating).toFixed(1)}
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-bold ml-auto ${Number(item.price) === 0 ? "text-emerald-400" : "text-foreground"}`}>
+                          {Number(item.price) === 0 ? "Free" : `MK ${Number(item.price).toLocaleString()}`}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteResource(item)}
+                      disabled={deleting === item.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 shrink-0">
+                      {deleting === item.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(item)}
-                  disabled={deleting === item.id}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 shrink-0"
-                >
-                  {deleting === item.id
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <Trash2 className="w-4 h-4" />
-                  }
-                </button>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Tutors list */}
+        {activeTab === "tutors" && (
+          tutors.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-400" />
               </div>
-            ))}
-          </div>
+              <p className="text-sm font-semibold text-foreground">No tutor profiles yet</p>
+              <p className="text-xs text-muted-foreground">Register as a tutor from the Tutors tab.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {tutors.map(item => (
+                <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-3 p-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <p className="text-xs font-bold text-foreground truncate">{item.name}</p>
+                        {item.is_online && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 shrink-0">Online</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {(item.subjects ?? []).slice(0, 2).map((s: string) => (
+                          <span key={s} className="text-[9px] font-semibold bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full">{s}</span>
+                        ))}
+                        {(item.subjects ?? []).length > 2 && (
+                          <span className="text-[9px] text-muted-foreground">+{item.subjects.length - 2}</span>
+                        )}
+                        <span className="text-[10px] text-muted-foreground ml-auto flex items-center gap-0.5">
+                          <Star className="w-2.5 h-2.5 fill-red-400 text-red-400" /> {item.likes_count ?? 0}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTutor(item)}
+                      disabled={deleting === item.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 shrink-0">
+                      {deleting === item.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
         )}
       </div>
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2.5">
-        <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-yellow-600 dark:text-yellow-400 leading-relaxed">
-          Earnings shown are recorded purchases. Physical payouts are processed manually by the OtechySchora team — contact us to request a withdrawal.
+      <div className="flex items-start gap-2 bg-yellow-500/8 border border-yellow-500/20 rounded-xl px-3 py-2.5">
+        <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
+        <p className="text-[10px] text-yellow-600 dark:text-yellow-400 leading-relaxed">
+          Earnings shown are recorded purchases. Payouts are processed manually — contact OtechySchora to request a withdrawal.
         </p>
       </div>
     </div>
