@@ -425,6 +425,8 @@ export function ResourceDetailModal({
   const [previewUrl,     setPreviewUrl]     = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showReader,     setShowReader]     = useState(false);
+  const scrollRef   = useRef<HTMLDivElement>(null);
+  const reviewsRef  = useRef<HTMLDivElement>(null);
 
   const isFree    = !resource.price || Number(resource.price) === 0;
   const canAccess = isFree || isPurchased;
@@ -468,18 +470,38 @@ export function ResourceDetailModal({
     if (!myRating) { toast({ title: "Pick a star rating first", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("otechy_ratings").upsert({
+      const { data: upserted, error } = await supabase.from("otechy_ratings").upsert({
         resource_id: resource.id, user_id: user.id,
         rating: myRating, review: myReview.trim() || null,
-      }, { onConflict: "resource_id,user_id" });
+      }, { onConflict: "resource_id,user_id" }).select().single();
       if (error) throw error;
+
+      // Optimistic update — show immediately without waiting for re-fetch
+      const optimistic = {
+        id: upserted?.id ?? `temp-${Date.now()}`,
+        user_id: user.id,
+        resource_id: resource.id,
+        rating: myRating,
+        review: myReview.trim() || null,
+        created_at: new Date().toISOString(),
+        profiles: { name: uploader?.name ?? "You", is_verified: false },
+      };
+      setRatings(prev => {
+        const without = prev.filter(r => r.user_id !== user.id);
+        return [optimistic, ...without];
+      });
       setSubmitted(true);
       toast({ title: "⭐ Review submitted!" });
-      const { data } = await supabase.from("otechy_ratings")
+      // Scroll to reviews section so user sees their review
+      setTimeout(() => reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+
+      // Then re-fetch in background to get accurate data
+      supabase.from("otechy_ratings")
         .select("*, profiles(name, is_verified)")
         .eq("resource_id", resource.id)
-        .order("created_at", { ascending: false });
-      if (data) setRatings(data);
+        .order("created_at", { ascending: false })
+        .then(({ data }) => { if (data) setRatings(data); });
+
     } catch (e: any) {
       toast({ title: "Failed", description: e.message, variant: "destructive" });
     } finally { setSubmitting(false); }
@@ -532,7 +554,7 @@ export function ResourceDetailModal({
           </div>
 
           {/* ── Scrollable body ── */}
-          <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 overflow-y-auto overscroll-contain" ref={scrollRef}>
             <div className="px-4 py-3 flex flex-col gap-4">
 
               {uploader && (
@@ -589,7 +611,7 @@ export function ResourceDetailModal({
               )}
 
               {/* Reviews */}
-              <div>
+              <div ref={reviewsRef}>
                 <p className="text-[10px] font-bold text-foreground uppercase tracking-wide mb-2">Reviews</p>
                 <div className="bg-muted/20 rounded-xl p-3 mb-3 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
