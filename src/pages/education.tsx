@@ -10,10 +10,11 @@ import { SellerDashboard } from "@/components/education/SellerDashboard";
 import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
 import { TutorsTab } from "@/components/education/TutorsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
+import AboutUs from "@/components/education/AboutUs";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
-type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard";
+type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 
 function Skeleton() {
@@ -149,6 +150,7 @@ export default function EducationPage() {
     { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
     { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: saved.length        },
     { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
+    { key: "aboutus",      emoji: "ℹ️",  label: "About Us",     count: null                },
   ];
 
   return (
@@ -263,6 +265,7 @@ export default function EducationPage() {
       )}
 
       {tab === "dashboard" && <SellerDashboard userId={user.id} onRefresh={fetchAll} />}
+      {tab === "aboutus"   && <AboutUs onBack={() => setTab("resources")} />}
 
       {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />}
       {detailRes  && (
