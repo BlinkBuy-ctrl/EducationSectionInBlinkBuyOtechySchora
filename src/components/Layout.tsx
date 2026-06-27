@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/lib/supabase";
 import {
-  GraduationCap, Sun, Moon, Bell,
+  GraduationCap, Sun, Moon, Bell, RefreshCw,
   Home, BarChart2, Search, Upload,
 } from "lucide-react";
 
@@ -82,6 +82,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+            <button onClick={() => window.location.reload()} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 active:[&>svg]:rotate-180 [&>svg]:transition-transform [&>svg]:duration-500">
+              <RefreshCw className="w-4 h-4" />
             </button>
             <button onClick={goAlerts} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               <Bell className="w-4 h-4" />
