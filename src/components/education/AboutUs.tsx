@@ -39,7 +39,7 @@ const teamMembers: TeamMember[] = [
     photo: "/ceo.jpg",
     initials: "PM",
     isFounder: true,
-    accent: "#8B5CF6",
+    accent: "#7C3AED",
     accentFrom: "#7C3AED",
     accentTo: "#3B82F6",
     skills: [
@@ -54,9 +54,9 @@ const teamMembers: TeamMember[] = [
     role: "Marketing Manager",
     photo: "/theo.jpg",
     initials: "TL",
-    accent: "#EC4899",
-    accentFrom: "#EC4899",
-    accentTo: "#8B5CF6",
+    accent: "#DB2777",
+    accentFrom: "#DB2777",
+    accentTo: "#7C3AED",
     skills: [
       { icon: <Megaphone size={10} />, label: "Marketing" },
       { icon: <Palette size={10} />, label: "UI / UX" },
@@ -69,9 +69,9 @@ const teamMembers: TeamMember[] = [
     role: "Software Developer",
     photo: "/elisha.jpg",
     initials: "EM",
-    accent: "#3B82F6",
-    accentFrom: "#3B82F6",
-    accentTo: "#06B6D4",
+    accent: "#2563EB",
+    accentFrom: "#2563EB",
+    accentTo: "#0891B2",
     skills: [
       { icon: <Code2 size={10} />, label: "Dev" },
       { icon: <TestTube size={10} />, label: "QA" },
@@ -85,9 +85,9 @@ const teamMembers: TeamMember[] = [
     role: "Security Manager",
     photo: "/elijah.jpg",
     initials: "EJ",
-    accent: "#10B981",
-    accentFrom: "#10B981",
-    accentTo: "#3B82F6",
+    accent: "#059669",
+    accentFrom: "#059669",
+    accentTo: "#2563EB",
     skills: [
       { icon: <Shield size={10} />, label: "Cybersecurity" },
       { icon: <Code2 size={10} />, label: "Dev" },
@@ -100,95 +100,53 @@ const storyScenes = [
   { date: "2025", lines: ["The MSCE holiday began.", "Most students rested."] },
   {
     date: "Week 1",
-    lines: [
-      "A small group decided differently.",
-      "No classroom. No teacher.",
-      "No equipment to speak of.",
-    ],
+    lines: ["A small group decided differently.", "No classroom. No teacher.", "No equipment to speak of."],
   },
-  {
-    date: "Week 2",
-    lines: ["Only curiosity.", "Slow internet.", "Late nights."],
-  },
+  { date: "Week 2", lines: ["Only curiosity.", "Slow internet.", "Late nights."] },
   {
     date: "Week 3",
-    lines: [
-      "Python first.",
-      "Then JavaScript.",
-      "Then React.",
-      "Projects that failed.",
-      "Projects that worked.",
-    ],
+    lines: ["Python first.", "Then JavaScript.", "Then React.", "Projects that failed.", "Projects that worked."],
   },
-  {
-    date: "Week 4",
-    lines: ["AI. Cybersecurity. Prompt Engineering.", "Learning never stopped."],
-  },
+  { date: "Week 4", lines: ["AI. Cybersecurity. Prompt Engineering.", "Learning never stopped."] },
   {
     date: "Today",
-    lines: [
-      "That group became OTECHY.",
-      "And OTECHY built SchoraHub.",
-      "For every Malawian student who needs it.",
-    ],
+    lines: ["That group became OTECHY.", "And OTECHY built SchoraHub.", "For every Malawian student who needs it."],
     highlight: true,
   },
 ];
 
 const techStack = [
-  "Python",
-  "JavaScript",
-  "React",
-  "TypeScript",
-  "Supabase",
-  "Tailwind CSS",
-  "AI Engineering",
-  "Prompt Engineering",
-  "Cybersecurity",
-  "Software Dev",
+  "Python", "JavaScript", "React", "TypeScript", "Supabase",
+  "Tailwind CSS", "AI Engineering", "Prompt Engineering", "Cybersecurity", "Software Dev",
 ];
 
-// ─── Reveal Hook ──────────────────────────────────────────────────────────────
-function useReveal(threshold = 0.05) {
+// ─── Reveal ───────────────────────────────────────────────────────────────────
+function useReveal() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
-      },
-      { threshold }
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.05 }
     );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [threshold]);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
   return { ref, visible };
 }
 
-// ─── Reveal Wrapper ───────────────────────────────────────────────────────────
-function Reveal({
-  children, delay = 0, className = "", from = "bottom",
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-  from?: "bottom" | "left" | "right" | "none";
-}) {
+function Reveal({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const { ref, visible } = useReveal();
-  const transforms: Record<string, string> = {
-    bottom: "translateY(24px)", left: "translateX(-24px)",
-    right: "translateX(24px)", none: "none",
-  };
   return (
     <div
       ref={ref}
       className={className}
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? "none" : transforms[from],
-        transition: `opacity 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms, transform 0.6s cubic-bezier(.22,1,.36,1) ${delay}ms`,
+        transform: visible ? "none" : "translateY(20px)",
+        transition: `opacity 0.55s ease ${delay}ms, transform 0.55s ease ${delay}ms`,
       }}
     >
       {children}
@@ -196,201 +154,143 @@ function Reveal({
   );
 }
 
-// ─── Section Divider ─────────────────────────────────────────────────────────
+// ─── Section Label ────────────────────────────────────────────────────────────
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 mb-7">
-      <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, rgba(100,80,200,0.35))" }} />
-      <p className="text-[9px] font-black tracking-[0.35em] uppercase" style={{ color: "#7C3AED" }}>
-        {children}
-      </p>
-      <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, rgba(100,80,200,0.35), transparent)" }} />
+    <div className="flex items-center gap-3 mb-6">
+      <div className="h-px flex-1 bg-violet-200" />
+      <p className="text-[9px] font-black tracking-[0.35em] uppercase text-violet-400">{children}</p>
+      <div className="h-px flex-1 bg-violet-200" />
     </div>
   );
 }
 
-// ─── Floating Image ───────────────────────────────────────────────────────────
-function Img({ src, alt, initials, className = "" }: { src: string; alt: string; initials: string; className?: string }) {
-  const [error, setError] = useState(false);
+// ─── Safe Image ───────────────────────────────────────────────────────────────
+function SafeImg({ src, alt, initials, accent, className = "" }: {
+  src: string; alt: string; initials: string; accent: string; className?: string;
+}) {
+  const [err, setErr] = useState(false);
   return (
     <div className={className}>
-      {!error ? (
-        <img src={src} alt={alt} onError={() => setError(true)} className="w-full h-full object-cover object-top" />
+      {!err ? (
+        <img src={src} alt={alt} onError={() => setErr(true)} className="w-full h-full object-cover object-top" draggable={false} />
       ) : (
-        <div className="w-full h-full flex items-center justify-center" style={{ background: "rgba(30,20,60,0.6)" }}>
-          <span className="text-5xl font-black select-none" style={{ color: "#6D4EC0" }}>{initials}</span>
+        <div className="w-full h-full flex items-center justify-center bg-violet-50">
+          <span className="text-5xl font-black select-none" style={{ color: accent + "80" }}>{initials}</span>
         </div>
       )}
     </div>
   );
 }
 
-// ─── Team Carousel ───────────────────────────────────────────────────────────
+// ─── Team Carousel ────────────────────────────────────────────────────────────
 function TeamCarousel({ members }: { members: TeamMember[] }) {
   const [active, setActive] = useState(0);
-  const trackRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
-  const isDragging = useRef(false);
+  const dragging = useRef(false);
+  const [imgErr, setImgErr] = useState(false);
 
-  const goTo = (idx: number) => {
-    const clamped = Math.max(0, Math.min(members.length - 1, idx));
-    setActive(clamped);
-  };
+  const goTo = (i: number) => setActive(Math.max(0, Math.min(members.length - 1, i)));
 
-  // Touch / mouse swipe
-  const onTouchStart = (e: React.TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    isDragging.current = true;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (!isDragging.current) return;
-    const dx = e.changedTouches[0].clientX - startX.current;
-    if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
-    isDragging.current = false;
-  };
-  const onMouseDown = (e: React.MouseEvent) => {
-    startX.current = e.clientX;
-    isDragging.current = true;
-  };
-  const onMouseUp = (e: React.MouseEvent) => {
-    if (!isDragging.current) return;
-    const dx = e.clientX - startX.current;
-    if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
-    isDragging.current = false;
-  };
+  useEffect(() => { setImgErr(false); }, [active]);
 
-  const member = members[active];
-  const [imgError, setImgError] = useState(false);
-
-  // Reset imgError when member changes
-  useEffect(() => { setImgError(false); }, [active]);
+  const m = members[active];
 
   return (
     <div className="select-none">
       {/* Card */}
       <div
-        ref={trackRef}
-        className="relative rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing"
-        style={{
-          border: `1px solid ${member.accent}30`,
-          boxShadow: `0 4px 32px rgba(0,0,0,0.45), 0 0 0 1px ${member.accent}10`,
-          background: "#0D0D1E",
-          transition: "border-color 0.4s, box-shadow 0.4s",
+        className="rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing"
+        style={{ background: "#fff", border: `1.5px solid ${m.accent}25`, boxShadow: `0 4px 24px rgba(0,0,0,0.08), 0 1px 4px ${m.accent}18` }}
+        onTouchStart={(e) => { startX.current = e.touches[0].clientX; dragging.current = true; }}
+        onTouchEnd={(e) => {
+          if (!dragging.current) return;
+          const dx = e.changedTouches[0].clientX - startX.current;
+          if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
+          dragging.current = false;
         }}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onMouseDown={onMouseDown}
-        onMouseUp={onMouseUp}
+        onMouseDown={(e) => { startX.current = e.clientX; dragging.current = true; }}
+        onMouseUp={(e) => {
+          if (!dragging.current) return;
+          const dx = e.clientX - startX.current;
+          if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
+          dragging.current = false;
+        }}
       >
-        {/* Accent stripe top */}
-        <div
-          className="absolute top-0 left-0 right-0 h-[3px] z-10"
-          style={{ background: `linear-gradient(90deg, ${member.accentFrom}, ${member.accentTo})`, transition: "background 0.4s" }}
-        />
+        {/* Accent top bar */}
+        <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${m.accentFrom}, ${m.accentTo})` }} />
 
-        {/* Photo — tall, full-width */}
-        <div className="relative" style={{ height: 380 }}>
-          {!imgError ? (
+        {/* Photo */}
+        <div className="relative" style={{ height: 360 }}>
+          {!imgErr ? (
             <img
-              src={member.photo}
-              alt={member.fullName}
-              onError={() => setImgError(true)}
+              src={m.photo}
+              alt={m.fullName}
+              onError={() => setImgErr(true)}
               className="w-full h-full object-cover object-top"
-              style={{ transition: "opacity 0.3s" }}
               draggable={false}
             />
           ) : (
-            <div
-              className="w-full h-full flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${member.accentFrom}22, ${member.accentTo}18)` }}
-            >
-              <span className="text-8xl font-black select-none" style={{ color: `${member.accent}50` }}>
-                {member.initials}
-              </span>
+            <div className="w-full h-full flex items-center justify-center bg-violet-50">
+              <span className="text-8xl font-black select-none" style={{ color: m.accent + "40" }}>{m.initials}</span>
             </div>
           )}
 
-          {/* Gradient overlay */}
-          <div
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(to top, rgba(13,13,30,1) 0%, rgba(13,13,30,0.55) 45%, rgba(13,13,30,0.05) 80%, transparent 100%)" }}
-          />
+          {/* Soft gradient at bottom */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.4) 35%, transparent 65%)" }} />
 
           {/* Founder badge */}
-          {member.isFounder && (
-            <div className="absolute top-4 left-4 z-10">
+          {m.isFounder && (
+            <div className="absolute top-3.5 left-3.5">
               <span
-                className="text-[9px] font-black tracking-[0.28em] uppercase px-3 py-1.5 rounded-full"
-                style={{ background: "rgba(90,40,180,0.82)", backdropFilter: "blur(10px)", border: "1px solid rgba(160,120,250,0.35)", color: "#EDE9FF" }}
+                className="text-[9px] font-black tracking-[0.25em] uppercase px-3 py-1.5 rounded-full"
+                style={{ background: m.accent, color: "#fff" }}
               >
                 ★ Founder
               </span>
             </div>
           )}
 
-          {/* Nav arrows — on photo */}
-          <div className="absolute bottom-4 right-4 flex gap-2 z-10">
+          {/* Nav arrows */}
+          <div className="absolute bottom-3.5 right-3.5 flex gap-2 z-10">
             <button
               onClick={() => goTo(active - 1)}
               disabled={active === 0}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                opacity: active === 0 ? 0.3 : 1,
-              }}
-              aria-label="Previous member"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity bg-white shadow-sm border border-slate-100"
+              style={{ opacity: active === 0 ? 0.3 : 1 }}
+              aria-label="Previous"
             >
-              <ChevronLeft size={16} className="text-white" />
+              <ChevronLeft size={16} className="text-slate-500" />
             </button>
             <button
               onClick={() => goTo(active + 1)}
               disabled={active === members.length - 1}
-              className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity"
-              style={{
-                background: "rgba(255,255,255,0.12)",
-                backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.15)",
-                opacity: active === members.length - 1 ? 0.3 : 1,
-              }}
-              aria-label="Next member"
+              className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity bg-white shadow-sm border border-slate-100"
+              style={{ opacity: active === members.length - 1 ? 0.3 : 1 }}
+              aria-label="Next"
             >
-              <ChevronRight size={16} className="text-white" />
+              <ChevronRight size={16} className="text-slate-500" />
             </button>
           </div>
 
-          {/* Name on photo bottom */}
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
-            <p className="text-white font-black text-xl tracking-tight leading-tight">
-              {member.fullName}
+          {/* Name on photo */}
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+            <p className="font-black text-xl tracking-tight leading-tight" style={{ color: m.accent }}>
+              {m.fullName}
             </p>
           </div>
         </div>
 
-        {/* Info panel */}
+        {/* Info */}
         <div className="px-5 pt-4 pb-5">
-          <p
-            className="text-[10px] font-black tracking-[0.22em] uppercase mb-3"
-            style={{ color: member.accent, transition: "color 0.4s" }}
-          >
-            {member.role}
-          </p>
-
-          <p className="text-[13px] text-slate-400 leading-relaxed font-medium mb-4">
-            {member.bio}
-          </p>
-
+          <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-2.5" style={{ color: m.accent }}>{m.role}</p>
+          <p className="text-[13px] text-slate-500 leading-relaxed font-medium mb-4">{m.bio}</p>
           <div className="flex flex-wrap gap-1.5">
-            {member.skills.map((s) => (
+            {m.skills.map((s) => (
               <span
                 key={s.label}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold"
-                style={{
-                  color: member.accent,
-                  background: `${member.accent}12`,
-                  border: `1px solid ${member.accent}28`,
-                }}
+                style={{ color: m.accent, background: m.accent + "10", border: `1px solid ${m.accent}25` }}
               >
                 {s.icon} {s.label}
               </span>
@@ -399,33 +299,24 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
         </div>
       </div>
 
-      {/* Dot indicators */}
+      {/* Dots */}
       <div className="flex justify-center gap-2 mt-4">
-        {members.map((m, i) => (
+        {members.map((mem, i) => (
           <button
             key={i}
             onClick={() => goTo(i)}
-            aria-label={`Go to ${m.name}`}
-            className="rounded-full transition-all"
-            style={{
-              width: i === active ? 20 : 7,
-              height: 7,
-              background: i === active ? member.accent : "rgba(255,255,255,0.15)",
-              transition: "width 0.3s, background 0.3s",
-            }}
+            aria-label={`Go to ${mem.name}`}
+            className="rounded-full transition-all duration-300"
+            style={{ width: i === active ? 20 : 7, height: 7, background: i === active ? m.accent : "#DDD6FE" }}
           />
         ))}
       </div>
-
-      {/* Swipe hint */}
-      <p className="text-center text-[10px] text-slate-600 font-medium mt-2">
-        ← swipe to see the team →
-      </p>
+      <p className="text-center text-[10px] text-slate-400 font-medium mt-2">← swipe to meet the team →</p>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 interface AboutUsProps {
   onBack?: () => void;
 }
@@ -434,191 +325,147 @@ export default function AboutUs({ onBack }: AboutUsProps) {
   const founder = teamMembers.find((m) => m.isFounder)!;
 
   const [scrollY, setScrollY] = useState(0);
-  const handleScroll = useCallback(() => setScrollY(window.scrollY), []);
+  const onScroll = useCallback(() => setScrollY(window.scrollY), []);
   useEffect(() => {
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [onScroll]);
 
   return (
-    <div className="min-h-screen text-white" style={{ background: "#0A0A16" }}>
+    <div className="min-h-screen" style={{ background: "#F9F7FF" }}>
 
-      {/* ── Sticky Header ── */}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-50"
-        style={{ background: "rgba(10,10,22,0.9)", backdropFilter: "blur(18px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        style={{ background: "rgba(249,247,255,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid #EDE9FE" }}
       >
         <div className="flex items-center gap-3 px-4 py-3 max-w-lg mx-auto">
           {onBack && (
             <button
               onClick={onBack}
               aria-label="Go back"
-              className="w-9 h-9 flex items-center justify-center rounded-full transition-all active:scale-90"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)" }}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm active:scale-90 transition-transform"
             >
-              <ArrowLeft size={16} className="text-slate-400" />
+              <ArrowLeft size={16} className="text-slate-500" />
             </button>
           )}
 
-          {/* Logo in header */}
-          <div className="flex items-center gap-2">
-            <img
-              src="/otechy"
-              alt="OTECHY"
-              className="h-7 w-auto object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-                const fallback = e.currentTarget.nextSibling as HTMLElement;
-                if (fallback) fallback.style.display = "flex";
-              }}
-            />
-            {/* Fallback if logo not found */}
-            <div
-              className="items-center gap-1.5 hidden"
-              style={{ display: "none" }}
-            >
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #6D28D9, #2563EB)" }}
-              >
-                <GraduationCap size={14} className="text-white" />
-              </div>
-              <span className="text-[13px] font-black text-white tracking-tight">OTECHY</span>
+          {/* Logo */}
+          <img
+            src="/otechy"
+            alt="OTECHY"
+            className="h-7 w-auto object-contain"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fb = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fb) fb.style.display = "flex";
+            }}
+          />
+          <div className="items-center gap-2" style={{ display: "none" }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
+              <GraduationCap size={14} className="text-white" />
             </div>
+            <span className="text-[13px] font-black text-slate-800 tracking-tight">OTECHY</span>
           </div>
 
-          <div className="ml-auto">
-            <span
-              className="text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full"
-              style={{ background: "rgba(100,70,200,0.12)", border: "1px solid rgba(100,70,200,0.22)", color: "#9D7FEA" }}
-            >
-              Est. 2025
-            </span>
-          </div>
+          <span
+            className="ml-auto text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full"
+            style={{ background: "#EDE9FE", color: "#7C3AED" }}
+          >
+            Est. 2025
+          </span>
         </div>
       </header>
 
       <main className="max-w-lg mx-auto">
 
         {/* ════════════════════════════════════════════════
-            HERO — with OTECHY logo prominently
+            HERO
         ════════════════════════════════════════════════ */}
-        <section className="relative px-4 pt-10 pb-12 overflow-hidden">
-          {/* Subtle background glow — toned down */}
+        <section className="relative px-4 pt-9 pb-11 overflow-hidden">
+          {/* Warm background blobs */}
           <div
-            className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, rgba(100,60,200,0.10) 0%, transparent 70%)",
-              transform: `translateY(${scrollY * 0.1}px)`,
-            }}
+            className="absolute -top-12 -right-12 w-56 h-56 rounded-full pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(167,139,250,0.13) 0%, transparent 70%)", transform: `translateY(${scrollY * 0.08}px)` }}
           />
           <div
-            className="absolute top-40 -left-20 w-48 h-48 rounded-full pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, rgba(50,100,220,0.07) 0%, transparent 70%)",
-              transform: `translateY(${scrollY * 0.06}px)`,
-            }}
+            className="absolute top-36 -left-16 w-44 h-44 rounded-full pointer-events-none"
+            style={{ background: "radial-gradient(circle, rgba(196,181,253,0.1) 0%, transparent 70%)", transform: `translateY(${scrollY * 0.05}px)` }}
           />
 
           <div className="relative z-10">
-            {/* ── OTECHY Logo — hero feature ── */}
+            {/* Big logo in hero */}
             <Reveal>
-              <div className="mb-7">
-                {/* Try to load the logo image */}
+              <div className="mb-6">
                 <img
                   src="/otechy"
                   alt="OTECHY"
-                  className="h-14 w-auto object-contain mb-1"
+                  className="h-12 w-auto object-contain"
                   onError={(e) => {
-                    // Logo not found — show text logo fallback
-                    const el = e.currentTarget;
-                    el.style.display = "none";
-                    const next = el.nextElementSibling as HTMLElement;
-                    if (next) next.style.display = "flex";
+                    e.currentTarget.style.display = "none";
+                    const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                    if (fb) fb.style.display = "flex";
                   }}
                 />
-                {/* Text fallback logo — hidden by default, shown if image fails */}
+                {/* Text fallback */}
                 <div className="items-center gap-3" style={{ display: "none" }}>
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg"
-                    style={{ background: "linear-gradient(135deg, #6D28D9, #2563EB)" }}
-                  >
-                    <GraduationCap size={26} className="text-white" />
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
+                    <GraduationCap size={22} className="text-white" />
                   </div>
                   <div>
-                    <p className="text-3xl font-black text-white tracking-tight leading-none">OTECHY</p>
-                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase mt-0.5" style={{ color: "#7C6AC4" }}>
-                      Technology · Malawi
-                    </p>
+                    <p className="text-2xl font-black text-slate-800 tracking-tight leading-none">OTECHY</p>
+                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase mt-0.5 text-violet-400">Technology · Malawi</p>
                   </div>
                 </div>
               </div>
             </Reveal>
 
-            <Reveal delay={40}>
-              <p className="text-[10px] font-black tracking-[0.3em] uppercase mb-3" style={{ color: "#6D50BB" }}>
+            <Reveal delay={50}>
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-violet-400 mb-3">
                 Malawi · Technology · 2025
               </p>
             </Reveal>
 
-            <Reveal delay={80}>
-              <h1
-                className="font-black leading-[0.93] tracking-tight mb-5"
-                style={{ fontSize: "clamp(38px, 11vw, 52px)", color: "#EEEAFF" }}
-              >
+            <Reveal delay={90}>
+              <h1 className="font-black leading-[0.93] tracking-tight mb-5 text-slate-800" style={{ fontSize: "clamp(36px, 10vw, 50px)" }}>
                 We built{" "}
                 <span style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   something
                 </span>
                 <br />
                 from{" "}
-                <span style={{ color: "#6B7280", fontStyle: "italic" }}>nothing.</span>
+                <span className="text-slate-400 italic">nothing.</span>
               </h1>
             </Reveal>
 
-            <Reveal delay={120}>
+            <Reveal delay={130}>
               <p className="text-[13.5px] text-slate-500 leading-relaxed font-medium max-w-xs mb-7">
-                A group of self-taught students from Malawi — during a school holiday —
-                decided to learn technology. That decision became OTECHY.
+                A group of self-taught students from Malawi — during a school holiday — decided to learn technology. That decision became OTECHY.
               </p>
             </Reveal>
 
-            {/* Founder photo — cinematic strip */}
-            <Reveal delay={160}>
+            {/* Founder photo strip */}
+            <Reveal delay={170}>
               <div
                 className="relative rounded-2xl overflow-hidden mb-5"
-                style={{ height: 230, border: "1px solid rgba(100,70,180,0.18)", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}
+                style={{ height: 230, border: "1.5px solid #EDE9FE", boxShadow: "0 8px 32px rgba(124,58,237,0.10)" }}
               >
-                <Img src="/ceo.jpg" alt="Peter Mlandula" initials="PM" className="w-full h-full" />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: "linear-gradient(to top, rgba(10,10,22,0.9) 0%, rgba(10,10,22,0.3) 50%, transparent 100%)" }}
-                />
+                <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#7C3AED" className="w-full h-full" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(249,247,255,0.92) 0%, rgba(249,247,255,0.25) 45%, transparent 100%)" }} />
                 <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
-                  <p className="text-white font-black text-[15px] tracking-tight">Peter Mlandula</p>
-                  <p className="text-[11px] font-semibold mt-0.5" style={{ color: "#8B72D0" }}>
-                    Founder of OTECHY · Builder of SchoraHub
-                  </p>
+                  <p className="font-black text-[15px] tracking-tight text-slate-800">Peter Mlandula</p>
+                  <p className="text-[11px] font-semibold mt-0.5 text-violet-500">Founder of OTECHY · Builder of SchoraHub</p>
                 </div>
-                <div className="absolute top-0 left-0 right-0 h-5" style={{ background: "rgba(10,10,22,0.5)" }} />
               </div>
             </Reveal>
 
             {/* Stats */}
             <Reveal delay={200}>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  { number: "2025", label: "Founded" },
-                  { number: "4", label: "Team members" },
-                  { number: "∞", label: "Curiosity" },
-                ].map((stat) => (
-                  <div
-                    key={stat.label}
-                    className="rounded-xl p-3 text-center"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-                  >
-                    <p className="text-lg font-black tracking-tight" style={{ color: "#8B72D0" }}>{stat.number}</p>
-                    <p className="text-[9px] font-bold text-slate-600 uppercase tracking-wide mt-0.5">{stat.label}</p>
+                {[{ number: "2025", label: "Founded" }, { number: "4", label: "Team members" }, { number: "∞", label: "Curiosity" }].map((s) => (
+                  <div key={s.label} className="rounded-xl p-3 text-center bg-white border border-slate-100 shadow-sm">
+                    <p className="text-lg font-black tracking-tight text-violet-600">{s.number}</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{s.label}</p>
                   </div>
                 ))}
               </div>
@@ -627,70 +474,57 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         </section>
 
         {/* ════════════════════════════════════════════════
-            ORIGIN STORY — Documentary timeline
+            ORIGIN STORY
         ════════════════════════════════════════════════ */}
         <section className="px-4 pb-12">
           <Reveal><SectionLabel>The Origin</SectionLabel></Reveal>
 
           <Reveal delay={40}>
-            <h2 className="text-xl font-black tracking-tight text-white mb-7 leading-tight">
+            <h2 className="text-xl font-black tracking-tight text-slate-800 mb-7 leading-tight">
               A holiday that changed{" "}
-              <span style={{ background: "linear-gradient(135deg, #6D28D9, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              <span style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 everything.
               </span>
             </h2>
           </Reveal>
 
           <div className="relative">
-            <div
-              className="absolute left-[22px] top-0 bottom-0 w-px"
-              style={{ background: "linear-gradient(to bottom, rgba(100,60,190,0.5), rgba(50,90,200,0.2), transparent)" }}
-            />
-            <div className="space-y-0">
-              {storyScenes.map((scene, i) => (
-                <Reveal key={i} delay={i * 70}>
-                  <div className="flex gap-5 pb-7">
-                    <div className="flex-shrink-0 w-11 flex items-start justify-center pt-1">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{
-                          background: scene.highlight ? "linear-gradient(135deg, #7C3AED, #3B82F6)" : "rgba(100,60,180,0.45)",
-                          border: scene.highlight ? "2px solid #9D7FEA" : "2px solid rgba(100,60,180,0.35)",
-                          boxShadow: scene.highlight ? "0 0 10px rgba(110,60,200,0.5)" : "none",
-                        }}
-                      />
-                    </div>
-                    <div className="flex-1 -mt-0.5">
-                      <p
-                        className="text-[9px] font-black tracking-[0.25em] uppercase mb-1.5"
-                        style={{ color: scene.highlight ? "#8B72D0" : "#374151" }}
-                      >
-                        {scene.date}
-                      </p>
-                      {scene.lines.map((line, j) => (
-                        <p
-                          key={j}
-                          className="font-bold leading-snug mb-1"
-                          style={{ fontSize: "14.5px", color: scene.highlight ? "#E8E2FF" : "#CBD5E1", letterSpacing: "-0.01em" }}
-                        >
-                          {line}
-                        </p>
-                      ))}
-                      {scene.highlight && (
-                        <div
-                          className="mt-3 rounded-xl px-4 py-3"
-                          style={{ background: "rgba(90,50,170,0.1)", border: "1px solid rgba(100,60,190,0.2)" }}
-                        >
-                          <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                            OTECHY is more than a startup — it's proof that talent can emerge from anywhere when people choose to learn.
-                          </p>
-                        </div>
-                      )}
-                    </div>
+            {/* Rail */}
+            <div className="absolute left-[22px] top-0 bottom-0 w-px bg-violet-100" />
+
+            {storyScenes.map((scene, i) => (
+              <Reveal key={i} delay={i * 60}>
+                <div className="flex gap-5 pb-7">
+                  <div className="flex-shrink-0 w-11 flex items-start justify-center pt-1">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{
+                        background: scene.highlight ? "linear-gradient(135deg, #7C3AED, #3B82F6)" : "#DDD6FE",
+                        border: scene.highlight ? "2px solid #7C3AED" : "2px solid #C4B5FD",
+                        boxShadow: scene.highlight ? "0 0 8px rgba(124,58,237,0.35)" : "none",
+                      }}
+                    />
                   </div>
-                </Reveal>
-              ))}
-            </div>
+                  <div className="flex-1 -mt-0.5">
+                    <p className="text-[9px] font-black tracking-[0.25em] uppercase mb-1.5" style={{ color: scene.highlight ? "#7C3AED" : "#C4B5FD" }}>
+                      {scene.date}
+                    </p>
+                    {scene.lines.map((line, j) => (
+                      <p key={j} className="font-semibold leading-snug mb-1" style={{ fontSize: "14.5px", color: scene.highlight ? "#1E1B4B" : "#64748B" }}>
+                        {line}
+                      </p>
+                    ))}
+                    {scene.highlight && (
+                      <div className="mt-3 rounded-xl px-4 py-3 bg-violet-50 border border-violet-100">
+                        <p className="text-[11px] text-violet-700 leading-relaxed font-medium">
+                          OTECHY is more than a startup — it's proof that talent can emerge from anywhere when people choose to learn.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </section>
 
@@ -701,64 +535,44 @@ export default function AboutUs({ onBack }: AboutUsProps) {
           <Reveal><SectionLabel>Founder</SectionLabel></Reveal>
 
           <Reveal delay={50}>
-            <div
-              className="relative rounded-2xl overflow-hidden"
-              style={{ border: "1px solid rgba(100,60,180,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.45)" }}
-            >
+            <div className="rounded-2xl overflow-hidden bg-white border border-violet-100 shadow-sm">
               {/* Portrait */}
-              <div className="relative" style={{ height: 340 }}>
-                <Img src="/ceo.jpg" alt="Peter Mlandula" initials="PM" className="w-full h-full" />
-                <div
-                  className="absolute inset-0"
-                  style={{ background: "linear-gradient(to top, rgba(10,10,22,1) 0%, rgba(10,10,22,0.5) 40%, rgba(10,10,22,0.05) 75%, transparent 100%)" }}
-                />
+              <div className="relative" style={{ height: 320 }}>
+                <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#7C3AED" className="w-full h-full" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.45) 38%, transparent 65%)" }} />
                 <div className="absolute top-4 left-4">
-                  <span
-                    className="text-[9px] font-black tracking-[0.28em] uppercase px-3 py-1.5 rounded-full"
-                    style={{ background: "rgba(80,35,160,0.78)", backdropFilter: "blur(10px)", border: "1px solid rgba(150,110,240,0.3)", color: "#EBE4FF" }}
-                  >
+                  <span className="text-[9px] font-black tracking-[0.25em] uppercase px-3 py-1.5 rounded-full text-white" style={{ background: "#7C3AED" }}>
                     ★ Founder
                   </span>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
+                  <p className="text-xl font-black text-slate-800 tracking-tight">Peter Mlandula</p>
                 </div>
               </div>
 
               {/* Info */}
-              <div className="px-5 pt-4 pb-6" style={{ background: "#0A0A16" }}>
-                <p className="text-xl font-black text-white tracking-tight mb-0.5">Peter Mlandula</p>
-                <p className="text-[10px] font-black tracking-[0.2em] uppercase mb-4" style={{ color: "#6D50BB" }}>
-                  Founder & Lead Developer · OTECHY
-                </p>
+              <div className="px-5 pt-3 pb-6">
+                <p className="text-[10px] font-black tracking-[0.2em] uppercase text-violet-500 mb-4">Founder & Lead Developer · OTECHY</p>
 
                 {/* Quote */}
-                <div className="relative mb-4">
-                  <div className="absolute -left-1 top-0 bottom-0 w-[3px] rounded-full" style={{ background: "linear-gradient(to bottom, #6D28D9, #2563EB)" }} />
-                  <div className="pl-5">
-                    <p className="text-[13px] text-slate-400 leading-relaxed font-medium italic">
-                      "I used to struggle to access books due to limited resources — but internet and phones were always around. So I asked: what if all learning resources were online? That question became{" "}
-                      <span className="font-black not-italic" style={{ color: "#9D7FEA" }}>SchoraHub.</span>"
-                    </p>
-                  </div>
+                <div className="relative mb-4 pl-4" style={{ borderLeft: "3px solid #7C3AED" }}>
+                  <p className="text-[13px] text-slate-500 leading-relaxed font-medium italic">
+                    "I used to struggle to access books due to limited resources — but internet and phones were always around. So I asked: what if all learning resources were online? That question became{" "}
+                    <span className="font-black not-italic text-violet-600">SchoraHub.</span>"
+                  </p>
                 </div>
 
-                {/* Vision box */}
-                <div
-                  className="rounded-xl p-4 mb-4"
-                  style={{ background: "rgba(80,45,150,0.08)", border: "1px solid rgba(90,50,160,0.14)" }}
-                >
-                  <p className="text-[9px] font-black tracking-[0.25em] uppercase mb-2" style={{ color: "#6D50BB" }}>Vision</p>
-                  <p className="text-[12px] text-slate-400 leading-relaxed font-medium">
+                {/* Vision */}
+                <div className="rounded-xl p-4 mb-4 bg-violet-50 border border-violet-100">
+                  <p className="text-[9px] font-black tracking-[0.25em] uppercase text-violet-400 mb-2">Vision</p>
+                  <p className="text-[12px] text-slate-600 leading-relaxed font-medium">
                     A Malawi where every student has the same access to quality learning — regardless of their school, family, or location.
                   </p>
                 </div>
 
-                {/* Skills */}
                 <div className="flex flex-wrap gap-1.5">
                   {founder.skills.map((s) => (
-                    <span
-                      key={s.label}
-                      className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold"
-                      style={{ color: "#9D7FEA", background: "rgba(90,50,160,0.1)", border: "1px solid rgba(100,60,180,0.2)" }}
-                    >
+                    <span key={s.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200">
                       {s.icon} {s.label}
                     </span>
                   ))}
@@ -776,27 +590,21 @@ export default function AboutUs({ onBack }: AboutUsProps) {
 
           <div className="space-y-3">
             <Reveal delay={40}>
-              <div
-                className="rounded-2xl p-5 relative overflow-hidden"
-                style={{ background: "rgba(80,45,160,0.07)", border: "1px solid rgba(90,50,160,0.16)" }}
-              >
-                <p className="text-[9px] font-black tracking-[0.3em] uppercase mb-3" style={{ color: "#6D50BB" }}>Mission</p>
-                <p className="text-[14px] text-white font-bold leading-snug tracking-tight">
+              <div className="rounded-2xl p-5 bg-white border border-violet-100 shadow-sm">
+                <p className="text-[9px] font-black tracking-[0.3em] uppercase text-violet-400 mb-3">Mission</p>
+                <p className="text-[14px] text-slate-700 font-bold leading-snug">
                   Provide free access to books, tutors, and scholarships — so every Malawian student can{" "}
-                  <span style={{ color: "#9D7FEA" }}>unlock their potential.</span>
+                  <span className="text-violet-600">unlock their potential.</span>
                 </p>
               </div>
             </Reveal>
 
             <Reveal delay={70}>
-              <div
-                className="rounded-2xl p-5 relative overflow-hidden"
-                style={{ background: "rgba(37,80,190,0.06)", border: "1px solid rgba(40,90,200,0.14)" }}
-              >
-                <p className="text-[9px] font-black tracking-[0.3em] uppercase mb-3" style={{ color: "#4B7ED0" }}>Vision</p>
-                <p className="text-[14px] text-white font-bold leading-snug tracking-tight">
+              <div className="rounded-2xl p-5 bg-white border border-blue-100 shadow-sm">
+                <p className="text-[9px] font-black tracking-[0.3em] uppercase text-blue-400 mb-3">Vision</p>
+                <p className="text-[14px] text-slate-700 font-bold leading-snug">
                   A future where geography and income never determine a student's{" "}
-                  <span style={{ color: "#7BA8E8" }}>access to knowledge.</span>
+                  <span className="text-blue-600">access to knowledge.</span>
                 </p>
               </div>
             </Reveal>
@@ -804,18 +612,10 @@ export default function AboutUs({ onBack }: AboutUsProps) {
 
           <Reveal delay={100}>
             <div className="grid grid-cols-3 gap-2.5 mt-4">
-              {[
-                { emoji: "🎓", label: "Education First" },
-                { emoji: "🤝", label: "Community" },
-                { emoji: "🇲🇼", label: "Built in Malawi" },
-              ].map((v) => (
-                <div
-                  key={v.label}
-                  className="flex flex-col items-center gap-2 rounded-2xl p-3.5 text-center"
-                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-                >
+              {[{ emoji: "🎓", label: "Education First" }, { emoji: "🤝", label: "Community" }, { emoji: "🇲🇼", label: "Built in Malawi" }].map((v) => (
+                <div key={v.label} className="flex flex-col items-center gap-2 rounded-2xl p-3.5 text-center bg-white border border-slate-100 shadow-sm">
                   <span className="text-2xl">{v.emoji}</span>
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-wide leading-tight">{v.label}</span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wide leading-tight">{v.label}</span>
                 </div>
               ))}
             </div>
@@ -834,9 +634,9 @@ export default function AboutUs({ onBack }: AboutUsProps) {
                   key={tech}
                   className="flex-shrink-0 text-[11px] font-black px-4 py-2.5 rounded-full whitespace-nowrap"
                   style={{
-                    background: i % 3 === 0 ? "rgba(80,45,160,0.1)" : i % 3 === 1 ? "rgba(37,80,190,0.08)" : "rgba(255,255,255,0.04)",
-                    border: i % 3 === 0 ? "1px solid rgba(100,60,200,0.22)" : i % 3 === 1 ? "1px solid rgba(50,100,220,0.18)" : "1px solid rgba(255,255,255,0.07)",
-                    color: i % 3 === 0 ? "#9D7FEA" : i % 3 === 1 ? "#7BA8E8" : "#6B7280",
+                    background: i % 3 === 0 ? "#EDE9FE" : i % 3 === 1 ? "#DBEAFE" : "#F1F5F9",
+                    color: i % 3 === 0 ? "#7C3AED" : i % 3 === 1 ? "#2563EB" : "#64748B",
+                    border: i % 3 === 0 ? "1px solid #C4B5FD" : i % 3 === 1 ? "1px solid #BFDBFE" : "1px solid #E2E8F0",
                   }}
                 >
                   {tech}
@@ -847,15 +647,15 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         </section>
 
         {/* ════════════════════════════════════════════════
-            MEET THE TEAM — Swipe carousel
+            MEET THE TEAM — swipe carousel
         ════════════════════════════════════════════════ */}
         <section className="px-4 pb-12">
           <Reveal><SectionLabel>Meet the Team</SectionLabel></Reveal>
 
           <Reveal delay={40}>
-            <h2 className="text-xl font-black tracking-tight text-white mb-6 leading-tight">
+            <h2 className="text-xl font-black tracking-tight text-slate-800 mb-6 leading-tight">
               Real people.{" "}
-              <span style={{ color: "#4B5563", fontStyle: "italic" }}>Building something real.</span>
+              <span className="text-slate-400 italic font-black">Building something real.</span>
             </h2>
           </Reveal>
 
@@ -869,30 +669,15 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         ════════════════════════════════════════════════ */}
         <section className="px-4 pb-12">
           <Reveal>
-            <div
-              className="rounded-2xl p-6 relative overflow-hidden"
-              style={{ background: "rgba(80,45,150,0.07)", border: "1px solid rgba(90,50,160,0.16)" }}
-            >
-              <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full pointer-events-none"
-                style={{ background: "radial-gradient(circle, rgba(80,45,160,0.14), transparent)" }} />
-              <p className="text-[9px] font-black tracking-[0.3em] uppercase mb-3 relative z-10" style={{ color: "#8B72D0" }}>
-                What's next
-              </p>
-              <h2 className="text-xl font-black text-white leading-tight mb-3 relative z-10 tracking-tight">
-                We're just getting started.
-              </h2>
-              <p className="text-[13px] text-slate-500 leading-relaxed font-medium relative z-10 mb-4">
+            <div className="rounded-2xl p-6 bg-white border border-violet-100 shadow-sm">
+              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-violet-400 mb-3">What's next</p>
+              <h2 className="text-xl font-black text-slate-800 leading-tight mb-3 tracking-tight">We're just getting started.</h2>
+              <p className="text-[13px] text-slate-500 leading-relaxed font-medium mb-4">
                 More features. More partnerships. More students reached. OTECHY is growing — and we're looking for mentors, collaborators, and organizations who believe what we believe.
               </p>
-              <div className="flex flex-wrap gap-2 relative z-10">
+              <div className="flex flex-wrap gap-2">
                 {["Partnerships", "Mentorship", "Resources", "Collaboration"].map((item) => (
-                  <span
-                    key={item}
-                    className="text-[10px] font-bold px-3 py-1 rounded-full"
-                    style={{ color: "#8B72D0", background: "rgba(80,45,150,0.1)", border: "1px solid rgba(90,50,160,0.18)" }}
-                  >
-                    {item}
-                  </span>
+                  <span key={item} className="text-[10px] font-bold px-3 py-1 rounded-full text-violet-600 bg-violet-50 border border-violet-200">{item}</span>
                 ))}
               </div>
             </div>
@@ -906,60 +691,46 @@ export default function AboutUs({ onBack }: AboutUsProps) {
           <Reveal><SectionLabel>Contact</SectionLabel></Reveal>
 
           <Reveal delay={40}>
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-            >
-              <a
-                href="mailto:otechy8@gmail.com"
-                className="flex items-center gap-4 px-5 py-4 transition-colors active:bg-white/5"
-                style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
-              >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(80,45,160,0.14)" }}>
-                  <Mail size={16} style={{ color: "#9D7FEA" }} />
+            <div className="rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm">
+              <a href="mailto:otechy8@gmail.com" className="flex items-center gap-4 px-5 py-4 active:bg-slate-50 border-b border-slate-50">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-50">
+                  <Mail size={16} className="text-violet-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-600 mb-0.5">Email</p>
-                  <p className="text-[13px] font-bold text-white truncate">otechy8@gmail.com</p>
+                  <p className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-400 mb-0.5">Email</p>
+                  <p className="text-[13px] font-bold text-slate-700 truncate">otechy8@gmail.com</p>
                 </div>
-                <ChevronRight size={14} className="text-slate-700 flex-shrink-0" />
+                <ChevronRight size={14} className="text-slate-300 flex-shrink-0" />
               </a>
 
-              {[
-                { number: "0888258180", label: "Main" },
-                { number: "0888712272", label: "Support" },
-                { number: "0999626944", label: "Alt" },
-              ].map((phone, i, arr) => (
+              {[{ number: "0888258180", label: "Main" }, { number: "0888712272", label: "Support" }, { number: "0999626944", label: "Alt" }].map((phone, i, arr) => (
                 <a
                   key={phone.number}
                   href={`tel:${phone.number}`}
-                  className="flex items-center gap-4 px-5 py-4 transition-colors active:bg-white/5"
-                  style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+                  className="flex items-center gap-4 px-5 py-4 active:bg-slate-50"
+                  style={{ borderBottom: i < arr.length - 1 ? "1px solid #F8FAFC" : "none" }}
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(37,80,190,0.12)" }}>
-                    <Phone size={16} style={{ color: "#7BA8E8" }} />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-blue-50">
+                    <Phone size={16} className="text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-600 mb-0.5">{phone.label}</p>
-                    <p className="text-[13px] font-bold text-white">{phone.number}</p>
+                    <p className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-400 mb-0.5">{phone.label}</p>
+                    <p className="text-[13px] font-bold text-slate-700">{phone.number}</p>
                   </div>
-                  <ChevronRight size={14} className="text-slate-700 flex-shrink-0" />
+                  <ChevronRight size={14} className="text-slate-300 flex-shrink-0" />
                 </a>
               ))}
             </div>
           </Reveal>
 
           <Reveal delay={70}>
-            <div
-              className="mt-3 flex items-center gap-4 rounded-2xl px-5 py-4"
-              style={{ background: "rgba(10,120,80,0.06)", border: "1px solid rgba(15,150,100,0.13)" }}
-            >
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(12,130,90,0.12)" }}>
-                <MapPin size={16} style={{ color: "#4ADE80" }} />
+            <div className="mt-3 flex items-center gap-4 rounded-2xl px-5 py-4 bg-white border border-emerald-100 shadow-sm">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-emerald-50">
+                <MapPin size={16} className="text-emerald-500" />
               </div>
               <div>
-                <p className="text-[9px] font-black tracking-[0.2em] uppercase mb-0.5" style={{ color: "#2D7A50" }}>Based in</p>
-                <p className="text-[13px] font-bold text-white">Malawi 🇲🇼</p>
+                <p className="text-[9px] font-black tracking-[0.2em] uppercase text-emerald-500 mb-0.5">Based in</p>
+                <p className="text-[13px] font-bold text-slate-700">Malawi 🇲🇼</p>
               </div>
             </div>
           </Reveal>
@@ -968,30 +739,28 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         {/* ════════════════════════════════════════════════
             FOOTER
         ════════════════════════════════════════════════ */}
-        <footer className="px-4 pb-10 pt-4 text-center" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        <footer className="px-4 pb-10 pt-4 text-center border-t border-slate-100">
           <Reveal>
-            <div className="flex flex-col items-center gap-2 mt-4 mb-3">
-              {/* Footer logo */}
+            <div className="flex flex-col items-center gap-2 mt-5 mb-3">
               <img
                 src="/otechy"
                 alt="OTECHY"
-                className="h-8 w-auto object-contain opacity-70"
+                className="h-7 w-auto object-contain opacity-60"
                 onError={(e) => {
-                  const el = e.currentTarget;
-                  el.style.display = "none";
-                  const next = el.nextElementSibling as HTMLElement;
-                  if (next) next.style.display = "flex";
+                  e.currentTarget.style.display = "none";
+                  const fb = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (fb) fb.style.display = "flex";
                 }}
               />
               <div className="items-center gap-1.5" style={{ display: "none" }}>
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #6D28D9, #2563EB)" }}>
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
                   <GraduationCap size={12} className="text-white" />
                 </div>
-                <span className="text-[12px] font-black text-white tracking-tight">OtechySchora</span>
+                <span className="text-[12px] font-black text-slate-600 tracking-tight">OtechySchora</span>
               </div>
             </div>
-            <p className="text-[11px] text-slate-700 font-semibold">Made with care in Malawi 🇲🇼</p>
-            <p className="text-[10px] text-slate-800 font-medium mt-1">© {new Date().getFullYear()} Otechy · All rights reserved</p>
+            <p className="text-[11px] text-slate-400 font-semibold">Made with care in Malawi 🇲🇼</p>
+            <p className="text-[10px] text-slate-300 font-medium mt-1">© {new Date().getFullYear()} Otechy · All rights reserved</p>
           </Reveal>
         </footer>
 
