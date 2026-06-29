@@ -3,6 +3,7 @@
   "short_name": "SchoraHub",
   "description": "Malawi's Education Hub — Past Papers, Textbooks, Scholarships & Tutors",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0d0f1e",

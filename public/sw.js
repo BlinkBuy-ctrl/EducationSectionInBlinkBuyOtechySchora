@@ -1,4 +1,4 @@
-const CACHE = "otechy-v1";
+const CACHE = "schorahub-v1";
 const ASSETS = ["/", "/index.html", "/favicon.svg"];
 
 self.addEventListener("install", e => {
