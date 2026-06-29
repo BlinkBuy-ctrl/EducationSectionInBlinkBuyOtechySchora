@@ -15,7 +15,7 @@ import AboutUs from "@/components/education/AboutUs";
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
-const ONBOARDING_KEY = "schorahub_onboarding_done";
+const ONBOARDING_KEY = "otechy_onboarding_done";
 
 function Skeleton() {
   return (
