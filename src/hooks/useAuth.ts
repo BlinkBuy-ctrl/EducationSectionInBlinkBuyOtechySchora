@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const ANON_ID_KEY = 'schorahub_anon_id'
+const ANON_ID_KEY = 'otechyschora_anon_id'
 
 function getOrCreateAnonId(): string {
   let id = localStorage.getItem(ANON_ID_KEY)
