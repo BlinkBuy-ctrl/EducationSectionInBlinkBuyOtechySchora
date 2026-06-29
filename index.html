@@ -10,18 +10,29 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SchoraHub" />
+    <!-- Prevent layout shift / blank flash on PWA launch -->
+    <style>
+      html, body { margin: 0; padding: 0; background: #060818; }
+      #root { min-height: 100vh; }
+    </style>
     <link rel="manifest" href="/manifest.json" />
-    <title>SchoraHub — Education Hub</title>
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js');
-        });
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register SW AFTER the page load event so it never blocks the initial render
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(reg => {
+              console.log('[SW] Registered, scope:', reg.scope);
+            })
+            .catch(err => {
+              console.error('[SW] Registration failed:', err);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
