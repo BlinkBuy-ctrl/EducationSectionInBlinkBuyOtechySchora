@@ -1,42 +1,63 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Download, GraduationCap } from "lucide-react";
 
+// Store the event at module level — this way it's captured even if it fires
+// before React mounts (which is almost always the case in Vite PWAs)
+let _deferredPrompt: any = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  // Dispatch a custom event so any mounted component can react
+  window.dispatchEvent(new Event("schorahub:installready"));
+});
+
 export function InstallPrompt() {
-  const [prompt, setPrompt]   = useState<any>(null);
-  const [visible, setVisible] = useState(false);
-  const [hiding,  setHiding]  = useState(false);
-  const [isStandaloneMode, setIsStandaloneMode] = useState(false);
+  const [prompt, setPrompt]     = useState<any>(() => _deferredPrompt);
+  const [visible, setVisible]   = useState(false);
+  const [hiding, setHiding]     = useState(false);
+  const timerRef                = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as any).standalone === true;
 
   useEffect(() => {
-    // Check standalone safely inside useEffect
-    const standalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-    setIsStandaloneMode(standalone);
-    if (standalone) return; // already installed, do nothing
+    // Already installed — never show
+    if (isStandalone) return;
 
-    // Check if dismissed recently
+    // Check if dismissed recently (3-day cooldown)
     const dismissed = localStorage.getItem("otechy_install_dismissed");
     if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
 
-    // Capture the beforeinstallprompt event
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setPrompt(e);
-      setTimeout(() => setVisible(true), 2000);
+    const show = () => {
+      timerRef.current = setTimeout(() => setVisible(true), 2500);
     };
-    window.addEventListener("beforeinstallprompt", handler);
 
-    // iOS Safari — show manual install tip if not standalone
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (isIOS) {
-      setTimeout(() => setVisible(true), 2000);
+    // If prompt was already captured before mount, show immediately
+    if (_deferredPrompt) {
+      setPrompt(_deferredPrompt);
+      show();
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    // Listen in case it fires after mount
+    const onReady = () => {
+      setPrompt(_deferredPrompt);
+      show();
+    };
+    window.addEventListener("schorahub:installready", onReady);
+
+    // iOS Safari — no beforeinstallprompt, show manual tip
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (isIOS) show();
+
+    return () => {
+      window.removeEventListener("schorahub:installready", onReady);
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, []);
 
-  if (isStandaloneMode) return null;
+  if (isStandalone) return null;
   if (!visible) return null;
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -44,7 +65,6 @@ export function InstallPrompt() {
   const dismiss = () => {
     setHiding(true);
     setTimeout(() => setVisible(false), 400);
-    // Don't show again for 3 days
     localStorage.setItem("otechy_install_dismissed", String(Date.now()));
   };
 
@@ -52,15 +72,20 @@ export function InstallPrompt() {
     if (prompt) {
       prompt.prompt();
       const { outcome } = await prompt.userChoice;
-      if (outcome === "accepted") setVisible(false);
+      _deferredPrompt = null;
+      if (outcome === "accepted") {
+        setVisible(false);
+        return;
+      }
     }
     dismiss();
   };
 
   return (
     <div
-      className="fixed bottom-20 left-3 right-3 z-[9990]"
+      className="fixed left-3 right-3 z-[9990]"
       style={{
+        bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
         opacity: hiding ? 0 : 1,
         transform: hiding ? "translateY(20px)" : "translateY(0)",
         transition: "opacity 0.35s ease, transform 0.35s ease",
@@ -87,20 +112,26 @@ export function InstallPrompt() {
           </div>
 
           {/* Close */}
-          <button onClick={dismiss}
-            className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 text-white/50 shrink-0 active:scale-90 transition-transform">
+          <button
+            onClick={dismiss}
+            className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 text-white/50 shrink-0 active:scale-90 transition-transform"
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {!isIOS && (
           <div className="px-4 pb-4 flex gap-2">
-            <button onClick={dismiss}
-              className="flex-1 py-2 rounded-xl border border-white/15 text-white/60 text-xs font-semibold active:scale-95 transition-all">
+            <button
+              onClick={dismiss}
+              className="flex-1 py-2 rounded-xl border border-white/15 text-white/60 text-xs font-semibold active:scale-95 transition-all"
+            >
               Not now
             </button>
-            <button onClick={install}
-              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-lg shadow-purple-500/30">
+            <button
+              onClick={install}
+              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-lg shadow-purple-500/30"
+            >
               <Download className="w-3.5 h-3.5" /> Install App
             </button>
           </div>
