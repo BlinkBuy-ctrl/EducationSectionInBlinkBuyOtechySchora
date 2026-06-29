@@ -46,6 +46,26 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
     canvas.style.height = CH + "px";
     ctx.scale(DPR, DPR);
 
+    // Polyfill ctx.roundRect for older Android WebView (pre-Chrome 99)
+    if (!ctx.roundRect) {
+      ctx.roundRect = function(x: number, y: number, w: number, h: number, r: number | number[]) {
+        const radius = Array.isArray(r) ? r : [r, r, r, r];
+        const [tl, tr, br, bl] = [
+          radius[0] ?? 0, radius[1] ?? radius[0] ?? 0,
+          radius[2] ?? radius[0] ?? 0, radius[3] ?? radius[0] ?? 0
+        ];
+        ctx.moveTo(x + tl, y);
+        ctx.lineTo(x + w - tr, y);
+        ctx.arcTo(x + w, y, x + w, y + tr, tr);
+        ctx.lineTo(x + w, y + h - br);
+        ctx.arcTo(x + w, y + h, x + w - br, y + h, br);
+        ctx.lineTo(x + bl, y + h);
+        ctx.arcTo(x, y + h, x, y + h - bl, bl);
+        ctx.lineTo(x, y + tl);
+        ctx.arcTo(x, y, x + tl, y, tl);
+      };
+    }
+
     const SPINE_X = 82, BOOK_Y = 30, BW = 108, BH = 162;
     let raf = 0, start = 0;
     let pageAngle = 0, pagePhase = 0, coverAngle = 0, coverFlipped = false;
