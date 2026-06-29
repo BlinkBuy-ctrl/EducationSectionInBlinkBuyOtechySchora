@@ -15,7 +15,7 @@ import AboutUs from "@/components/education/AboutUs";
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
-const ONBOARDING_KEY = "otechy_onboarding_done";
+const ONBOARDING_KEY = "schorahub_onboarding_done";
 
 function Skeleton() {
   return (
@@ -173,7 +173,7 @@ export default function EducationPage() {
                 <GraduationCap className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-base font-black text-white leading-tight">OtechySchora</h1>
+                <h1 className="text-base font-black text-white leading-tight">SchoraHub</h1>
                 <p className="text-[10px] text-purple-300 font-medium">Education Hub · Malawi</p>
               </div>
             </div>
