@@ -16,7 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'schorahub_auth_token',
-    storage: window.localStorage,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   },
   realtime: { params: { eventsPerSecond: 10 }, timeout: 20000 },
   global: { headers: { 'X-Client-Info': 'schorahub-web' } },
