@@ -756,7 +756,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
                 <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
                   <GraduationCap size={12} className="text-white" />
                 </div>
-                <span className="text-[12px] font-black text-slate-600 tracking-tight">OtechySchora</span>
+                <span className="text-[12px] font-black text-slate-600 tracking-tight">SchoraHub</span>
               </div>
             </div>
             <p className="text-[11px] text-slate-400 font-semibold">Made with care in Malawi 🇲🇼</p>

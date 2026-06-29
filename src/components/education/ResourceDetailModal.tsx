@@ -567,7 +567,7 @@ export function ResourceDetailModal({
                       <span className="text-xs font-bold text-foreground">{uploader.name}</span>
                       {uploader.is_verified && <BadgeCheck className="w-3 h-3 text-blue-400 shrink-0" />}
                     </div>
-                    <p className="text-[10px] text-muted-foreground truncate">{uploader.bio || "OtechySchora contributor"}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{uploader.bio || "SchoraHub contributor"}</p>
                   </div>
                 </div>
               )}

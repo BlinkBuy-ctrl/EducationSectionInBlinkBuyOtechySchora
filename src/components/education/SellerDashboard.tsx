@@ -363,7 +363,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
       <div className="flex items-start gap-2 bg-yellow-500/8 border border-yellow-500/20 rounded-xl px-3 py-2.5">
         <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
         <p className="text-[10px] text-yellow-600 dark:text-yellow-400 leading-relaxed">
-          Earnings shown are recorded purchases. Payouts are processed manually — contact OtechySchora to request a withdrawal.
+          Earnings shown are recorded purchases. Payouts are processed manually — contact SchoraHub to request a withdrawal.
         </p>
       </div>
     </div>
