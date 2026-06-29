@@ -1,7 +1,7 @@
 // Google sign-in removed — users are identified anonymously via localStorage UUID.
 // Theme helpers kept unchanged.
 
-const THEME_KEY = "otechyschora_theme";
+const THEME_KEY = "schorahub_theme";
 
 export function getTheme(): "light" | "dark" {
   return (localStorage.getItem(THEME_KEY) as "light" | "dark") || "light";
