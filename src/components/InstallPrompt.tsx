@@ -5,29 +5,38 @@ export function InstallPrompt() {
   const [prompt, setPrompt]   = useState<any>(null);
   const [visible, setVisible] = useState(false);
   const [hiding,  setHiding]  = useState(false);
+  const [isStandaloneMode, setIsStandaloneMode] = useState(false);
 
   useEffect(() => {
+    // Check standalone safely inside useEffect
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true;
+    setIsStandaloneMode(standalone);
+    if (standalone) return; // already installed, do nothing
+
+    // Check if dismissed recently
+    const dismissed = localStorage.getItem("schorahub_install_dismissed");
+    if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
+
     // Capture the beforeinstallprompt event
     const handler = (e: Event) => {
       e.preventDefault();
       setPrompt(e);
-      // Show after 2s so it doesn't feel intrusive
       setTimeout(() => setVisible(true), 2000);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // iOS Safari — show manual install tip if standalone not already
+    // iOS Safari — show manual install tip if not standalone
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = (navigator as any).standalone;
-    if (isIOS && !isStandalone) {
+    if (isIOS) {
       setTimeout(() => setVisible(true), 2000);
     }
 
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
-  // Don't show if already installed
-  if (window.matchMedia("(display-mode: standalone)").matches) return null;
+  if (isStandaloneMode) return null;
   if (!visible) return null;
 
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -47,10 +56,6 @@ export function InstallPrompt() {
     }
     dismiss();
   };
-
-  // Check if dismissed recently
-  const dismissed = localStorage.getItem("schorahub_install_dismissed");
-  if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return null;
 
   return (
     <div
