@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error(
-    '[OtechySchora] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing.\n' +
+    '[SchoraHub] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing.\n' +
     'Add both keys to your .env file or Vercel environment variables.'
   )
 }
@@ -15,9 +15,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    storageKey: 'otechyschora_auth_token',
+    storageKey: 'schorahub_auth_token',
     storage: window.localStorage,
   },
   realtime: { params: { eventsPerSecond: 10 }, timeout: 20000 },
-  global: { headers: { 'X-Client-Info': 'otechyschora-web' } },
+  global: { headers: { 'X-Client-Info': 'schorahub-web' } },
 })
