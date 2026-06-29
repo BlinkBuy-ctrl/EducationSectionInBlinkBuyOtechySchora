@@ -16,7 +16,7 @@ export function InstallPrompt() {
     if (standalone) return; // already installed, do nothing
 
     // Check if dismissed recently
-    const dismissed = localStorage.getItem("schorahub_install_dismissed");
+    const dismissed = localStorage.getItem("otechy_install_dismissed");
     if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
 
     // Capture the beforeinstallprompt event
@@ -45,7 +45,7 @@ export function InstallPrompt() {
     setHiding(true);
     setTimeout(() => setVisible(false), 400);
     // Don't show again for 3 days
-    localStorage.setItem("schorahub_install_dismissed", String(Date.now()));
+    localStorage.setItem("otechy_install_dismissed", String(Date.now()));
   };
 
   const install = async () => {
