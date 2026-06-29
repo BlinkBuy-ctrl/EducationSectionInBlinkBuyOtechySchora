@@ -79,7 +79,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       ctx.fillStyle = "rgba(196,181,253,0.6)";
       ctx.font = "bold 6px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("OtechySchora", 0, 3);
+      ctx.fillText("SchoraHub", 0, 3);
       ctx.restore();
     }
 
@@ -169,7 +169,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         ctx.beginPath(); ctx.roundRect(14, -BH/2+18, BW-28, 36, 6); ctx.fill();
         ctx.fillStyle = "#fff";
         ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("OtechySchora", BW/2, -BH/2+32);
+        ctx.fillText("SchoraHub", BW/2, -BH/2+32);
         ctx.fillStyle = "#c4b5fd";
         ctx.font = "7px sans-serif";
         ctx.fillText("Education Hub · Malawi", BW/2, -BH/2+46);
@@ -271,7 +271,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       <canvas ref={canvasRef} />
 
       <h1 style={{ color:"#fff", fontSize:22, fontWeight:900, marginTop:6, letterSpacing:-0.5 }}>
-        OtechySchora
+        SchoraHub
       </h1>
       <p style={{ color:"#a78bfa", fontSize:11, fontWeight:600, marginTop:3 }}>
         Education Hub · Malawi
@@ -299,7 +299,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         position:"absolute", bottom:28,
         color:"rgba(255,255,255,0.3)", fontSize:11, fontWeight:600,
       }}>
-        Powered By Otechy
+        Powered By OTECHY
       </p>
     </div>
   );

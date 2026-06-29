@@ -36,7 +36,7 @@ export function InstallPrompt() {
     setHiding(true);
     setTimeout(() => setVisible(false), 400);
     // Don't show again for 3 days
-    localStorage.setItem("otechy_install_dismissed", String(Date.now()));
+    localStorage.setItem("schorahub_install_dismissed", String(Date.now()));
   };
 
   const install = async () => {
@@ -49,7 +49,7 @@ export function InstallPrompt() {
   };
 
   // Check if dismissed recently
-  const dismissed = localStorage.getItem("otechy_install_dismissed");
+  const dismissed = localStorage.getItem("schorahub_install_dismissed");
   if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return null;
 
   return (
@@ -73,7 +73,7 @@ export function InstallPrompt() {
 
           {/* Text */}
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black text-sm leading-tight">Install OtechySchora</p>
+            <p className="text-white font-black text-sm leading-tight">Install SchoraHub</p>
             <p className="text-white/55 text-xs mt-0.5 leading-relaxed">
               {isIOS
                 ? 'Tap the Share button then "Add to Home Screen" for the full app experience.'

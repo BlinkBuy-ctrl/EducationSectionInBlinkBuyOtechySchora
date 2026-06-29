@@ -12,7 +12,7 @@ interface Step {
 const STEPS: Step[] = [
   {
     emoji: "👋",
-    title: "Welcome to OtechySchora!",
+    title: "Welcome to SchoraHub!",
     desc: "Malawi's education hub — past papers, textbooks, notes, scholarships & tutors. No account needed. Let's take a quick tour.",
     tooltipPos: "center",
   },

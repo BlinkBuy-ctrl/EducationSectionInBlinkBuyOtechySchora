@@ -77,7 +77,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
-            <span className="font-black text-white text-sm">OtechySchora</span>
+            <span className="font-black text-white text-sm">SchoraHub</span>
           </button>
           <div className="flex items-center gap-1">
             <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
