@@ -4,9 +4,28 @@ import { safeGetItem, safeSetItem } from '@/lib/storage'
 
 const ANON_ID_KEY = 'otechyschora_anon_id'
 
+/**
+ * crypto.randomUUID() requires Chrome 92+ (Aug 2021).
+ * Older Android WebViews (very common in Malawi on budget devices) don't have it.
+ * Calling it during React render throws TypeError → app crashes before ErrorBoundary can catch it.
+ */
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
+    return (crypto as any).randomUUID() as string
+  }
+  // RFC 4122 v4 fallback — cryptographically good enough for an anon session ID
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+}
+
 function getOrCreateAnonId(): string {
   let id = safeGetItem(ANON_ID_KEY)
-  if (!id) { id = crypto.randomUUID(); safeSetItem(ANON_ID_KEY, id) }
+  if (!id) {
+    id = generateUUID()
+    safeSetItem(ANON_ID_KEY, id)
+  }
   return id
 }
 
@@ -43,7 +62,7 @@ export function useAuthState(): AuthContextType {
 
   const ensureProfile = useCallback(async () => {
     const { error } = await supabase.from('profiles').upsert(
-      { id: anonId.current, name: `User-${anonId.current.slice(0,6)}`, role: 'customer', is_anon: true },
+      { id: anonId.current, name: `User-${anonId.current.slice(0, 6)}`, role: 'customer', is_anon: true },
       { onConflict: 'id', ignoreDuplicates: true }
     )
     if (error) console.error('ensureProfile:', error)
@@ -52,7 +71,10 @@ export function useAuthState(): AuthContextType {
 
   useEffect(() => { fetchProfile() }, [fetchProfile])
 
-  return { user, profile, isLoading, setProfile, ensureProfile, login: async()=>{}, register: async()=>{}, logout: async()=>{} }
+  return {
+    user, profile, isLoading, setProfile, ensureProfile,
+    login: async () => {}, register: async () => {}, logout: async () => {},
+  }
 }
 
 export function useAuth() { return useContext(AuthContext) }
