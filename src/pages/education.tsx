@@ -11,6 +11,7 @@ import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
 import { TutorsTab } from "@/components/education/TutorsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 type PriceFilter = "all" | "free" | "paid";
@@ -59,7 +60,7 @@ export default function EducationPage() {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem(ONBOARDING_KEY)) setTimeout(() => setShowOnboard(true), 800);
+    if (!safeGetItem(ONBOARDING_KEY)) setTimeout(() => setShowOnboard(true), 800);
   }, []);
 
   const fetchAll = async () => {
@@ -158,8 +159,8 @@ export default function EducationPage() {
 
       {showOnboard && (
         <OnboardingTutorial
-          onDone={() => { localStorage.setItem(ONBOARDING_KEY, "1"); setShowOnboard(false); }}
-          onUpload={() => { localStorage.setItem(ONBOARDING_KEY, "1"); setShowOnboard(false); handleUploadClick(); }}
+          onDone={() => { safeSetItem(ONBOARDING_KEY, "1"); setShowOnboard(false); }}
+          onUpload={() => { safeSetItem(ONBOARDING_KEY, "1"); setShowOnboard(false); handleUploadClick(); }}
         />
       )}
 
