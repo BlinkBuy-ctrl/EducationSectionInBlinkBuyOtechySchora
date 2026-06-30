@@ -84,7 +84,7 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
       <div className="bg-card border border-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg flex flex-col"
-        style={{ height: "92dvh", maxHeight: "92dvh" }}>
+        style={{ height: "90vh", maxHeight: "90vh" }}>
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">

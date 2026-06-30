@@ -515,7 +515,7 @@ export function ResourceDetailModal({
       >
         <div
           className="w-full max-w-lg bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"
-          style={{ height: "91dvh", maxHeight: "91dvh" }}
+          style={{ height: "90vh", maxHeight: "90vh" }}
           onClick={e => e.stopPropagation()}
         >
           {/* ── Header ── */}

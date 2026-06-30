@@ -43,7 +43,7 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
 
       <div className="w-full max-w-lg bg-card rounded-t-3xl flex flex-col overflow-hidden"
-        style={{ height: "93dvh", maxHeight: "93dvh" }}
+        style={{ height: "90vh", maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}>
 
         {/* ── Hero banner ── */}
