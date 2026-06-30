@@ -67,7 +67,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const isAlerts = loc === "/notifications";
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100dvh", overflow:"hidden" }}
+    <div style={{ display:"flex", flexDirection:"column", height:"calc(var(--vh,1vh) * 100)", overflow:"hidden" }}
          className="bg-background text-foreground">
 
       {/* ── Top bar ── */}
