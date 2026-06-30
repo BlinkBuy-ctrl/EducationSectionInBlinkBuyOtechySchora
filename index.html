@@ -46,5 +46,23 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!--
+      Belt-and-suspenders for browsers that don't support ES modules at all
+      (pre-2018 WebViews). Without this, those devices get a permanently
+      blank #root with zero feedback — indistinguishable from "the app
+      crashed" to the end user. <script nomodule> only executes on browsers
+      that don't understand type="module", so this never runs on supported
+      devices.
+    -->
+    <script nomodule>
+      document.getElementById('root').innerHTML =
+        '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+        'padding:24px;background:#060818;color:#fff;flex-direction:column;text-align:center;' +
+        'font-family:system-ui,-apple-system,sans-serif;">' +
+        '<h2 style="font-size:18px;font-weight:800;margin-bottom:8px;">Update needed</h2>' +
+        '<p style="font-size:13px;color:rgba(255,255,255,0.6);max-width:300px;">' +
+        'Your browser is too old to run SchoraHub. Please update Chrome / your ' +
+        'Android System WebView from the Play Store, then reopen the app.</p></div>';
+    </script>
   </body>
 </html>

@@ -51,6 +51,7 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   build: {
+    target: "es2015",
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
