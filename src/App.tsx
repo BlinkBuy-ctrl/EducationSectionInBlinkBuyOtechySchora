@@ -61,7 +61,17 @@ export default function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-        <AppInner />
+
+        {/*
+          Hidden (not unmounted) while splash is showing so:
+          - Supabase queries preload in the background during the splash animation
+          - The white/light-mode background is invisible — no flash
+          - All hooks mount only once, no re-mount cost after splash
+        */}
+        <div style={{ visibility: splashDone ? "visible" : "hidden", pointerEvents: splashDone ? "auto" : "none" }}>
+          <AppInner />
+        </div>
+
         <InstallPrompt />
       </QueryClientProvider>
     </ErrorBoundary>
