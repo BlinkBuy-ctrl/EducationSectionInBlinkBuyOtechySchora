@@ -2,36 +2,40 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Global safety net — catch unhandled promise rejections (e.g. Supabase offline)
+// ── Viewport height fix (iOS Safari / Android Chrome with browser chrome) ─────
+// 100vh in a browser tab includes the URL bar on some browsers, which causes
+// overflow. We calculate the real inner height and expose it as --vh so Layout
+// can use calc(var(--vh,1vh)*100) instead of 100vh.
+// In standalone PWA mode this equals 100vh exactly, so there's zero downside.
+function setVhVar() {
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty("--vh", `${vh}px`);
+}
+setVhVar();
+window.addEventListener("resize", setVhVar);
+window.addEventListener("orientationchange", () => setTimeout(setVhVar, 200));
+
+// ── Global safety nets ─────────────────────────────────────────────────────────
 window.addEventListener("unhandledrejection", (e) => {
   console.error("[Unhandled]", e.reason);
   e.preventDefault();
 });
-
-// Global JS error trap — logs crashes that would otherwise be silent on mobile
 window.addEventListener("error", (e) => {
   console.error("[GlobalError]", e.message, e.filename, e.lineno);
 });
 
+// ── Mount React ────────────────────────────────────────────────────────────────
 const rootEl = document.getElementById("root");
-if (!rootEl) {
-  throw new Error("[SchoraHub] #root element not found — check index.html");
-}
-
+if (!rootEl) throw new Error("[SchoraHub] #root element not found — check index.html");
 createRoot(rootEl).render(<App />);
 
-// Register the service worker.
-// Previously the SW file existed at public/sw.js but was NEVER registered,
-// meaning the PWA had no offline support and the install prompt was misleading.
+// ── Service Worker ─────────────────────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register("/sw.js")
       .then((reg) => {
         console.log("[SW] Registered, scope:", reg.scope);
-
-        // When a new SW is waiting, activate it immediately so the user
-        // always gets the latest build without needing a manual reload.
         reg.addEventListener("updatefound", () => {
           const newWorker = reg.installing;
           if (!newWorker) return;
@@ -42,8 +46,6 @@ if ("serviceWorker" in navigator) {
           });
         });
       })
-      .catch((err) => {
-        console.warn("[SW] Registration failed:", err);
-      });
+      .catch((err) => console.warn("[SW] Registration failed:", err));
   });
 }

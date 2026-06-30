@@ -57,21 +57,24 @@ function AppInner() {
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
 
+  // IMPORTANT: AppInner is only mounted AFTER the splash finishes.
+  //
+  // The previous approach (hidden div + visibility:hidden) mounted AppInner
+  // in parallel with the splash animation. On budget Android devices (Huawei
+  // EMUI, low-RAM phones) this meant:
+  //   - Canvas animation running at 60fps
+  //   - 5 parallel Supabase network requests
+  //   - WebSocket realtime subscription
+  //   - React lazy chunk downloading
+  //   ...all at the exact same moment → OOM → process killed → app closes.
+  //
+  // Sequential mount (splash first, then app) is slightly slower to show
+  // real content but is 100% stable on all devices.
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-
-        {/*
-          Hidden (not unmounted) while splash is showing so:
-          - Supabase queries preload in the background during the splash animation
-          - The white/light-mode background is invisible — no flash
-          - All hooks mount only once, no re-mount cost after splash
-        */}
-        <div style={{ visibility: splashDone ? "visible" : "hidden", pointerEvents: splashDone ? "auto" : "none" }}>
-          <AppInner />
-        </div>
-
+        {splashDone  && <AppInner />}
         <InstallPrompt />
       </QueryClientProvider>
     </ErrorBoundary>
