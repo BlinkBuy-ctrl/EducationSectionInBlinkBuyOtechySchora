@@ -1,11 +1,12 @@
 import { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { safeGetItem, safeSetItem } from '@/lib/storage'
 
 const ANON_ID_KEY = 'otechyschora_anon_id'
 
 function getOrCreateAnonId(): string {
-  let id = localStorage.getItem(ANON_ID_KEY)
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(ANON_ID_KEY, id) }
+  let id = safeGetItem(ANON_ID_KEY)
+  if (!id) { id = crypto.randomUUID(); safeSetItem(ANON_ID_KEY, id) }
   return id
 }
 
