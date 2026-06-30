@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { GraduationCap, BookOpen, Upload, Award, Search, X, FileText, Bookmark, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
@@ -46,16 +46,21 @@ export default function EducationPage() {
   const [tab,          setTab]          = useState<Tab>("resources");
   const [showOnboard,  setShowOnboard]  = useState(false);
 
+  // Ref so event listeners always call the latest handleUploadClick without stale closures
+  const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
+
   // Listen for bottom nav tab events
   useEffect(() => {
-    const handler = (e: Event) => {
+    const tabHandler = (e: Event) => {
       const t = (e as CustomEvent).detail as Tab;
       setTab(t);
     };
-    window.addEventListener("otechy:set-tab", handler);
-    window.addEventListener("otechy:open-upload", () => handleUploadClick());
+    const uploadHandler = () => { handleUploadClickRef.current(); };
+    window.addEventListener("otechy:set-tab", tabHandler);
+    window.addEventListener("otechy:open-upload", uploadHandler);
     return () => {
-      window.removeEventListener("otechy:set-tab", handler);
+      window.removeEventListener("otechy:set-tab", tabHandler);
+      window.removeEventListener("otechy:open-upload", uploadHandler);  // was missing — memory leak fixed
     };
   }, []);
 
@@ -144,6 +149,8 @@ export default function EducationPage() {
   };
 
   const handleUploadClick = async () => { await ensureProfile(); setShowUpload(true); };
+  // Keep ref in sync so the event listener always calls the latest version
+  handleUploadClickRef.current = handleUploadClick;
 
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length    },
