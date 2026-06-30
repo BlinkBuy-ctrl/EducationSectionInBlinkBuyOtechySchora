@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Download, GraduationCap } from "lucide-react";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 // Store the event at module level — this way it's captured even if it fires
 // before React mounts (which is almost always the case in Vite PWAs)
@@ -8,7 +9,6 @@ let _deferredPrompt: any = null;
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   _deferredPrompt = e;
-  // Dispatch a custom event so any mounted component can react
   window.dispatchEvent(new Event("schorahub:installready"));
 });
 
@@ -23,31 +23,26 @@ export function InstallPrompt() {
     (navigator as any).standalone === true;
 
   useEffect(() => {
-    // Already installed — never show
     if (isStandalone) return;
 
-    // Check if dismissed recently (3-day cooldown)
-    const dismissed = localStorage.getItem("otechy_install_dismissed");
+    const dismissed = safeGetItem("otechy_install_dismissed");
     if (dismissed && Date.now() - Number(dismissed) < 3 * 24 * 60 * 60 * 1000) return;
 
     const show = () => {
       timerRef.current = setTimeout(() => setVisible(true), 2500);
     };
 
-    // If prompt was already captured before mount, show immediately
     if (_deferredPrompt) {
       setPrompt(_deferredPrompt);
       show();
     }
 
-    // Listen in case it fires after mount
     const onReady = () => {
       setPrompt(_deferredPrompt);
       show();
     };
     window.addEventListener("schorahub:installready", onReady);
 
-    // iOS Safari — no beforeinstallprompt, show manual tip
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     if (isIOS) show();
 
@@ -65,7 +60,7 @@ export function InstallPrompt() {
   const dismiss = () => {
     setHiding(true);
     setTimeout(() => setVisible(false), 400);
-    localStorage.setItem("otechy_install_dismissed", String(Date.now()));
+    safeSetItem("otechy_install_dismissed", String(Date.now()));
   };
 
   const install = async () => {
@@ -92,16 +87,13 @@ export function InstallPrompt() {
       }}
     >
       <div className="bg-[#0f1428] border border-purple-500/40 rounded-2xl shadow-2xl shadow-purple-900/40 overflow-hidden">
-        {/* Top accent */}
         <div className="h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
 
         <div className="p-4 flex gap-3 items-start">
-          {/* Icon */}
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
 
-          {/* Text */}
           <div className="flex-1 min-w-0">
             <p className="text-white font-black text-sm leading-tight">Install SchoraHub</p>
             <p className="text-white/55 text-xs mt-0.5 leading-relaxed">
@@ -111,7 +103,6 @@ export function InstallPrompt() {
             </p>
           </div>
 
-          {/* Close */}
           <button
             onClick={dismiss}
             className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 text-white/50 shrink-0 active:scale-90 transition-transform"
