@@ -65,7 +65,6 @@ export default defineConfig({
         },
       },
     },
-    target: ["chrome72", "safari12", "firefox78"],
     minify: "esbuild",
     sourcemap: false,
   },
