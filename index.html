@@ -5,18 +5,43 @@
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#5b21b6" />
-    <meta name="description" content="Malawi's Education Hub — Past Papers, Textbooks, Scholarships & Tutors" />
+    <meta name="description" content="Malawi's Education Hub — Past Papers, Textbooks, Scholarships &amp; Tutors" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SchoraHub" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <!-- Prevent layout shift / blank flash on PWA launch -->
-    <style>
-      html, body { margin: 0; padding: 0; background: #060818; }
-      #root { min-height: 100vh; }
-    </style>
     <link rel="manifest" href="/manifest.json" />
+
+    <!--
+      Critical inline styles — must load before ANY JS or React paint.
+      This is what prevents the white flash on every device:
+        - html/body/root are forced dark from pixel 1
+        - overflow:hidden stops bounce/scroll during splash
+        - GPU layer (transform) means the WebView composites immediately
+    -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        background: #060818;
+        overflow: hidden;
+        -webkit-overflow-scrolling: touch;
+        /* Prevent iOS rubber-band on the root shell */
+        overscroll-behavior: none;
+      }
+      #root {
+        width: 100%;
+        /* Fallback height before JS sets --vh */
+        height: 100vh;
+        height: calc(var(--vh, 1vh) * 100);
+        background: #060818;
+        /* Force GPU compositing layer from first paint — kills the white flash */
+        -webkit-transform: translateZ(0);
+        transform: translateZ(0);
+        will-change: contents;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
