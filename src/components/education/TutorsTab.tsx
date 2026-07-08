@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import {
   Users, Heart, Phone, Mail, MapPin, BookOpen,
   Plus, X, Upload, Loader2, Wifi, WifiOff,
@@ -319,6 +319,14 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
   const onlineCount  = tutors.filter(t => t.is_online).length;
   const offlineCount = tutors.filter(t => !t.is_online).length;
 
+  // Client-side autocomplete pool — built from data already loaded, no extra fetch.
+  const searchSuggestions = useMemo(() => {
+    const subjects  = tutors.flatMap(t => t.subjects ?? []);
+    const names     = tutors.map(t => t.name).filter(Boolean);
+    const locations = tutors.map(t => t.location).filter(Boolean);
+    return [...new Set([...subjects, ...names, ...locations])];
+  }, [tutors]);
+
   return (
     <div className="flex flex-col gap-3">
       {/* Search + Register */}
@@ -330,6 +338,7 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
           ringColorClass="focus:ring-blue-500/40"
           className="flex-1"
           ariaLabel="Search tutors or subjects"
+          suggestionPool={searchSuggestions}
         />
         <button onClick={() => setShowForm(true)}
           className="shrink-0 flex items-center gap-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-sm shadow-blue-500/20">

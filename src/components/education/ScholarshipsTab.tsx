@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import {
   Award, Heart, MessageCircle, ExternalLink, ChevronDown,
   ChevronUp, Send, Plus, X, Upload, Loader2, Calendar,
@@ -341,6 +341,15 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
     );
   });
 
+  // Client-side autocomplete pool — built from data already loaded, no extra fetch.
+  const searchSuggestions = useMemo(() => {
+    const titles    = scholarships.map(s => s.title).filter(Boolean);
+    const providers = scholarships.map(s => s.provider).filter(Boolean);
+    const tags      = scholarships.flatMap(s => s.tags ?? []);
+    const countries = scholarships.map(s => s.country).filter(Boolean);
+    return [...new Set([...titles, ...providers, ...tags, ...countries])];
+  }, [scholarships]);
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -357,6 +366,7 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
         phrases={SCHOLARSHIP_SEARCH_PHRASES}
         ringColorClass="focus:ring-yellow-500/40"
         ariaLabel="Search scholarships"
+        suggestionPool={searchSuggestions}
       />
 
       {loading ? (
