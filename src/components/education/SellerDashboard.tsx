@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/lib/storage";
+import { triggerInstallPrompt, isAppInstalled } from "@/components/InstallPrompt";
 
 const APP_VERSION = "1.0.0"; // keep in sync with package.json
 const NOTIF_PREF_KEY = "otechyschora_notifications_enabled";
@@ -130,6 +131,18 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
   });
   const [resetting, setResetting] = useState(false);
   const [showGesturesInfo, setShowGesturesInfo] = useState(false);
+  const [installing, setInstalling] = useState(false);
+
+  const handleInstallApp = async () => {
+    setInstalling(true);
+    try {
+      const result = await triggerInstallPrompt();
+      if (result === "accepted") toast({ title: "✅ Installing SchoraHub…" });
+      else if (result === "dismissed") toast({ title: "Install cancelled" });
+      else if (result === "already-installed") toast({ title: "✅ Already installed" });
+      else toast({ title: "Install not available yet", description: "Browse the app for a moment, then try again — or use your browser menu → \"Add to Home screen\"." });
+    } finally { setInstalling(false); }
+  };
 
   const RESOURCE_PREVIEW_COUNT = 3;
   const TUTOR_PREVIEW_COUNT = 3;
@@ -585,7 +598,17 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
               </div>
             )}
 
-            {/* Install App — coming next, once wired to your existing InstallPrompt component */}
+            {/* Install App */}
+            <button onClick={handleInstallApp} disabled={installing || isAppInstalled()}
+              className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors border-b border-border/60 disabled:opacity-50">
+              <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
+                {installing ? <Loader2 className="w-4 h-4 text-green-400 animate-spin" /> : <Download className="w-4 h-4 text-green-400" />}
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-xs font-bold text-foreground">{isAppInstalled() ? "App Installed" : "Install App"}</p>
+                <p className="text-[10px] text-muted-foreground">{isAppInstalled() ? "Already on your home screen" : "Adds SchoraHub to your home screen"}</p>
+              </div>
+            </button>
 
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
