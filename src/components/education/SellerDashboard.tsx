@@ -5,7 +5,7 @@ import {
   FileText, Loader2, Trash2, AlertTriangle,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
-  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp
+  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -129,6 +129,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
     return saved === null ? true : saved === "1";
   });
   const [resetting, setResetting] = useState(false);
+  const [showGesturesInfo, setShowGesturesInfo] = useState(false);
 
   const RESOURCE_PREVIEW_COUNT = 3;
   const TUTOR_PREVIEW_COUNT = 3;
@@ -541,6 +542,50 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
                 <p className="text-[10px] text-muted-foreground">Clears your uploads & profile only</p>
               </div>
             </button>
+
+            {/* Gestures */}
+            <button onClick={() => setShowGesturesInfo(v => !v)}
+              className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors border-b border-border/60">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center shrink-0">
+                <Hand className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-xs font-bold text-foreground">Gestures</p>
+                <p className="text-[10px] text-muted-foreground">How the scroll-hint gesture works</p>
+              </div>
+              {showGesturesInfo ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+            </button>
+
+            {showGesturesInfo && (
+              <div className="px-4 py-4 bg-muted/20 border-b border-border/60">
+                <p className="text-[11px] font-bold text-foreground mb-1">Triple-Tap Scroll Hint Toggle</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">
+                  The Browse tabs row and the category filter row (Textbooks, Notes, Research…) gently
+                  slide left and right on their own, as a hint that you can scroll them. Tap either row
+                  <span className="font-bold text-foreground"> three times quickly</span> (within about
+                  half a second) to turn that hint animation off — and triple-tap again to turn it back on.
+                </p>
+                <svg viewBox="0 0 300 110" className="w-full max-w-[280px] mx-auto" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="10" y="35" width="280" height="40" rx="14" fill="currentColor" className="text-muted opacity-40" />
+                  {[70, 150, 230].map((cx, i) => (
+                    <g key={cx}>
+                      <circle cx={cx} cy="55" r="16" fill="none" stroke="currentColor" className="text-indigo-400" strokeWidth="2" />
+                      <text x={cx} y="60" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor" className="text-indigo-400">{i + 1}</text>
+                    </g>
+                  ))}
+                  <path d="M90 55 L134 55" stroke="currentColor" className="text-indigo-300" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <path d="M170 55 L214 55" stroke="currentColor" className="text-indigo-300" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <defs>
+                    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" className="text-indigo-300" />
+                    </marker>
+                  </defs>
+                  <text x="150" y="98" textAnchor="middle" fontSize="10" fontWeight="600" fill="currentColor" className="text-muted-foreground">Tap · Tap · Tap — fast, same spot</text>
+                </svg>
+              </div>
+            )}
+
+            {/* Install App — coming next, once wired to your existing InstallPrompt component */}
 
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
