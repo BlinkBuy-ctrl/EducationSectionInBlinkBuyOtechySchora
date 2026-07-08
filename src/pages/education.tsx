@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useRef } from "react";
+import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
 import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -233,6 +233,13 @@ export default function EducationPage() {
     return mS && mC && mP;
   });
 
+  // Client-side autocomplete pool — built from data already loaded, no extra fetch.
+  const searchSuggestions = useMemo(() => {
+    const titles = resources.map(r => r.title).filter(Boolean);
+    const categories = CATS.filter(c => c !== "All");
+    return [...new Set([...categories, ...titles])];
+  }, [resources]);
+
   const saved = resources.filter(r => bookmarks.has(r.id));
 
   const handleDownload = async (resource: any) => {
@@ -359,6 +366,7 @@ export default function EducationPage() {
               phrases={RESOURCE_SEARCH_PHRASES}
               ringColorClass="focus:ring-purple-500/50"
               ariaLabel="Search resources"
+              suggestionPool={searchSuggestions}
             />
           </div>
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
