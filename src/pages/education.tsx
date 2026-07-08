@@ -68,6 +68,19 @@ export default function EducationPage() {
     if (!safeGetItem(ONBOARDING_KEY)) setTimeout(() => setShowOnboard(true), 800);
   }, []);
 
+  // Fixed-position overlays can render far below the viewport on some mobile
+  // WebViews/PWAs once the page has been scrolled down a long resource list.
+  // Snapping scroll to top and locking body scroll while the modal is open
+  // guarantees the Upload modal always appears immediately, with no scrolling needed.
+  useEffect(() => {
+    if (showUpload) {
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prevOverflow; };
+    }
+  }, [showUpload]);
+
   const fetchAll = async () => {
     setLoading(true);
     try {
