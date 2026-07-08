@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext, useRef } from "react";
+import type { RefObject, MutableRefObject } from "react";
 import { GraduationCap, BookOpen, Upload, Award, Search, X, FileText, Bookmark, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
@@ -18,6 +19,69 @@ type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
+const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
+
+/**
+ * Slowly auto-scrolls a horizontally-scrollable row back and forth as a
+ * visual hint that it's scrollable. Pauses the moment the user touches it,
+ * resumes after a short idle period.
+ */
+function useScrollHintAnimation(ref: RefObject<HTMLDivElement>, enabled: boolean) {
+  const pausedRef = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let raf = 0;
+    let dir = 1; // 1 = right, -1 = left
+    const SPEED = 0.35; // px per frame — slow, subtle hint
+    let resumeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const step = () => {
+      if (enabled && !pausedRef.current) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll > 4) {
+          let next = el.scrollLeft + SPEED * dir;
+          if (next >= maxScroll) { next = maxScroll; dir = -1; }
+          else if (next <= 0) { next = 0; dir = 1; }
+          el.scrollLeft = next;
+        }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+
+    const pause = () => {
+      pausedRef.current = true;
+      if (resumeTimeout) clearTimeout(resumeTimeout);
+      resumeTimeout = setTimeout(() => { pausedRef.current = false; }, 2500);
+    };
+    el.addEventListener("touchstart", pause, { passive: true });
+    el.addEventListener("mousedown", pause);
+    el.addEventListener("wheel", pause, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (resumeTimeout) clearTimeout(resumeTimeout);
+      el.removeEventListener("touchstart", pause);
+      el.removeEventListener("mousedown", pause);
+      el.removeEventListener("wheel", pause);
+    };
+  }, [enabled, ref]);
+}
+
+/** Fires onTriple only after exactly 3 taps land within 650ms of each other. */
+function handleTripleTap(stateRef: MutableRefObject<{ count: number; timer: ReturnType<typeof setTimeout> | null }>, onTriple: () => void) {
+  const state = stateRef.current;
+  state.count += 1;
+  if (state.timer) clearTimeout(state.timer);
+  if (state.count >= 3) {
+    state.count = 0;
+    onTriple();
+  } else {
+    state.timer = setTimeout(() => { state.count = 0; }, 650);
+  }
+}
 
 function Skeleton() {
   return (
@@ -50,75 +114,45 @@ export default function EducationPage() {
   // Ref so event listeners always call the latest handleUploadClick without stale closures
   const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
 
-  // ── Tab bar "scroll hint" animation ─────────────────────────────
-  // The tabs row (Browse/Scholarships/Tutors/Saved/My Stats/About Us) overflows
-  // and scrolls horizontally, but nothing visually signals that to the user.
-  // This slowly auto-scrolls the row back and forth as a hint, pauses the
-  // moment the user touches it, and can be toggled on/off with a double-tap.
+  // ── Tab bar & category filter "scroll hint" animations ─────────────────
+  // Both rows overflow and scroll horizontally, but nothing visually signals
+  // that. Each auto-scrolls back and forth as a hint, pauses the instant the
+  // user touches it, and can be toggled on/off with a triple-tap.
   const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const catsScrollRef = useRef<HTMLDivElement>(null);
+
   const [tabHintEnabled, setTabHintEnabled] = useState(() => {
     const saved = safeGetItem(TAB_HINT_ANIM_KEY);
     return saved === null ? true : saved === "1";
   });
-  const tabAnimPaused = useRef(false);
-  const lastTapRef = useRef(0);
+  const [catHintEnabled, setCatHintEnabled] = useState(() => {
+    const saved = safeGetItem(CAT_HINT_ANIM_KEY);
+    return saved === null ? true : saved === "1";
+  });
 
-  useEffect(() => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
+  useScrollHintAnimation(tabsScrollRef, tabHintEnabled);
+  useScrollHintAnimation(catsScrollRef, catHintEnabled);
 
-    let raf = 0;
-    let dir = 1; // 1 = right, -1 = left
-    const SPEED = 0.35; // px per frame — slow, subtle hint
-    let resumeTimeout: ReturnType<typeof setTimeout> | null = null;
+  const tabsTapState = useRef({ count: 0, timer: null as ReturnType<typeof setTimeout> | null });
+  const catsTapState = useRef({ count: 0, timer: null as ReturnType<typeof setTimeout> | null });
 
-    const step = () => {
-      if (tabHintEnabled && !tabAnimPaused.current) {
-        const maxScroll = el.scrollWidth - el.clientWidth;
-        if (maxScroll > 4) {
-          let next = el.scrollLeft + SPEED * dir;
-          if (next >= maxScroll) { next = maxScroll; dir = -1; }
-          else if (next <= 0) { next = 0; dir = 1; }
-          el.scrollLeft = next;
-        }
-      }
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
+  const handleTabBarTap = () => handleTripleTap(tabsTapState, () => {
+    setTabHintEnabled(prev => {
+      const next = !prev;
+      safeSetItem(TAB_HINT_ANIM_KEY, next ? "1" : "0");
+      toast({ title: next ? "↔️ Tab scroll hint on" : "↔️ Tab scroll hint off" });
+      return next;
+    });
+  });
 
-    const pause = () => {
-      tabAnimPaused.current = true;
-      if (resumeTimeout) clearTimeout(resumeTimeout);
-      resumeTimeout = setTimeout(() => { tabAnimPaused.current = false; }, 2500);
-    };
-    el.addEventListener("touchstart", pause, { passive: true });
-    el.addEventListener("mousedown", pause);
-    el.addEventListener("wheel", pause, { passive: true });
-
-    return () => {
-      cancelAnimationFrame(raf);
-      if (resumeTimeout) clearTimeout(resumeTimeout);
-      el.removeEventListener("touchstart", pause);
-      el.removeEventListener("mousedown", pause);
-      el.removeEventListener("wheel", pause);
-    };
-  }, [tabHintEnabled]);
-
-  const handleTabBarTap = () => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 320) {
-      // Double-tap detected — toggle the hint animation on/off
-      setTabHintEnabled(prev => {
-        const next = !prev;
-        safeSetItem(TAB_HINT_ANIM_KEY, next ? "1" : "0");
-        toast({ title: next ? "↔️ Tab scroll hint on" : "↔️ Tab scroll hint off" });
-        return next;
-      });
-      lastTapRef.current = 0;
-    } else {
-      lastTapRef.current = now;
-    }
-  };
+  const handleCatsBarTap = () => handleTripleTap(catsTapState, () => {
+    setCatHintEnabled(prev => {
+      const next = !prev;
+      safeSetItem(CAT_HINT_ANIM_KEY, next ? "1" : "0");
+      toast({ title: next ? "↔️ Category scroll hint on" : "↔️ Category scroll hint off" });
+      return next;
+    });
+  });
 
   // Listen for bottom nav tab events
   useEffect(() => {
@@ -321,7 +355,12 @@ export default function EducationPage() {
               </button>
             ))}
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+          <div
+            ref={catsScrollRef}
+            onClick={handleCatsBarTap}
+            onTouchEnd={handleCatsBarTap}
+            className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide scroll-smooth"
+          >
             {CATS.map(c => (
               <button key={c} onClick={() => setCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${cat === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
                 {c}
