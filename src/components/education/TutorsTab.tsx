@@ -1,12 +1,22 @@
 import { useState, useRef } from "react";
 import {
   Users, Heart, Phone, Mail, MapPin, BookOpen,
-  Plus, X, Upload, Loader2, Search, Wifi, WifiOff,
+  Plus, X, Upload, Loader2, Wifi, WifiOff,
   MessageSquare, BadgeCheck, ChevronRight, Star
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TutorDetailModal } from "@/components/education/TutorDetailModal";
+import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { useToast } from "@/hooks/use-toast";
+
+const TUTOR_SEARCH_PHRASES = [
+  "Search Maths tutor…",
+  "Search Physics tutor…",
+  "Search Online tutor…",
+  "Search Chichewa tutor…",
+  "Search Biology tutor…",
+  "Search by location…",
+];
 
 interface Props {
   tutors: any[];
@@ -313,12 +323,14 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
     <div className="flex flex-col gap-3">
       {/* Search + Register */}
       <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search tutors or subjects…"
-            className="w-full bg-background border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/40" />
-        </div>
+        <AnimatedSearchInput
+          value={search}
+          onChange={setSearch}
+          phrases={TUTOR_SEARCH_PHRASES}
+          ringColorClass="focus:ring-blue-500/40"
+          className="flex-1"
+          ariaLabel="Search tutors or subjects"
+        />
         <button onClick={() => setShowForm(true)}
           className="shrink-0 flex items-center gap-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-sm shadow-blue-500/20">
           <Plus className="w-3.5 h-3.5" /> Register

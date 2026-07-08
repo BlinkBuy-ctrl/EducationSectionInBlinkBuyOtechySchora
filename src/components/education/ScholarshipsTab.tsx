@@ -6,7 +6,17 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
+import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { useToast } from "@/hooks/use-toast";
+
+const SCHOLARSHIP_SEARCH_PHRASES = [
+  "Search Fawema Scholarships…",
+  "Search STEM Scholarships…",
+  "Search Undergraduate…",
+  "Search MASAF…",
+  "Search by country…",
+  "Search Women in STEM…",
+];
 
 interface Props {
   scholarships: any[];
@@ -316,6 +326,20 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
 export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensureProfile }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState<any>(null);
+  const [search,   setSearch]   = useState("");
+
+  const filtered = scholarships.filter(s => {
+    const q = search.toLowerCase();
+    if (!q) return true;
+    return (
+      s.title?.toLowerCase().includes(q) ||
+      s.provider?.toLowerCase().includes(q) ||
+      s.description?.toLowerCase().includes(q) ||
+      s.country?.toLowerCase().includes(q) ||
+      s.study_level?.toLowerCase().includes(q) ||
+      (s.tags ?? []).some((tag: string) => tag.toLowerCase().includes(q))
+    );
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -326,6 +350,14 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
             <Plus className="w-3.5 h-3.5" /> Post Scholarship
           </button>
       </div>
+
+      <AnimatedSearchInput
+        value={search}
+        onChange={setSearch}
+        phrases={SCHOLARSHIP_SEARCH_PHRASES}
+        ringColorClass="focus:ring-yellow-500/40"
+        ariaLabel="Search scholarships"
+      />
 
       {loading ? (
         Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 rounded-2xl bg-muted/50 animate-pulse" />)
@@ -341,8 +373,16 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
               <Plus className="w-4 h-4" /> Post Scholarship
             </button>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center">
+            <Award className="w-7 h-7 text-yellow-500" />
+          </div>
+          <p className="font-semibold text-foreground">No scholarships match</p>
+          <p className="text-sm text-muted-foreground">Try a different search.</p>
+        </div>
       ) : (
-        scholarships.map(s => <ScholarshipCard key={s.id} s={s} user={user} onOpen={setSelected} />)
+        filtered.map(s => <ScholarshipCard key={s.id} s={s} user={user} onOpen={setSelected} />)
       )}
 
       {showForm && (
