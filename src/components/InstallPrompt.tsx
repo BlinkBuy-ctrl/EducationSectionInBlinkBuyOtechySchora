@@ -5,12 +5,49 @@ import { safeGetItem, safeSetItem } from "@/lib/storage";
 // Store the event at module level — this way it's captured even if it fires
 // before React mounts (which is almost always the case in Vite PWAs)
 let _deferredPrompt: any = null;
+let _installed = false;
 
 window.addEventListener("beforeinstallprompt", (e) => {
   e.preventDefault();
   _deferredPrompt = e;
   window.dispatchEvent(new Event("schorahub:installready"));
 });
+
+window.addEventListener("appinstalled", () => {
+  _installed = true;
+  _deferredPrompt = null;
+  window.dispatchEvent(new Event("schorahub:installed"));
+});
+
+/**
+ * Shared helpers so OTHER components (e.g. the "Install App" button in
+ * Settings) can trigger the exact same captured install prompt instead of
+ * registering a second `beforeinstallprompt` listener, which could cause
+ * conflicts since the browser event can only be consumed once.
+ */
+export function isAppInstalled(): boolean {
+  if (_installed) return true;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as any).standalone === true
+  );
+}
+
+export type InstallOutcome = "accepted" | "dismissed" | "unavailable" | "already-installed";
+
+export async function triggerInstallPrompt(): Promise<InstallOutcome> {
+  if (isAppInstalled()) return "already-installed";
+  if (!_deferredPrompt) return "unavailable";
+
+  _deferredPrompt.prompt();
+  const { outcome } = await _deferredPrompt.userChoice;
+  _deferredPrompt = null;
+  if (outcome === "accepted") {
+    _installed = true;
+    window.dispatchEvent(new Event("schorahub:installed"));
+  }
+  return outcome === "accepted" ? "accepted" : "dismissed";
+}
 
 export function InstallPrompt() {
   const [prompt, setPrompt]     = useState<any>(() => _deferredPrompt);
@@ -46,8 +83,12 @@ export function InstallPrompt() {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     if (isIOS) show();
 
+    const onInstalled = () => setVisible(false);
+    window.addEventListener("schorahub:installed", onInstalled);
+
     return () => {
       window.removeEventListener("schorahub:installready", onReady);
+      window.removeEventListener("schorahub:installed", onInstalled);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
