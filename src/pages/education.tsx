@@ -17,6 +17,7 @@ const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] a
 type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
+const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 
 function Skeleton() {
   return (
@@ -48,6 +49,76 @@ export default function EducationPage() {
 
   // Ref so event listeners always call the latest handleUploadClick without stale closures
   const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
+
+  // ── Tab bar "scroll hint" animation ─────────────────────────────
+  // The tabs row (Browse/Scholarships/Tutors/Saved/My Stats/About Us) overflows
+  // and scrolls horizontally, but nothing visually signals that to the user.
+  // This slowly auto-scrolls the row back and forth as a hint, pauses the
+  // moment the user touches it, and can be toggled on/off with a double-tap.
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const [tabHintEnabled, setTabHintEnabled] = useState(() => {
+    const saved = safeGetItem(TAB_HINT_ANIM_KEY);
+    return saved === null ? true : saved === "1";
+  });
+  const tabAnimPaused = useRef(false);
+  const lastTapRef = useRef(0);
+
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    let dir = 1; // 1 = right, -1 = left
+    const SPEED = 0.35; // px per frame — slow, subtle hint
+    let resumeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const step = () => {
+      if (tabHintEnabled && !tabAnimPaused.current) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        if (maxScroll > 4) {
+          let next = el.scrollLeft + SPEED * dir;
+          if (next >= maxScroll) { next = maxScroll; dir = -1; }
+          else if (next <= 0) { next = 0; dir = 1; }
+          el.scrollLeft = next;
+        }
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+
+    const pause = () => {
+      tabAnimPaused.current = true;
+      if (resumeTimeout) clearTimeout(resumeTimeout);
+      resumeTimeout = setTimeout(() => { tabAnimPaused.current = false; }, 2500);
+    };
+    el.addEventListener("touchstart", pause, { passive: true });
+    el.addEventListener("mousedown", pause);
+    el.addEventListener("wheel", pause, { passive: true });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (resumeTimeout) clearTimeout(resumeTimeout);
+      el.removeEventListener("touchstart", pause);
+      el.removeEventListener("mousedown", pause);
+      el.removeEventListener("wheel", pause);
+    };
+  }, [tabHintEnabled]);
+
+  const handleTabBarTap = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 320) {
+      // Double-tap detected — toggle the hint animation on/off
+      setTabHintEnabled(prev => {
+        const next = !prev;
+        safeSetItem(TAB_HINT_ANIM_KEY, next ? "1" : "0");
+        toast({ title: next ? "↔️ Tab scroll hint on" : "↔️ Tab scroll hint off" });
+        return next;
+      });
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  };
 
   // Listen for bottom nav tab events
   useEffect(() => {
@@ -218,7 +289,13 @@ export default function EducationPage() {
       </div>
 
       {/* Tabs */}
-      <div data-tour="tabs" className="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4 overflow-x-auto scrollbar-hide">
+      <div
+        data-tour="tabs"
+        ref={tabsScrollRef}
+        onClick={handleTabBarTap}
+        onTouchEnd={handleTabBarTap}
+        className="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4 overflow-x-auto scrollbar-hide scroll-smooth"
+      >
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold py-2 px-2.5 rounded-lg transition-all ${tab === t.key ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm" : "text-muted-foreground"}`}>
