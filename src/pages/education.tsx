@@ -1,9 +1,10 @@
 import { useState, useEffect, useContext, useRef } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, Search, X, FileText, Bookmark, Users } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
 import { UploadModal } from "@/components/education/UploadModal";
@@ -15,6 +16,15 @@ import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
+const RESOURCE_SEARCH_PHRASES = [
+  "Search Physics…",
+  "Search Chemistry…",
+  "Search Agriculture…",
+  "Search Mathematics…",
+  "Search Biology…",
+  "Search Past Papers…",
+  "Search Textbooks…",
+];
 type PriceFilter = "all" | "free" | "paid";
 type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
@@ -342,11 +352,14 @@ export default function EducationPage() {
       {/* Browse */}
       {tab === "resources" && (
         <>
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search resources…"
-              className="w-full bg-background border border-border rounded-xl pl-9 pr-8 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
-            {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="w-4 h-4 text-muted-foreground" /></button>}
+          <div className="mb-3">
+            <AnimatedSearchInput
+              value={search}
+              onChange={setSearch}
+              phrases={RESOURCE_SEARCH_PHRASES}
+              ringColorClass="focus:ring-purple-500/50"
+              ariaLabel="Search resources"
+            />
           </div>
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
             {(["all","free","paid"] as PriceFilter[]).map(f => (
