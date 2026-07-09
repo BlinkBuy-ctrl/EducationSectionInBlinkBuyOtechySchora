@@ -18,9 +18,10 @@ interface AdvertCardProps {
   userId: string;
   myReaction: "like" | "dislike" | null;
   onReactionChange: (advertId: string, reaction: "like" | "dislike" | null, counts: { like_count: number; dislike_count: number }) => void;
+  isActive: boolean;
 }
 
-export function AdvertCard({ advert, userId, myReaction, onReactionChange }: AdvertCardProps) {
+export function AdvertCard({ advert, userId, myReaction, onReactionChange, isActive }: AdvertCardProps) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
 
@@ -36,6 +37,20 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange }: Adv
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
+
+  // Pause the instant this card scrolls out of view, play when it becomes
+  // the active card — stops the "previous video still playing" issue.
+  useEffect(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (isActive) {
+      p.play?.();
+      setPaused(false);
+    } else {
+      p.pause?.();
+      setPaused(true);
+    }
+  }, [isActive]);
 
   const toggleMute = () => {
     const p = playerRef.current;
