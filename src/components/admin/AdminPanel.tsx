@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import {
   X, Loader2, BadgeCheck, AlertTriangle, Trash2,
-  Megaphone, LayoutGrid, LogOut,
+  Megaphone, LayoutGrid, LogOut, Video,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
 import { useToast } from "@/hooks/use-toast";
+import { AdvertsAdmin } from "@/components/admin/AdvertsAdminForm";
 
 interface AdminPanelProps {
   profile: AdminProfile;
@@ -46,7 +47,7 @@ const EMPTY_AD_CONFIG: AdConfig = {
 };
 
 export function AdminPanel({ profile, onClose }: AdminPanelProps) {
-  const [tab, setTab] = useState<"content" | "ads">("content");
+  const [tab, setTab] = useState<"content" | "ads" | "adverts">("content");
 
   const handleClose = async () => {
     await signOutAdmin(); // never leave an admin session sitting open in the background
@@ -67,13 +68,14 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 px-4 pt-3 shrink-0">
+      <div className="flex gap-1 px-4 pt-3 shrink-0 overflow-x-auto scrollbar-hide">
         <TabButton active={tab === "content"} onClick={() => setTab("content")} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Content" />
         <TabButton active={tab === "ads"} onClick={() => setTab("ads")} icon={<Megaphone className="w-3.5 h-3.5" />} label="Ads" />
+        <TabButton active={tab === "adverts"} onClick={() => setTab("adverts")} icon={<Video className="w-3.5 h-3.5" />} label="Adverts" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        {tab === "content" ? <ContentModeration /> : <AdConfigEditor adminId={profile.id} />}
+        {tab === "content" ? <ContentModeration /> : tab === "ads" ? <AdConfigEditor adminId={profile.id} /> : <AdvertsAdmin />}
       </div>
 
       <button
@@ -90,7 +92,7 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+      className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
         active ? "bg-blue-600 text-white" : "bg-card border border-border text-muted-foreground"
       }`}
     >
