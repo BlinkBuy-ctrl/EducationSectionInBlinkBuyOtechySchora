@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useContext, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X, Download, Lock, Star, FileText,
   User, Calendar, BookOpen, Bookmark, BookmarkCheck,
@@ -507,7 +508,7 @@ export function ResourceDetailModal({
     } finally { setSubmitting(false); }
   };
 
-  return (
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
@@ -693,6 +694,7 @@ export function ResourceDetailModal({
       </div>
 
       {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} />}
-    </>
+    </>,
+    document.body
   );
 }

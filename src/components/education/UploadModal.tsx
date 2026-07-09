@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle, Image } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -151,7 +152,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
       onClick={e => { if (e.target === e.currentTarget && !isLoading) onClose(); }}>
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto">
@@ -279,6 +280,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

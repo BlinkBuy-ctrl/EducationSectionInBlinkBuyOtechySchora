@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, Heart, Phone, Mail, MapPin, BookOpen,
-  Wifi, WifiOff, BadgeCheck, MessageSquare, Star
+  Wifi, WifiOff, BadgeCheck, MessageSquare, Star, AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -97,6 +97,19 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
           <div className="pt-10 px-4 pb-6 flex flex-col gap-5">
+
+            {/* Scam warning — shown when admin has flagged this tutor */}
+            {t.is_scam && (
+              <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2.5">
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-red-400">Reported by our team</p>
+                  <p className="text-[11px] text-red-400/80 mt-0.5 leading-relaxed">
+                    {t.scam_reason || "This tutor profile has been flagged. Proceed with caution and verify details independently before paying anything."}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Stats row */}
             <div className="flex gap-2">
