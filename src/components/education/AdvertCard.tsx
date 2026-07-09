@@ -72,7 +72,7 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange }: Adv
         loop
         autoPlay="muted"
         playsInline
-        style={{ width: "100%", height: "100%", "--controls": "none" } as React.CSSProperties}
+        style={{ width: "100%", height: "100%", "--controls": "none" } as React.CSSProperties & Record<`--${string}`, string>}
       />
 
       {/* Title / description overlay */}
