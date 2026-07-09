@@ -59,7 +59,7 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div>
           <p className="text-sm font-bold">Admin Panel</p>
-          <p className="text-xs text-muted-foreground">{profile.name || profile.email}</p>
+          <p className="text-xs text-muted-foreground">{profile.name}</p>
         </div>
         <button onClick={handleClose} className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
           <X className="w-4 h-4" />
