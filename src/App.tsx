@@ -7,6 +7,7 @@ import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { SplashScreen } from "@/components/SplashScreen";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { AdOverlay } from "@/components/AdOverlay";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const EducationPage     = lazy(() => import("@/pages/education"));
@@ -50,6 +51,7 @@ function AppInner() {
         </Route>
       </Switch>
       <Toaster />
+      <AdOverlay />
     </AuthContext.Provider>
   );
 }
