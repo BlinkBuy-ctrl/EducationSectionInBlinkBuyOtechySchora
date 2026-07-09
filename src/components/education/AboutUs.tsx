@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import type { MutableRefObject } from "react";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 import {
   ArrowLeft,
   Mail,
@@ -96,29 +98,25 @@ const teamMembers: TeamMember[] = [
   },
 ];
 
-const storyScenes = [
-  { date: "2025", lines: ["The MSCE holiday began.", "Most students rested."] },
-  {
-    date: "Week 1",
-    lines: ["A small group decided differently.", "No classroom. No teacher.", "No equipment to speak of."],
-  },
-  { date: "Week 2", lines: ["Only curiosity.", "Slow internet.", "Late nights."] },
-  {
-    date: "Week 3",
-    lines: ["Python first.", "Then JavaScript.", "Then React.", "Projects that failed.", "Projects that worked."],
-  },
-  { date: "Week 4", lines: ["AI. Cybersecurity. Prompt Engineering.", "Learning never stopped."] },
-  {
-    date: "Today",
-    lines: ["That group became OTECHY.", "And OTECHY built SchoraHub.", "For every Malawian student who needs it."],
-    highlight: true,
-  },
-];
-
 const techStack = [
   "Python", "JavaScript", "React", "TypeScript", "Supabase",
   "Tailwind CSS", "AI Engineering", "Prompt Engineering", "Cybersecurity", "Software Dev",
 ];
+
+const CAROUSEL_HINT_KEY = "otechy_team_carousel_hint_enabled";
+
+/** Fires onTriple only after exactly 3 taps land within 650ms of each other. */
+function handleTripleTap(stateRef: MutableRefObject<{ count: number; timer: ReturnType<typeof setTimeout> | null }>, onTriple: () => void) {
+  const state = stateRef.current;
+  state.count += 1;
+  if (state.timer) clearTimeout(state.timer);
+  if (state.count >= 3) {
+    state.count = 0;
+    onTriple();
+  } else {
+    state.timer = setTimeout(() => { state.count = 0; }, 650);
+  }
+}
 
 // ─── Reveal ───────────────────────────────────────────────────────────────────
 function useReveal() {
@@ -194,6 +192,46 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
 
   useEffect(() => { setImgErr(false); }, [active]);
 
+  // ── Auto-advance "scroll hint" ─────────────────────────────────────
+  // Slowly cycles through team members on its own, bouncing back at the
+  // ends, as a hint that the card is browsable. Pauses on manual
+  // swipe/drag, resumes after a short idle period, and can be toggled
+  // on/off with a triple-tap on the card.
+  const [hintEnabled, setHintEnabled] = useState(() => {
+    const saved = safeGetItem(CAROUSEL_HINT_KEY);
+    return saved === null ? true : saved === "1";
+  });
+  const pausedRef = useRef(false);
+  const dirRef = useRef(1);
+  const tapState = useRef({ count: 0, timer: null as ReturnType<typeof setTimeout> | null });
+
+  useEffect(() => {
+    if (!hintEnabled) return;
+    const interval = setInterval(() => {
+      if (pausedRef.current) return;
+      setActive(prev => {
+        let next = prev + dirRef.current;
+        if (next >= members.length - 1) { next = members.length - 1; dirRef.current = -1; }
+        else if (next <= 0) { next = 0; dirRef.current = 1; }
+        return next;
+      });
+    }, 3200);
+    return () => clearInterval(interval);
+  }, [hintEnabled, members.length]);
+
+  const pauseHint = () => {
+    pausedRef.current = true;
+    setTimeout(() => { pausedRef.current = false; }, 4000);
+  };
+
+  const handleCardTap = () => handleTripleTap(tapState, () => {
+    setHintEnabled(prev => {
+      const next = !prev;
+      safeSetItem(CAROUSEL_HINT_KEY, next ? "1" : "0");
+      return next;
+    });
+  });
+
   const m = members[active];
 
   return (
@@ -202,18 +240,20 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
       <div
         className="rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing"
         style={{ background: "#fff", border: `1.5px solid ${m.accent}25`, boxShadow: `0 4px 24px rgba(0,0,0,0.08), 0 1px 4px ${m.accent}18` }}
-        onTouchStart={(e) => { startX.current = e.touches[0].clientX; dragging.current = true; }}
+        onTouchStart={(e) => { startX.current = e.touches[0].clientX; dragging.current = true; pauseHint(); }}
         onTouchEnd={(e) => {
           if (!dragging.current) return;
           const dx = e.changedTouches[0].clientX - startX.current;
           if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
+          else handleCardTap();
           dragging.current = false;
         }}
-        onMouseDown={(e) => { startX.current = e.clientX; dragging.current = true; }}
+        onMouseDown={(e) => { startX.current = e.clientX; dragging.current = true; pauseHint(); }}
         onMouseUp={(e) => {
           if (!dragging.current) return;
           const dx = e.clientX - startX.current;
           if (Math.abs(dx) > 40) goTo(active + (dx < 0 ? 1 : -1));
+          else handleCardTap();
           dragging.current = false;
         }}
       >
@@ -254,7 +294,7 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
           {/* Nav arrows */}
           <div className="absolute bottom-3.5 right-3.5 flex gap-2 z-10">
             <button
-              onClick={() => goTo(active - 1)}
+              onClick={() => { pauseHint(); goTo(active - 1); }}
               disabled={active === 0}
               className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity bg-white shadow-sm border border-slate-100"
               style={{ opacity: active === 0 ? 0.3 : 1 }}
@@ -263,7 +303,7 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
               <ChevronLeft size={16} className="text-slate-500" />
             </button>
             <button
-              onClick={() => goTo(active + 1)}
+              onClick={() => { pauseHint(); goTo(active + 1); }}
               disabled={active === members.length - 1}
               className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity bg-white shadow-sm border border-slate-100"
               style={{ opacity: active === members.length - 1 ? 0.3 : 1 }}
@@ -304,14 +344,16 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
         {members.map((mem, i) => (
           <button
             key={i}
-            onClick={() => goTo(i)}
+            onClick={() => { pauseHint(); goTo(i); }}
             aria-label={`Go to ${mem.name}`}
             className="rounded-full transition-all duration-300"
             style={{ width: i === active ? 20 : 7, height: 7, background: i === active ? m.accent : "#DDD6FE" }}
           />
         ))}
       </div>
-      <p className="text-center text-[10px] text-slate-400 font-medium mt-2">← swipe to meet the team →</p>
+      <p className="text-center text-[10px] text-slate-400 font-medium mt-2">
+        ← swipe to meet the team → {hintEnabled ? "" : "· auto-play off"}
+      </p>
     </div>
   );
 }
@@ -352,7 +394,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
 
           {/* Logo */}
           <img
-            src="/otechy"
+            src="/otechy.jpg"
             alt="OTECHY"
             className="h-7 w-auto object-contain"
             onError={(e) => {
@@ -398,7 +440,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
             <Reveal>
               <div className="mb-6">
                 <img
-                  src="/otechy"
+                  src="/otechy.jpg"
                   alt="OTECHY"
                   className="h-12 w-auto object-contain"
                   onError={(e) => {
@@ -474,13 +516,13 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         </section>
 
         {/* ════════════════════════════════════════════════
-            ORIGIN STORY
+            ORIGIN & FOUNDER — merged, condensed
         ════════════════════════════════════════════════ */}
         <section className="px-4 pb-12">
           <Reveal><SectionLabel>The Origin</SectionLabel></Reveal>
 
           <Reveal delay={40}>
-            <h2 className="text-xl font-black tracking-tight text-slate-800 mb-7 leading-tight">
+            <h2 className="text-xl font-black tracking-tight text-slate-800 mb-5 leading-tight">
               A holiday that changed{" "}
               <span style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 everything.
@@ -488,56 +530,20 @@ export default function AboutUs({ onBack }: AboutUsProps) {
             </h2>
           </Reveal>
 
-          <div className="relative">
-            {/* Rail */}
-            <div className="absolute left-[22px] top-0 bottom-0 w-px bg-violet-100" />
+          <Reveal delay={60}>
+            <p className="text-[13.5px] text-slate-500 leading-relaxed font-medium mb-6">
+              During a school holiday, a small group of self-taught Malawian students picked up Python, then
+              JavaScript, then React — through slow internet, late nights, and projects that failed before
+              they worked. That group became <span className="font-black text-violet-600">OTECHY</span>, and
+              OTECHY built <span className="font-black text-violet-600">SchoraHub</span> — for every Malawian
+              student who needs it.
+            </p>
+          </Reveal>
 
-            {storyScenes.map((scene, i) => (
-              <Reveal key={i} delay={i * 60}>
-                <div className="flex gap-5 pb-7">
-                  <div className="flex-shrink-0 w-11 flex items-start justify-center pt-1">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{
-                        background: scene.highlight ? "linear-gradient(135deg, #7C3AED, #3B82F6)" : "#DDD6FE",
-                        border: scene.highlight ? "2px solid #7C3AED" : "2px solid #C4B5FD",
-                        boxShadow: scene.highlight ? "0 0 8px rgba(124,58,237,0.35)" : "none",
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1 -mt-0.5">
-                    <p className="text-[9px] font-black tracking-[0.25em] uppercase mb-1.5" style={{ color: scene.highlight ? "#7C3AED" : "#C4B5FD" }}>
-                      {scene.date}
-                    </p>
-                    {scene.lines.map((line, j) => (
-                      <p key={j} className="font-semibold leading-snug mb-1" style={{ fontSize: "14.5px", color: scene.highlight ? "#1E1B4B" : "#64748B" }}>
-                        {line}
-                      </p>
-                    ))}
-                    {scene.highlight && (
-                      <div className="mt-3 rounded-xl px-4 py-3 bg-violet-50 border border-violet-100">
-                        <p className="text-[11px] text-violet-700 leading-relaxed font-medium">
-                          OTECHY is more than a startup — it's proof that talent can emerge from anywhere when people choose to learn.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        {/* ════════════════════════════════════════════════
-            FOUNDER SPOTLIGHT
-        ════════════════════════════════════════════════ */}
-        <section className="px-4 pb-12">
-          <Reveal><SectionLabel>Founder</SectionLabel></Reveal>
-
-          <Reveal delay={50}>
+          <Reveal delay={90}>
             <div className="rounded-2xl overflow-hidden bg-white border border-violet-100 shadow-sm">
               {/* Portrait */}
-              <div className="relative" style={{ height: 320 }}>
+              <div className="relative" style={{ height: 280 }}>
                 <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#7C3AED" className="w-full h-full" />
                 <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.45) 38%, transparent 65%)" }} />
                 <div className="absolute top-4 left-4">
@@ -562,14 +568,6 @@ export default function AboutUs({ onBack }: AboutUsProps) {
                   </p>
                 </div>
 
-                {/* Vision */}
-                <div className="rounded-xl p-4 mb-4 bg-violet-50 border border-violet-100">
-                  <p className="text-[9px] font-black tracking-[0.25em] uppercase text-violet-400 mb-2">Vision</p>
-                  <p className="text-[12px] text-slate-600 leading-relaxed font-medium">
-                    A Malawi where every student has the same access to quality learning — regardless of their school, family, or location.
-                  </p>
-                </div>
-
                 <div className="flex flex-wrap gap-1.5">
                   {founder.skills.map((s) => (
                     <span key={s.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200">
@@ -583,35 +581,24 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         </section>
 
         {/* ════════════════════════════════════════════════
-            MISSION & VISION
+            MISSION & VISION — merged into one card
         ════════════════════════════════════════════════ */}
         <section className="px-4 pb-12">
           <Reveal><SectionLabel>Purpose</SectionLabel></Reveal>
 
-          <div className="space-y-3">
-            <Reveal delay={40}>
-              <div className="rounded-2xl p-5 bg-white border border-violet-100 shadow-sm">
-                <p className="text-[9px] font-black tracking-[0.3em] uppercase text-violet-400 mb-3">Mission</p>
-                <p className="text-[14px] text-slate-700 font-bold leading-snug">
-                  Provide free access to books, tutors, and scholarships — so every Malawian student can{" "}
-                  <span className="text-violet-600">unlock their potential.</span>
-                </p>
-              </div>
-            </Reveal>
+          <Reveal delay={40}>
+            <div className="rounded-2xl p-5 bg-white border border-violet-100 shadow-sm">
+              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-violet-400 mb-2.5">Mission & Vision</p>
+              <p className="text-[14px] text-slate-700 font-bold leading-snug">
+                Free access to books, tutors, and scholarships — so every Malawian student can{" "}
+                <span className="text-violet-600">unlock their potential</span>, no matter their{" "}
+                <span className="text-blue-600">geography or income.</span>
+              </p>
+            </div>
+          </Reveal>
 
-            <Reveal delay={70}>
-              <div className="rounded-2xl p-5 bg-white border border-blue-100 shadow-sm">
-                <p className="text-[9px] font-black tracking-[0.3em] uppercase text-blue-400 mb-3">Vision</p>
-                <p className="text-[14px] text-slate-700 font-bold leading-snug">
-                  A future where geography and income never determine a student's{" "}
-                  <span className="text-blue-600">access to knowledge.</span>
-                </p>
-              </div>
-            </Reveal>
-          </div>
-
-          <Reveal delay={100}>
-            <div className="grid grid-cols-3 gap-2.5 mt-4">
+          <Reveal delay={70}>
+            <div className="grid grid-cols-3 gap-2.5 mt-3">
               {[{ emoji: "🎓", label: "Education First" }, { emoji: "🤝", label: "Community" }, { emoji: "🇲🇼", label: "Built in Malawi" }].map((v) => (
                 <div key={v.label} className="flex flex-col items-center gap-2 rounded-2xl p-3.5 text-center bg-white border border-slate-100 shadow-sm">
                   <span className="text-2xl">{v.emoji}</span>
@@ -743,7 +730,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
           <Reveal>
             <div className="flex flex-col items-center gap-2 mt-5 mb-3">
               <img
-                src="/otechy"
+                src="/otechy.jpg"
                 alt="OTECHY"
                 className="h-7 w-auto object-contain opacity-60"
                 onError={(e) => {
