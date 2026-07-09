@@ -12,6 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/lib/storage";
 import { triggerInstallPrompt, isAppInstalled } from "@/components/InstallPrompt";
+import { VersionTapTrigger } from "@/components/admin/VersionTapTrigger";
+import { AdminGestureGate } from "@/components/admin/AdminGestureGate";
+import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
+import { AdminPanel } from "@/components/admin/AdminPanel";
+import type { AdminProfile } from "@/lib/adminAuth";
 
 const APP_VERSION = "1.0.0"; // keep in sync with package.json
 const NOTIF_PREF_KEY = "otechyschora_notifications_enabled";
@@ -132,6 +137,11 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
   const [resetting, setResetting] = useState(false);
   const [showGesturesInfo, setShowGesturesInfo] = useState(false);
   const [installing, setInstalling] = useState(false);
+
+  // Hidden admin flow — "none" the entire time unless someone finds the
+  // 7-tap trigger. Nothing here renders or runs until that happens.
+  const [adminStage, setAdminStage] = useState<"none" | "gate" | "login" | "panel">("none");
+  const [adminProfile, setAdminProfile] = useState<AdminProfile | null>(null);
 
   const handleInstallApp = async () => {
     setInstalling(true);
@@ -266,6 +276,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
   ];
 
   return (
+    <>
     <div className="flex flex-col gap-4">
 
       {/* Profile name editor */}
@@ -610,13 +621,15 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
               </div>
             </button>
 
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <BarChart2 className="w-4 h-4 text-muted-foreground" />
+            <VersionTapTrigger onUnlock={() => setAdminStage("gate")}>
+              <div className="flex items-center gap-3 px-4 py-3">
+                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                  <BarChart2 className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="flex-1 text-xs font-bold text-muted-foreground">App Version</p>
+                <p className="text-xs font-semibold text-muted-foreground">v{APP_VERSION}</p>
               </div>
-              <p className="flex-1 text-xs font-bold text-muted-foreground">App Version</p>
-              <p className="text-xs font-semibold text-muted-foreground">v{APP_VERSION}</p>
-            </div>
+            </VersionTapTrigger>
           </div>
 
           {/* Footer */}
@@ -628,5 +641,27 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
         </div>
       </div>
     </div>
+
+    {adminStage === "gate" && (
+      <AdminGestureGate
+        onReject={() => setAdminStage("none")}
+        onContinue={() => setAdminStage("login")}
+      />
+    )}
+
+    {adminStage === "login" && (
+      <AdminLoginForm
+        onSuccess={(profile) => { setAdminProfile(profile); setAdminStage("panel"); }}
+        onCancel={() => setAdminStage("none")}
+      />
+    )}
+
+    {adminStage === "panel" && adminProfile && (
+      <AdminPanel
+        profile={adminProfile}
+        onClose={() => { setAdminProfile(null); setAdminStage("none"); }}
+      />
+    )}
+    </>
   );
 }
