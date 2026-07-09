@@ -252,7 +252,12 @@ export default function EducationPage() {
       const a = Object.assign(document.createElement("a"), { href: url, download: resource.file_name ?? "file" });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      supabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id }).catch(() => {});
+      // Supabase's rpc() returns a "thenable", not a full Promise — it has no
+      // real .catch() method, which crashed in the minified production build.
+      // Awaiting it inside try/catch avoids that entirely.
+      try {
+        await supabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
+      } catch { /* non-critical — download already succeeded, ignore count-bump failures */ }
       toast({ title: "✅ Download started!" });
     } catch (e: any) { toast({ title: "Download failed", description: e.message, variant: "destructive" }); }
   };
