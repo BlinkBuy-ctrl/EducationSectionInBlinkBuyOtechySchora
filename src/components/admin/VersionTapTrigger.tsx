@@ -42,7 +42,7 @@ export function VersionTapTrigger({
   };
 
   return (
-    <div onClick={handleTap} onTouchEnd={handleTap}>
+    <div onClick={handleTap}>
       {children}
     </div>
   );
