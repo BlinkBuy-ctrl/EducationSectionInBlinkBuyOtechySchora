@@ -13,6 +13,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/lib/storage";
 import { triggerInstallPrompt, isAppInstalled } from "@/components/InstallPrompt";
 import { VersionTapTrigger } from "@/components/admin/VersionTapTrigger";
+import { LongPressTrigger } from "@/components/admin/LongPressTrigger";
 import { AdminGestureGate } from "@/components/admin/AdminGestureGate";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { AdminPanel } from "@/components/admin/AdminPanel";
@@ -634,7 +635,9 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
           {/* Footer */}
           <div className="flex flex-col items-center gap-1 pt-2 pb-1">
-            <p className="text-[11px] text-muted-foreground font-semibold">Powered By OTECHY</p>
+            <LongPressTrigger onUnlock={() => setAdminStage("gate")}>
+              <p className="text-[11px] text-muted-foreground font-semibold">Powered By OTECHY</p>
+            </LongPressTrigger>
             <p className="text-[10px] text-muted-foreground/60">© {new Date().getFullYear()} Otechy · All rights reserved</p>
           </div>
 
