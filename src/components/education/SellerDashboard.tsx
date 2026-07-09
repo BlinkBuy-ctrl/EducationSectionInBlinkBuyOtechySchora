@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import {
   TrendingUp, Download, Star, DollarSign,
@@ -645,25 +646,30 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
       </div>
     </div>
 
-    {adminStage === "gate" && (
-      <AdminGestureGate
-        onReject={() => setAdminStage("none")}
-        onContinue={() => setAdminStage("login")}
-      />
-    )}
+    {createPortal(
+      <>
+        {adminStage === "gate" && (
+          <AdminGestureGate
+            onReject={() => setAdminStage("none")}
+            onContinue={() => setAdminStage("login")}
+          />
+        )}
 
-    {adminStage === "login" && (
-      <AdminLoginForm
-        onSuccess={(profile) => { setAdminProfile(profile); setAdminStage("panel"); }}
-        onCancel={() => setAdminStage("none")}
-      />
-    )}
+        {adminStage === "login" && (
+          <AdminLoginForm
+            onSuccess={(profile) => { setAdminProfile(profile); setAdminStage("panel"); }}
+            onCancel={() => setAdminStage("none")}
+          />
+        )}
 
-    {adminStage === "panel" && adminProfile && (
-      <AdminPanel
-        profile={adminProfile}
-        onClose={() => { setAdminProfile(null); setAdminStage("none"); }}
-      />
+        {adminStage === "panel" && adminProfile && (
+          <AdminPanel
+            profile={adminProfile}
+            onClose={() => { setAdminProfile(null); setAdminStage("none"); }}
+          />
+        )}
+      </>,
+      document.body
     )}
     </>
   );
