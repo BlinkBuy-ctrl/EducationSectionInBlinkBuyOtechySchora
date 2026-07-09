@@ -4,7 +4,7 @@ interface AdminGestureGateProps {
   /** Fired when the dot is swiped/dragged RIGHT — rejects, screen just closes. */
   onReject: () => void;
   /** Fired when the dot is swiped/dragged LEFT — opens the login form. */
-  onAccept: () => void;
+  onContinue: () => void;
 }
 
 const SWIPE_THRESHOLD = 50; // px of horizontal drag required to register as a real swipe
@@ -15,7 +15,7 @@ const SWIPE_THRESHOLD = 50; // px of horizontal drag required to register as a r
  * indication of what it does. Anyone who lands here without knowing the
  * gesture has no clue which way to go.
  */
-export function AdminGestureGate({ onReject, onAccept }: AdminGestureGateProps) {
+export function AdminGestureGate({ onReject, onContinue }: AdminGestureGateProps) {
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
   const dragging = useRef(false);
@@ -44,7 +44,7 @@ export function AdminGestureGate({ onReject, onAccept }: AdminGestureGateProps) 
     if (delta >= SWIPE_THRESHOLD) {
       onReject();
     } else if (delta <= -SWIPE_THRESHOLD) {
-      onAccept();
+      onContinue();
     }
     // Anything smaller than the threshold (a plain tap, a tiny wobble) does nothing —
     // it takes a deliberate swipe either direction to register.
