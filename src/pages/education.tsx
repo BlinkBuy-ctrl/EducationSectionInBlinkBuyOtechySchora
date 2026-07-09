@@ -180,8 +180,16 @@ export default function EducationPage() {
     };
   }, []);
 
+  // Tutorial no longer auto-plays for first-time users. It now only opens
+  // when the user presses "Replay Tutorial" from My Stats → Support & Info,
+  // which sends them Home and shows the full walkthrough from scratch.
   useEffect(() => {
-    if (!safeGetItem(ONBOARDING_KEY)) setTimeout(() => setShowOnboard(true), 800);
+    const handler = () => {
+      setTab("resources");
+      setTimeout(() => setShowOnboard(true), 300);
+    };
+    window.addEventListener("otechy:start-tutorial", handler);
+    return () => window.removeEventListener("otechy:start-tutorial", handler);
   }, []);
 
   // Fixed-position overlays can render far below the viewport on some mobile
