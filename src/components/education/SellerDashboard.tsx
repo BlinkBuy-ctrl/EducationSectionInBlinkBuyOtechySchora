@@ -6,7 +6,7 @@ import {
   FileText, Loader2, Trash2, AlertTriangle,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
-  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand
+  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -168,6 +168,12 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
   const goToTab = (tab: string) => {
     window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: tab }));
+  };
+
+  const handleStartTutorial = () => {
+    // Sends the user Home and reopens the tutorial exactly like a first-time user sees it
+    goToTab("resources");
+    window.dispatchEvent(new CustomEvent("otechy:start-tutorial"));
   };
 
   const handleResetIdentity = async () => {
@@ -531,6 +537,18 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
                 <Info className="w-4 h-4 text-violet-400" />
               </div>
               <p className="flex-1 text-left text-xs font-bold text-foreground">About Us</p>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+
+            <button onClick={handleStartTutorial}
+              className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors border-b border-border/60">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                <Compass className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-xs font-bold text-foreground">Replay Tutorial</p>
+                <p className="text-[10px] text-muted-foreground">Take me around the app again</p>
+              </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
 
