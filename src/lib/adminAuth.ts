@@ -17,7 +17,6 @@ import { supabase } from "@/lib/supabase";
 export interface AdminProfile {
   id: string;
   name: string;
-  email: string | null;
   role: string;
   is_admin: boolean;
 }
@@ -44,7 +43,7 @@ export async function signInAdmin(email: string, password: string): Promise<Admi
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("id,name,email,role,is_admin")
+    .select("id,name,role,is_admin")
     .eq("id", data.user.id)
     .maybeSingle();
 
@@ -74,7 +73,7 @@ export async function getActiveAdminProfile(): Promise<AdminProfile | null> {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id,name,email,role,is_admin")
+    .select("id,name,role,is_admin")
     .eq("id", user.id)
     .maybeSingle();
 
