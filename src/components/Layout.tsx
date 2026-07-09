@@ -5,7 +5,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/lib/supabase";
 import {
   GraduationCap, Sun, Moon, Bell, RefreshCw,
-  Home, BarChart2, Search, Upload,
+  Home, BarChart2, Search, Upload, Megaphone,
 } from "lucide-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -58,13 +58,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setActiveTab("resources");
     window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: "resources" }));
   };
-  const goAlerts = () => { navigate("/notifications"); setActiveTab(""); };
+  const goAdverts = () => {
+    navigate("/");
+    setActiveTab("adverts");
+    window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: "adverts" }));
+  };
+  const goNotifications = () => { navigate("/notifications"); setActiveTab(""); };
   const goPost   = () => window.dispatchEvent(new CustomEvent("otechy:open-upload"));
 
-  const isHome   = loc === "/" && activeTab === "";
-  const isStats  = loc === "/" && activeTab === "dashboard";
-  const isSearch = loc === "/" && activeTab === "resources";
-  const isAlerts = loc === "/notifications";
+  const isHome     = loc === "/" && activeTab === "";
+  const isStats    = loc === "/" && activeTab === "dashboard";
+  const isSearch   = loc === "/" && activeTab === "resources";
+  const isAdverts  = loc === "/" && activeTab === "adverts";
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"calc(var(--vh,1vh) * 100)", overflow:"hidden" }}
@@ -86,7 +91,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <button onClick={() => window.location.reload()} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 active:[&>svg]:rotate-180 [&>svg]:transition-transform [&>svg]:duration-500">
               <RefreshCw className="w-4 h-4" />
             </button>
-            <button onClick={goAlerts} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
+            <button onClick={goNotifications} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               <Bell className="w-4 h-4" />
               {unread > 0 && (
                 <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-black rounded-full flex items-center justify-center px-1">
@@ -134,17 +139,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Search className="w-5 h-5" />Search
         </button>
 
-        <button onClick={goAlerts}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold relative transition-colors ${isAlerts ? "text-purple-400" : "text-white/50"}`}>
-          <span className="relative">
-            <Bell className="w-5 h-5" />
-            {unread > 0 && (
-              <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[8px] font-black rounded-full flex items-center justify-center px-0.5">
-                {unread > 9 ? "9+" : unread}
-              </span>
-            )}
-          </span>
-          Alerts
+        <button onClick={goAdverts}
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isAdverts ? "text-purple-400" : "text-white/50"}`}>
+          <Megaphone className="w-5 h-5" />Adverts
         </button>
       </nav>
     </div>
