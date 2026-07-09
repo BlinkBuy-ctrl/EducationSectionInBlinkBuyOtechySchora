@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { UploadModal } from "@/components/education/UploadModal";
 import { SellerDashboard } from "@/components/education/SellerDashboard";
 import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
 import { TutorsTab } from "@/components/education/TutorsTab";
+import { AdvertsTab } from "@/components/education/AdvertsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
@@ -26,7 +27,7 @@ const RESOURCE_SEARCH_PHRASES = [
   "Search Textbooks…",
 ];
 type PriceFilter = "all" | "free" | "paid";
-type Tab = "resources" | "scholarships" | "tutors" | "bookmarks" | "dashboard" | "aboutus";
+type Tab = "resources" | "scholarships" | "tutors" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
@@ -291,6 +292,7 @@ export default function EducationPage() {
     { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length    },
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
     { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
+    { key: "adverts",      emoji: "📢", label: "Adverts",      count: null                },
     { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: saved.length        },
     { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
     { key: "aboutus",      emoji: "ℹ️",  label: "About Us",     count: null                },
@@ -407,6 +409,7 @@ export default function EducationPage() {
 
       {tab === "scholarships" && <ScholarshipsTab scholarships={scholarships} loading={loading} user={user} onRefresh={fetchAll} />}
       {tab === "tutors"       && <TutorsTab tutors={tutors} loading={loading} user={user} onRefresh={fetchAll} />}
+      {tab === "adverts"      && <AdvertsTab userId={user.id} />}
 
       {tab === "bookmarks" && (
         saved.length === 0 ? (
