@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from "react";
 import {
   Users, Heart, Phone, Mail, MapPin, BookOpen,
   Plus, X, Upload, Loader2, Wifi, WifiOff,
-  MessageSquare, BadgeCheck, ChevronRight, Star, AlertTriangle
+  MessageSquare, ChevronRight, Star, AlertTriangle, Shield, Check
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TutorDetailModal } from "@/components/education/TutorDetailModal";
@@ -210,7 +210,15 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <h3 className="font-bold text-sm text-foreground truncate leading-tight">{t.name}</h3>
-            {t.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+            {t.is_verified && (
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <span className="relative w-3.5 h-3.5 flex items-center justify-center">
+                  <Shield className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+                  <Check className="w-2 h-2 text-white absolute" strokeWidth={3.5} />
+                </span>
+                <span className="text-[9px] font-bold text-blue-600">Verified</span>
+              </span>
+            )}
             {t.is_scam && (
               <span className="flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 shrink-0">
                 <AlertTriangle className="w-2.5 h-2.5" /> Reported

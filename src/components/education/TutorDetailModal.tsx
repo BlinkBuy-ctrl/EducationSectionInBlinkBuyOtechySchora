@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, Heart, Phone, Mail, MapPin, BookOpen,
-  Wifi, WifiOff, BadgeCheck, MessageSquare, Star, AlertTriangle
+  Wifi, WifiOff, MessageSquare, Star, AlertTriangle, Shield, Check
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -78,7 +78,15 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
           <div className="absolute bottom-3 left-4 right-16">
             <div className="flex items-center gap-1.5 mb-0.5">
               <h2 className="font-black text-lg text-white leading-tight drop-shadow-md">{t.name}</h2>
-              {t.is_verified && <BadgeCheck className="w-4 h-4 text-blue-300 shrink-0" />}
+              {t.is_verified && (
+                <span className="inline-flex items-center gap-1 shrink-0">
+                  <span className="relative w-4 h-4 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-blue-500 fill-blue-500" />
+                    <Check className="w-2.5 h-2.5 text-white absolute" strokeWidth={3.5} />
+                  </span>
+                  <span className="text-xs font-bold text-white drop-shadow-md">Verified</span>
+                </span>
+              )}
             </div>
             {t.tagline && <p className="text-xs text-white/70 leading-tight">{t.tagline}</p>}
           </div>

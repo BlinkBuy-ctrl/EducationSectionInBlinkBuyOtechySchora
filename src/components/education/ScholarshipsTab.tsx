@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from "react";
 import {
   Award, Heart, MessageCircle, ExternalLink, ChevronDown,
   ChevronUp, Send, Plus, X, Upload, Loader2, Calendar,
-  MapPin, BookOpen, Tag, BadgeCheck, AlertTriangle
+  MapPin, BookOpen, Tag, AlertTriangle, Shield, Check
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
@@ -244,7 +244,15 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
               <h3 className="font-bold text-sm text-foreground leading-snug">{s.title}</h3>
-              {s.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+              {s.is_verified && (
+                <span className="inline-flex items-center gap-1 shrink-0">
+                  <span className="relative w-3.5 h-3.5 flex items-center justify-center">
+                    <Shield className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+                    <Check className="w-2 h-2 text-white absolute" strokeWidth={3.5} />
+                  </span>
+                  <span className="text-[9px] font-bold text-blue-600">Verified</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-yellow-500 font-semibold">{s.provider}</p>
             {s.profiles?.name && <p className="text-[10px] text-muted-foreground mt-0.5">Posted by {s.profiles.name}</p>}

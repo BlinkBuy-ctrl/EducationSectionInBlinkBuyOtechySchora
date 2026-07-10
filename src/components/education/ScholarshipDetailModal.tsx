@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, Award, Calendar, MapPin, BookOpen, Tag,
-  Heart, MessageCircle, ExternalLink, Send, Loader2, BadgeCheck, AlertTriangle
+  Heart, MessageCircle, ExternalLink, Send, Loader2, AlertTriangle, Shield, Check
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -74,7 +74,15 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
             <div>
               <div className="flex items-center gap-1">
                 <h2 className="font-black text-sm text-foreground leading-tight">{s.title}</h2>
-                {s.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                {s.is_verified && (
+                  <span className="inline-flex items-center gap-1 shrink-0">
+                    <span className="relative w-3.5 h-3.5 flex items-center justify-center">
+                      <Shield className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+                      <Check className="w-2 h-2 text-white absolute" strokeWidth={3.5} />
+                    </span>
+                    <span className="text-[9px] font-bold text-blue-600">Verified</span>
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-yellow-500 font-semibold">{s.provider}</p>
             </div>
