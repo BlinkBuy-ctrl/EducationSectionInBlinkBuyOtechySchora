@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   X, Award, Calendar, MapPin, BookOpen, Tag,
-  Heart, MessageCircle, ExternalLink, Send, Loader2
+  Heart, MessageCircle, ExternalLink, Send, Loader2, BadgeCheck, AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -72,7 +72,10 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
               <Award className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h2 className="font-black text-sm text-foreground leading-tight">{s.title}</h2>
+              <div className="flex items-center gap-1">
+                <h2 className="font-black text-sm text-foreground leading-tight">{s.title}</h2>
+                {s.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+              </div>
               <p className="text-[11px] text-yellow-500 font-semibold">{s.provider}</p>
             </div>
           </div>
@@ -83,6 +86,19 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
+
+          {/* Scam warning — shown when admin has flagged this scholarship */}
+          {s.is_scam && (
+            <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-red-400">Reported by our team</p>
+                <p className="text-[11px] text-red-400/80 mt-0.5 leading-relaxed">
+                  {s.scam_reason || "This scholarship listing has been flagged. Proceed with caution and verify details independently before sharing any personal or payment information."}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Banner */}
           {s.image_url && <img src={s.image_url} alt={s.title} className="w-full h-44 object-cover rounded-2xl" />}

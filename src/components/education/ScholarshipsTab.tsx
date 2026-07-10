@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from "react";
 import {
   Award, Heart, MessageCircle, ExternalLink, ChevronDown,
   ChevronUp, Send, Plus, X, Upload, Loader2, Calendar,
-  MapPin, BookOpen, Tag
+  MapPin, BookOpen, Tag, BadgeCheck, AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
@@ -242,9 +242,17 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
             <Award className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-sm text-foreground leading-snug">{s.title}</h3>
+            <div className="flex items-center gap-1">
+              <h3 className="font-bold text-sm text-foreground leading-snug">{s.title}</h3>
+              {s.is_verified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+            </div>
             <p className="text-xs text-yellow-500 font-semibold">{s.provider}</p>
             {s.profiles?.name && <p className="text-[10px] text-muted-foreground mt-0.5">Posted by {s.profiles.name}</p>}
+            {s.is_scam && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 mt-1">
+                <AlertTriangle className="w-2.5 h-2.5" /> Reported
+              </span>
+            )}
           </div>
           {s.amount && (
             <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">
