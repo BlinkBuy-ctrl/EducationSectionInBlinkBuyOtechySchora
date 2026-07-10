@@ -154,8 +154,9 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
 
   return createPortal(
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+      style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px) + 12px)" }}
       onClick={e => { if (e.target === e.currentTarget && !isLoading) onClose(); }}>
-      <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto">
+      <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto">
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-purple-600/10 to-blue-600/10 sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2.5">
