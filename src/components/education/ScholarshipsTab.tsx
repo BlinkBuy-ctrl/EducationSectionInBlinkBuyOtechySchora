@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Award, Heart, MessageCircle, ExternalLink, ChevronDown,
   ChevronUp, Send, Plus, X, Upload, Loader2, Calendar,
@@ -81,9 +82,10 @@ function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-card border border-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px) + 12px)" }}>
+      <div className="bg-card border border-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-border flex items-center justify-between px-4 py-3 z-10">
           <h2 className="font-bold text-base text-foreground flex items-center gap-2"><Award className="w-4 h-4 text-yellow-500" /> Post Scholarship</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
@@ -96,7 +98,10 @@ function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user
             className="relative h-36 rounded-xl border-2 border-dashed border-border hover:border-yellow-500/50 cursor-pointer overflow-hidden transition-colors"
           >
             {imgPreview
-              ? <img src={imgPreview} alt="" className="w-full h-full object-cover" />
+              ? <>
+                  <img src={imgPreview} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
+                  <img src={imgPreview} alt="" className="relative w-full h-full object-contain" />
+                </>
               : <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
                   <Upload className="w-6 h-6" />
                   <span className="text-xs">Upload banner image (optional)</span>
@@ -132,6 +137,13 @@ function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user
           <input value={form.tags} onChange={e => set("tags", e.target.value)} placeholder="Tags (comma-separated, e.g. STEM, Women, Africa)"
             className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500/50" />
 
+          <div className="flex items-start gap-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2.5">
+            <Shield className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 fill-blue-400" />
+            <p className="text-[11px] text-blue-400 leading-relaxed">
+              <span className="font-bold">Have more applicants by verifying with Otechy</span> — reach out to the Otechy team from About Us in My Stats and we'll review your listing for the blue verified badge.
+            </p>
+          </div>
+
           <button onClick={handleSubmit} disabled={saving}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-white font-bold py-3 rounded-xl transition-all active:scale-[0.98] disabled:opacity-60">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
@@ -139,7 +151,8 @@ function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -230,9 +243,12 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
 
   return (
     <div onClick={() => onOpen(s)} className="bg-card border border-border rounded-2xl overflow-hidden hover:shadow-lg hover:shadow-yellow-500/10 transition-all duration-200 cursor-pointer active:scale-[0.98]">
-      {/* Banner image */}
+      {/* Banner image — shows in full, no cropping */}
       {s.image_url && (
-        <img src={s.image_url} alt={s.title} className="w-full h-40 object-cover" />
+        <div className="relative w-full bg-muted/30" style={{ height: 160 }}>
+          <img src={s.image_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
+          <img src={s.image_url} alt={s.title} className="relative w-full h-full object-contain" />
+        </div>
       )}
 
       <div className="p-4">

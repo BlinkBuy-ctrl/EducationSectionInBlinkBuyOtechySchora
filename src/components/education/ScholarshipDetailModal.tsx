@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X, Award, Calendar, MapPin, BookOpen, Tag,
-  Heart, MessageCircle, ExternalLink, Send, Loader2, AlertTriangle, Shield, Check
+  Heart, MessageCircle, ExternalLink, Send, Loader2, AlertTriangle, Shield, Check, Maximize2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +17,7 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
   const [body,     setBody]     = useState("");
   const [sending,  setSending]  = useState(false);
   const [loading,  setLoading]  = useState(true);
+  const [fullImage, setFullImage] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -56,8 +58,9 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
     } finally { setSending(false); }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end justify-center"
+      style={{ paddingTop: "max(0px, env(safe-area-inset-top, 0px))" }}>
       <div className="bg-card border border-border rounded-t-3xl w-full max-h-[92vh] flex flex-col overflow-hidden">
 
         {/* Handle */}
@@ -108,8 +111,17 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
             </div>
           )}
 
-          {/* Banner */}
-          {s.image_url && <img src={s.image_url} alt={s.title} className="w-full h-44 object-cover rounded-2xl" />}
+          {/* Banner — shown in full, tap to view full-screen */}
+          {s.image_url && (
+            <button onClick={() => setFullImage(true)}
+              className="relative w-full rounded-2xl overflow-hidden bg-muted/30 active:scale-[0.98] transition-transform" style={{ height: 180 }}>
+              <img src={s.image_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
+              <img src={s.image_url} alt={s.title} className="relative w-full h-full object-contain" />
+              <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <Maximize2 className="w-3.5 h-3.5 text-white" />
+              </span>
+            </button>
+          )}
 
           {/* Amount badge */}
           {s.amount && (
@@ -220,6 +232,20 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Full-screen image viewer */}
+      {fullImage && s.image_url && (
+        <div className="fixed inset-0 z-[80] bg-black flex items-center justify-center"
+          onClick={() => setFullImage(false)}>
+          <img src={s.image_url} alt={s.title} className="max-w-full max-h-full object-contain" />
+          <button onClick={() => setFullImage(false)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
+            style={{ marginTop: "env(safe-area-inset-top, 0px)" }}>
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </div>
+      )}
+    </div>,
+    document.body
   );
 }
