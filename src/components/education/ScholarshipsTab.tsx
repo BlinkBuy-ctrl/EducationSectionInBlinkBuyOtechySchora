@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   Award, Heart, MessageCircle, ExternalLink, ChevronDown,
@@ -229,6 +229,12 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
   const [likes, setLikes] = useState(s.likes_count ?? 0);
   const [expanded, setExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
+
+  useEffect(() => {
+    supabase.from("otechy_scholarship_likes")
+      .select("id").eq("scholarship_id", s.id).eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { if (data) setLiked(true); });
+  }, [s.id, user.id]);
 
   const toggleLike = async () => {
     // user always present - no gate needed

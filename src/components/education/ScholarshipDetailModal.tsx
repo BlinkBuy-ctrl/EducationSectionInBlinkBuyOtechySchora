@@ -111,8 +111,10 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
             </div>
           )}
 
-          {/* Banner — shown in full, tap to view full-screen */}
-          {s.image_url && (
+          {/* Banner — shown in full, tap to view full-screen. Falls back to a
+              generic graphic if no image was uploaded, so this section is
+              never just empty space. */}
+          {s.image_url ? (
             <button onClick={() => setFullImage(true)}
               className="relative w-full rounded-2xl overflow-hidden bg-muted/30 active:scale-[0.98] transition-transform" style={{ height: 180 }}>
               <img src={s.image_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
@@ -121,6 +123,10 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
                 <Maximize2 className="w-3.5 h-3.5 text-white" />
               </span>
             </button>
+          ) : (
+            <div className="w-full rounded-2xl bg-gradient-to-br from-yellow-500/15 to-orange-500/15 flex items-center justify-center" style={{ height: 120 }}>
+              <Award className="w-9 h-9 text-yellow-500/60" />
+            </div>
           )}
 
           {/* Amount badge */}
