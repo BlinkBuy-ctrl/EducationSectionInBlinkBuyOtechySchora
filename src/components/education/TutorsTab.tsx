@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Users, Heart, Phone, Mail, MapPin, BookOpen,
   Plus, X, Upload, Loader2, Wifi, WifiOff,
-  MessageSquare, ChevronRight, Star, AlertTriangle, Shield, Check
+  MessageSquare, ChevronRight, Star, AlertTriangle, Shield, Check, School
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { TutorDetailModal } from "@/components/education/TutorDetailModal";
@@ -91,10 +92,11 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
 
   const inp = "w-full bg-muted/40 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all";
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+      style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px) + 12px)" }}>
       <div className="bg-card border border-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg flex flex-col"
-        style={{ height: "90vh", maxHeight: "90vh" }}>
+        style={{ height: "85vh", maxHeight: "85vh" }}>
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
@@ -165,7 +167,8 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -191,7 +194,6 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
     }
   };
 
-  const initials = t.name?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() ?? "T";
   const grads = [
     "from-violet-600 to-blue-600",
     "from-blue-600 to-cyan-500",
@@ -214,7 +216,7 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
           <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${grad} overflow-hidden flex items-center justify-center shadow-md`}>
             {t.avatar_url
               ? <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
-              : <span className="text-white text-lg font-black tracking-tight">{initials}</span>
+              : <School className="w-6 h-6 text-white" />
             }
           </div>
           {/* Online dot */}
