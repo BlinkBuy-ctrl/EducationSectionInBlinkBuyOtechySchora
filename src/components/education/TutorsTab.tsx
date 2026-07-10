@@ -149,6 +149,12 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
                 <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.is_online ? "translate-x-4" : "translate-x-0.5"}`} />
               </div>
             </div>
+            <div className="flex items-start gap-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2.5">
+              <Shield className="w-4 h-4 text-blue-400 shrink-0 mt-0.5 fill-blue-400" />
+              <p className="text-[11px] text-blue-400 leading-relaxed">
+                <span className="font-bold">Get verified and find more students</span> — reach out to the Otechy team from About Us in My Stats and we'll review your profile for the blue verified badge.
+              </p>
+            </div>
           </div>
         </div>
         <div className="px-4 py-3 border-t border-border shrink-0">

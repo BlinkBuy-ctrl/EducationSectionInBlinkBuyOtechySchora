@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X, Heart, Phone, Mail, MapPin, BookOpen,
-  Wifi, WifiOff, MessageSquare, Star, AlertTriangle, Shield, Check
+  School, MessageSquare, AlertTriangle, Shield, Check, Circle
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 interface Props { t: any; user: any; onClose: () => void; }
 
 export function TutorDetailModal({ t, user, onClose }: Props) {
-  const [liked,   setLiked]   = useState(false);
-  const [likes,   setLikes]   = useState(t.likes_count ?? 0);
+  const [liked, setLiked] = useState(false);
+  const [likes, setLikes] = useState(t.likes_count ?? 0);
 
   useEffect(() => {
     supabase.from("otechy_tutor_likes")
@@ -27,17 +28,7 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
     }
   };
 
-  const initials = t.name?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() ?? "T";
-  const gradients = [
-    "from-violet-600 via-purple-600 to-blue-600",
-    "from-blue-600 via-cyan-500 to-teal-500",
-    "from-rose-500 via-pink-600 to-purple-600",
-    "from-amber-500 via-orange-500 to-red-500",
-    "from-emerald-500 via-teal-500 to-cyan-600",
-  ];
-  const grad = gradients[(t.name?.charCodeAt(0) ?? 0) % gradients.length];
-
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center"
       style={{ background: "rgba(0,0,0,0.75)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -46,65 +37,58 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
         style={{ height: "90vh", maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}>
 
-        {/* ── Hero banner ── */}
-        <div className="relative shrink-0" style={{ height: 200 }}>
-          {t.banner_url
-            ? <img src={t.banner_url} alt="" className="w-full h-full object-cover" />
-            : <div className={`w-full h-full bg-gradient-to-br ${grad}`} />
-          }
-          {/* Dark gradient overlay bottom */}
-          <div className="absolute inset-0"
-            style={{ background: "linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.55) 100%)" }} />
+        {/* ── Optional banner strip — only shows if a banner was uploaded ── */}
+        {t.banner_url && (
+          <div className="relative shrink-0" style={{ height: 96 }}>
+            <img src={t.banner_url} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
 
-          {/* Close button */}
-          <button onClick={onClose}
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 flex items-center justify-center active:scale-90 transition-transform">
-            <X className="w-3.5 h-3.5 text-white" />
-          </button>
-
-          {/* Online badge */}
-          <div className="absolute top-4 left-4">
-            {t.is_online
-              ? <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-green-500/25 backdrop-blur-sm border border-green-400/30 text-green-300">
-                  <Wifi className="w-2.5 h-2.5" /> Online
-                </span>
-              : <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-black/30 backdrop-blur-sm border border-white/10 text-white/50">
-                  <WifiOff className="w-2.5 h-2.5" /> In-person
-                </span>
+        {/* ── Compact header ── */}
+        <div className="flex items-start gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
+          {/* Avatar — shows the real uploaded photo in full if present, otherwise a tutor icon */}
+          <div className="w-13 h-13 rounded-2xl bg-blue-500/15 overflow-hidden flex items-center justify-center shrink-0" style={{ width: 52, height: 52 }}>
+            {t.avatar_url
+              ? <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
+              : <School className="w-6 h-6 text-blue-500" />
             }
           </div>
 
-          {/* Name over banner bottom */}
-          <div className="absolute bottom-3 left-4 right-16">
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <h2 className="font-black text-lg text-white leading-tight drop-shadow-md">{t.name}</h2>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h2 className="font-black text-base text-foreground leading-tight">{t.name}</h2>
               {t.is_verified && (
                 <span className="inline-flex items-center gap-1 shrink-0">
-                  <span className="relative w-4 h-4 flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-blue-500 fill-blue-500" />
-                    <Check className="w-2.5 h-2.5 text-white absolute" strokeWidth={3.5} />
+                  <span className="relative w-3.5 h-3.5 flex items-center justify-center">
+                    <Shield className="w-3.5 h-3.5 text-blue-600 fill-blue-600" />
+                    <Check className="w-2 h-2 text-white absolute" strokeWidth={3.5} />
                   </span>
-                  <span className="text-xs font-bold text-white drop-shadow-md">Verified</span>
+                  <span className="text-[10px] font-bold text-blue-600">Verified</span>
                 </span>
               )}
             </div>
-            {t.tagline && <p className="text-xs text-white/70 leading-tight">{t.tagline}</p>}
-          </div>
-
-          {/* Avatar — bottom-left overlapping */}
-          <div className="absolute -bottom-7 left-4">
-            <div className={`w-14 h-14 rounded-2xl border-[3px] border-card bg-gradient-to-br ${grad} overflow-hidden flex items-center justify-center shadow-xl`}>
-              {t.avatar_url
-                ? <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
-                : <span className="text-white font-black text-base">{initials}</span>
-              }
+            {t.tagline && <p className="text-xs text-muted-foreground leading-tight mt-0.5">{t.tagline}</p>}
+            <div className="mt-1.5">
+              {t.is_online ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-500">
+                  <Circle className="w-1.5 h-1.5 fill-green-500 text-green-500" /> Online now
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  In-person
+                </span>
+              )}
             </div>
           </div>
+
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
         </div>
 
         {/* ── Scrollable body ── */}
         <div className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="pt-10 px-4 pb-6 flex flex-col gap-5">
+          <div className="p-4 flex flex-col gap-4">
 
             {/* Scam warning — shown when admin has flagged this tutor */}
             {t.is_scam && (
@@ -212,6 +196,7 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
