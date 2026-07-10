@@ -23,9 +23,12 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
     const load = async () => {
       const [likeRes, commRes] = await Promise.all([
         supabase.from("otechy_scholarship_likes").select("id").eq("scholarship_id", s.id).eq("user_id", user.id).maybeSingle(),
-        supabase.from("otechy_scholarship_comments").select("*, profiles(name)").eq("scholarship_id", s.id).order("created_at", { ascending: true }),
+        supabase.from("otechy_scholarship_comments").select("*").eq("scholarship_id", s.id).order("created_at", { ascending: true }),
       ]);
       if (likeRes.data) setLiked(true);
+      if (commRes.error) {
+        toast({ title: "Couldn't load comments", description: commRes.error.message, variant: "destructive" });
+      }
       setComments(commRes.data ?? []);
       setLoading(false);
     };
@@ -51,7 +54,8 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
       });
       if (error) throw error;
       setBody("");
-      const { data } = await supabase.from("otechy_scholarship_comments").select("*, profiles(name)").eq("scholarship_id", s.id).order("created_at", { ascending: true });
+      const { data, error: reloadErr } = await supabase.from("otechy_scholarship_comments").select("*").eq("scholarship_id", s.id).order("created_at", { ascending: true });
+      if (reloadErr) throw reloadErr;
       setComments(data ?? []);
     } catch (e: any) {
       toast({ title: "Failed", description: e.message, variant: "destructive" });
@@ -213,10 +217,10 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
                 {comments.map(c => (
                   <div key={c.id} className="flex gap-2">
                     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0 text-[11px] text-white font-bold">
-                      {c.profiles?.name?.[0]?.toUpperCase() ?? "?"}
+                      {(c.user_id ?? "????").slice(-2).toUpperCase()}
                     </div>
                     <div className="bg-muted/50 rounded-xl px-3 py-2 flex-1">
-                      <p className="text-[11px] font-semibold text-foreground">{c.profiles?.name ?? "User"}</p>
+                      <p className="text-[11px] font-semibold text-foreground">User {(c.user_id ?? "0000").slice(-4).toUpperCase()}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{c.body}</p>
                     </div>
                   </div>

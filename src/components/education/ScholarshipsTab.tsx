@@ -165,11 +165,14 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
   const [sending, setSending] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("otechy_scholarship_comments")
-      .select("*, profiles(name, avatar_url)")
+      .select("*")
       .eq("scholarship_id", scholarshipId)
       .order("created_at", { ascending: true });
+    if (error) {
+      toast({ title: "Couldn't load comments", description: error.message, variant: "destructive" });
+    }
     setComments(data ?? []);
     setLoaded(true);
   };
@@ -202,10 +205,10 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
       {comments.map(c => (
         <div key={c.id} className="flex gap-2">
           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0 text-[10px] text-white font-bold">
-            {c.profiles?.name?.[0]?.toUpperCase() ?? "?"}
+            {(c.user_id ?? "????").slice(-2).toUpperCase()}
           </div>
           <div className="bg-muted/50 rounded-xl px-3 py-1.5 flex-1">
-            <span className="text-[11px] font-semibold text-foreground">{c.profiles?.name ?? "User"} </span>
+            <span className="text-[11px] font-semibold text-foreground">User {(c.user_id ?? "0000").slice(-4).toUpperCase()} </span>
             <span className="text-xs text-muted-foreground">{c.body}</span>
           </div>
         </div>
