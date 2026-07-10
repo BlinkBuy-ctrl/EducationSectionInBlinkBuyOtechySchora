@@ -37,10 +37,11 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
         style={{ height: "90vh", maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}>
 
-        {/* ── Optional banner strip — only shows if a banner was uploaded ── */}
+        {/* ── Optional banner strip — only shows if a banner was uploaded, full image, no cropping ── */}
         {t.banner_url && (
-          <div className="relative shrink-0" style={{ height: 96 }}>
-            <img src={t.banner_url} alt="" className="w-full h-full object-cover" />
+          <div className="relative shrink-0 bg-muted/30" style={{ height: 110 }}>
+            <img src={t.banner_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
+            <img src={t.banner_url} alt="" className="relative w-full h-full object-contain" />
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Users, Heart, Phone, Mail, MapPin, BookOpen,
   Plus, X, Upload, Loader2, Wifi, WifiOff,
@@ -172,14 +172,23 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
 // ── Tutor Card — horizontal layout, no overlap issues ───────────────────────
 function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) => void }) {
   const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(t.likes ?? 0);
+  const [likes, setLikes] = useState(t.likes_count ?? 0);
+
+  useEffect(() => {
+    supabase.from("otechy_tutor_likes")
+      .select("id").eq("tutor_id", t.id).eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { if (data) setLiked(true); });
+  }, [t.id, user.id]);
 
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const next = !liked;
-    setLiked(next);
-    setLikes((l: number) => l + (next ? 1 : -1));
-    await supabase.from("otechy_tutors").update({ likes: likes + (next ? 1 : -1) }).eq("id", t.id);
+    if (liked) {
+      await supabase.from("otechy_tutor_likes").delete().eq("tutor_id", t.id).eq("user_id", user.id);
+      setLikes((l: number) => l - 1); setLiked(false);
+    } else {
+      await supabase.from("otechy_tutor_likes").insert({ tutor_id: t.id, user_id: user.id });
+      setLikes((l: number) => l + 1); setLiked(true);
+    }
   };
 
   const initials = t.name?.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() ?? "T";
@@ -259,10 +268,11 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
         </div>
       </div>
 
-      {/* Banner image — only if uploaded, full width below identity */}
+      {/* Banner image — only if uploaded, shows in full (no cropping) with a soft blurred backdrop */}
       {t.banner_url && (
-        <div className="mx-3 mb-2 rounded-xl overflow-hidden" style={{ height: 80 }}>
-          <img src={t.banner_url} alt="" className="w-full h-full object-cover" />
+        <div className="mx-3 mb-2 rounded-xl overflow-hidden relative bg-muted/30" style={{ height: 110 }}>
+          <img src={t.banner_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
+          <img src={t.banner_url} alt="" className="relative w-full h-full object-contain" />
         </div>
       )}
 
