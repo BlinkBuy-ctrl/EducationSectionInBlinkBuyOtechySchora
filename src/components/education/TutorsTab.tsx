@@ -334,7 +334,7 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
   const [showForm, setShowForm] = useState(false);
   const [search,   setSearch]   = useState("");
   const [selected, setSelected] = useState<any>(null);
-  const [filter,   setFilter]   = useState<"all" | "online" | "offline">("all");
+  const [filter,   setFilter]   = useState<"all" | "online" | "offline" | "verified">("all");
 
   const filtered = tutors.filter(t => {
     const q = search.toLowerCase();
@@ -343,12 +343,17 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
       (t.subjects ?? []).some((s: string) => s.toLowerCase().includes(q)) ||
       t.bio?.toLowerCase().includes(q) ||
       t.location?.toLowerCase().includes(q);
-    const matchF = filter === "all" || (filter === "online" ? t.is_online : !t.is_online);
+    const matchF =
+      filter === "all" ? true :
+      filter === "online" ? t.is_online :
+      filter === "offline" ? !t.is_online :
+      !!t.is_verified;
     return matchQ && matchF;
   });
 
-  const onlineCount  = tutors.filter(t => t.is_online).length;
-  const offlineCount = tutors.filter(t => !t.is_online).length;
+  const onlineCount   = tutors.filter(t => t.is_online).length;
+  const offlineCount  = tutors.filter(t => !t.is_online).length;
+  const verifiedCount = tutors.filter(t => t.is_verified).length;
 
   // Client-side autocomplete pool — built from data already loaded, no extra fetch.
   const searchSuggestions = useMemo(() => {
@@ -379,14 +384,21 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
 
       {/* Filter pills */}
       {tutors.length > 0 && (
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 overflow-x-auto">
           {([
-            { key: "all",     label: `All · ${tutors.length}` },
-            { key: "online",  label: `🟢 Online · ${onlineCount}` },
-            { key: "offline", label: `⚫ Offline · ${offlineCount}` },
+            { key: "all",      label: `All · ${tutors.length}` },
+            { key: "online",   label: `🟢 Online · ${onlineCount}` },
+            { key: "offline",  label: `⚫ Offline · ${offlineCount}` },
+            { key: "verified", label: `Verified · ${verifiedCount}` },
           ] as const).map(f => (
             <button key={f.key} onClick={() => setFilter(f.key)}
-              className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-all ${filter === f.key ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground bg-background"}`}>
+              className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-all ${filter === f.key ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground bg-background"}`}>
+              {f.key === "verified" && (
+                <span className="relative w-3 h-3 flex items-center justify-center shrink-0">
+                  <Shield className={`w-3 h-3 fill-current ${filter === f.key ? "text-white" : "text-blue-500"}`} />
+                  <Check className="w-1.5 h-1.5 text-white absolute" strokeWidth={4} style={filter === f.key ? { color: "#2563eb" } : undefined} />
+                </span>
+              )}
               {f.label}
             </button>
           ))}
