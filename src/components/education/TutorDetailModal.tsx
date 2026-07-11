@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Heart, Phone, Mail, MapPin, BookOpen,
-  School, MessageSquare, AlertTriangle, Shield, Check, Circle
+  School, MessageSquare, AlertTriangle, Shield, Check, Circle, Maximize2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -11,6 +11,7 @@ interface Props { t: any; user: any; onClose: () => void; }
 export function TutorDetailModal({ t, user, onClose }: Props) {
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(t.likes_count ?? 0);
+  const [fullImage, setFullImage] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("otechy_tutor_likes")
@@ -28,7 +29,9 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
     }
   };
 
-  return createPortal(
+  return (
+    <>
+    {createPortal(
     <div className="fixed inset-0 z-[60] flex items-end justify-center"
       style={{ background: "rgba(0,0,0,0.75)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
@@ -37,22 +40,39 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
         style={{ height: "90vh", maxHeight: "90vh" }}
         onClick={e => e.stopPropagation()}>
 
-        {/* ── Optional banner strip — only shows if a banner was uploaded, full image, no cropping ── */}
+        {/* ── Optional banner strip — tappable to view full screen ── */}
         {t.banner_url && (
-          <div className="relative shrink-0 bg-muted/30" style={{ height: 110 }}>
+          <div className="relative shrink-0 bg-muted/30 cursor-pointer"
+            style={{ height: 110 }}
+            onClick={() => setFullImage(t.banner_url)}>
             <img src={t.banner_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
             <img src={t.banner_url} alt="" className="relative w-full h-full object-contain" />
+            <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
+              <Maximize2 className="w-3.5 h-3.5 text-white" />
+            </span>
           </div>
         )}
 
         {/* ── Compact header ── */}
         <div className="flex items-start gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
           {/* Avatar — shows the real uploaded photo in full if present, otherwise a tutor icon */}
-          <div className="w-13 h-13 rounded-2xl bg-blue-500/15 overflow-hidden flex items-center justify-center shrink-0" style={{ width: 52, height: 52 }}>
-            {t.avatar_url
-              ? <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
-              : <School className="w-6 h-6 text-blue-500" />
-            }
+          <div
+            className="relative rounded-2xl bg-blue-500/15 overflow-hidden flex items-center justify-center shrink-0"
+            style={{ width: 52, height: 52 }}
+            onClick={() => t.avatar_url && setFullImage(t.avatar_url)}
+          >
+            {t.avatar_url ? (
+              <>
+                <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 flex items-end justify-end p-0.5">
+                  <span className="w-4 h-4 rounded-full bg-black/50 flex items-center justify-center">
+                    <Maximize2 className="w-2.5 h-2.5 text-white" />
+                  </span>
+                </div>
+              </>
+            ) : (
+              <School className="w-6 h-6 text-blue-500" />
+            )}
           </div>
 
           <div className="flex-1 min-w-0">
@@ -199,5 +219,30 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
       </div>
     </div>,
     document.body
+    )}
+
+    {/* Full-screen image viewer — opens when avatar or banner is tapped */}
+    {fullImage && createPortal(
+      <div
+        className="fixed inset-0 z-[80] bg-black flex items-center justify-center"
+        onClick={() => setFullImage(null)}
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <img
+          src={fullImage}
+          alt="Full view"
+          className="max-w-full max-h-full object-contain"
+        />
+        <button
+          onClick={() => setFullImage(null)}
+          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center"
+          style={{ marginTop: "env(safe-area-inset-top, 0px)" }}
+        >
+          <X className="w-4 h-4 text-white" />
+        </button>
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
