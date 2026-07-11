@@ -260,12 +260,19 @@ export default function EducationPage() {
       const a = Object.assign(document.createElement("a"), { href: url, download: resource.file_name ?? "file" });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      // Supabase's rpc() returns a "thenable", not a full Promise — it has no
-      // real .catch() method, which crashed in the minified production build.
-      // Awaiting it inside try/catch avoids that entirely.
       try {
         await supabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-      } catch { /* non-critical — download already succeeded, ignore count-bump failures */ }
+        // Re-fetch just this resource's fresh counts and update the card in state
+        const { data: fresh } = await supabase
+          .from("otechy_resources")
+          .select("download_count,avg_rating,review_count")
+          .eq("id", resource.id)
+          .single();
+        if (fresh) {
+          setResources(prev => prev.map(r => r.id === resource.id ? { ...r, ...fresh } : r));
+          if (detailRes?.id === resource.id) setDetailRes((d: any) => ({ ...d, ...fresh }));
+        }
+      } catch { /* non-critical — download already succeeded */ }
       toast({ title: "✅ Download started!" });
     } catch (e: any) { toast({ title: "Download failed", description: e.message, variant: "destructive" }); }
   };
@@ -451,6 +458,17 @@ export default function EducationPage() {
           onBuy={handleBuy}
           onDownload={handleDownload}
           onBookmarkToggle={handleBookmark}
+          onRatingSubmit={async (resourceId: string) => {
+            const { data: fresh } = await supabase
+              .from("otechy_resources")
+              .select("download_count,avg_rating,review_count")
+              .eq("id", resourceId)
+              .single();
+            if (fresh) {
+              setResources(prev => prev.map(r => r.id === resourceId ? { ...r, ...fresh } : r));
+              setDetailRes((d: any) => d ? { ...d, ...fresh } : d);
+            }
+          }}
         />
       )}
     </div>
