@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
   X, Download, Lock, Star, FileText,
   User, Calendar, BookOpen, Bookmark, BookmarkCheck,
-  ChevronLeft, ChevronRight, Loader2, CheckCircle2, Eye
+  ChevronLeft, ChevronRight, Loader2, CheckCircle2, Eye, Share2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
@@ -544,6 +544,24 @@ export function ResourceDetailModal({
               )}
             </div>
             <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={async () => {
+                  const shareData = {
+                    title: resource.title,
+                    text: `Hey, I found this interesting resource on SchoraHub! 📚 "${resource.title}" — you won't find this anywhere else. Check it out at SchoraHub by Otechy 👇\nhttps://schorahub.vercel.app`,
+                  };
+                  try {
+                    if (navigator.share) {
+                      await navigator.share(shareData);
+                    } else {
+                      await navigator.clipboard.writeText(shareData.text);
+                      toast({ title: "Link copied!", description: "Share it anywhere you like." });
+                    }
+                  } catch { /* user cancelled share sheet */ }
+                }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
+                <Share2 className="w-3.5 h-3.5" />
+              </button>
               <button onClick={() => onBookmarkToggle(resource)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
                 {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-purple-400" /> : <Bookmark className="w-3.5 h-3.5" />}
