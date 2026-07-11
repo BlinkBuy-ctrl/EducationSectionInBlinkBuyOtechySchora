@@ -408,11 +408,12 @@ interface Props {
   onBuy: (r: any) => void;
   onDownload: (r: any) => void;
   onBookmarkToggle: (r: any) => void;
+  onRatingSubmit?: (resourceId: string) => void;
 }
 
 export function ResourceDetailModal({
   resource, isPurchased, isBookmarked,
-  onClose, onBuy, onDownload, onBookmarkToggle,
+  onClose, onBuy, onDownload, onBookmarkToggle, onRatingSubmit,
 }: Props) {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
@@ -493,6 +494,8 @@ export function ResourceDetailModal({
       setSubmitted(true);
       toast({ title: "⭐ Review submitted!" });
       setTimeout(() => reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+      // Tell parent to refresh counts for this resource's card
+      onRatingSubmit?.(resource.id);
 
       // Re-fetch in background to get accurate data
       supabase.from("otechy_ratings")
