@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Loader2, School, ExternalLink, Link2, MessageCircle,
-  Facebook, Instagram, Music2, Send, Bus, LogIn, Globe,
+  Share2, Camera, Music2, Send, Bus, LogIn, Globe,
 } from "lucide-react";
 import { getUniversityLinks, type UniversityLink } from "@/lib/universities";
 import type { University } from "@/lib/universities";
@@ -15,8 +15,8 @@ interface Props { university: University; onClose: () => void; }
 function getLinkStyle(platformType: string) {
   const p = platformType.toLowerCase();
   if (p.includes("whatsapp")) return { icon: MessageCircle, gradient: "linear-gradient(135deg, #25d366, #128c7e)" };
-  if (p.includes("facebook")) return { icon: Facebook, gradient: "linear-gradient(135deg, #1877f2, #0a58c2)" };
-  if (p.includes("instagram")) return { icon: Instagram, gradient: "linear-gradient(135deg, #f58529, #dd2a7b, #8134af)" };
+  if (p.includes("facebook")) return { icon: Share2, gradient: "linear-gradient(135deg, #1877f2, #0a58c2)" };
+  if (p.includes("instagram")) return { icon: Camera, gradient: "linear-gradient(135deg, #f58529, #dd2a7b, #8134af)" };
   if (p.includes("tiktok")) return { icon: Music2, gradient: "linear-gradient(135deg, #25f4ee, #010101, #fe2c55)" };
   if (p.includes("telegram")) return { icon: Send, gradient: "linear-gradient(135deg, #2aabee, #229ed9)" };
   if (p.includes("transport") || p.includes("bus")) return { icon: Bus, gradient: "linear-gradient(135deg, #f97316, #ea580c)" };
