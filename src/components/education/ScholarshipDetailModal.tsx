@@ -115,23 +115,44 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
             </div>
           )}
 
-          {/* Banner — shown in full, tap to view full-screen. Falls back to a
-              generic graphic if no image was uploaded, so this section is
-              never just empty space. */}
-          {s.image_url ? (
-            <button onClick={() => setFullImage(true)}
-              className="relative w-full rounded-2xl overflow-hidden bg-muted/30 active:scale-[0.98] transition-transform" style={{ height: 180 }}>
-              <img src={s.image_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40" />
-              <img src={s.image_url} alt={s.title} className="relative w-full h-full object-contain" />
-              <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center">
-                <Maximize2 className="w-3.5 h-3.5 text-white" />
-              </span>
-            </button>
-          ) : (
-            <div className="w-full rounded-2xl bg-gradient-to-br from-yellow-500/15 to-orange-500/15 flex items-center justify-center" style={{ height: 120 }}>
-              <Award className="w-9 h-9 text-yellow-500/60" />
-            </div>
-          )}
+          {/* Banner — shown in full, tap to view full-screen */}
+          <button onClick={() => s.image_url && setFullImage(true)}
+            className="relative w-full rounded-2xl overflow-hidden bg-muted/30 active:scale-[0.98] transition-transform flex items-center justify-center"
+            style={{ height: 200, minHeight: 200 }}>
+            {s.image_url ? (
+              <>
+                <img
+                  src={s.image_url}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl opacity-40"
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                <img
+                  src={s.image_url}
+                  alt={s.title}
+                  className="relative w-full h-full object-contain"
+                  style={{ maxHeight: 200 }}
+                  onError={e => {
+                    const el = e.target as HTMLImageElement;
+                    el.style.display = "none";
+                    el.parentElement?.querySelector(".img-fallback")?.classList.remove("hidden");
+                  }}
+                />
+                <div className="img-fallback hidden absolute inset-0 flex items-center justify-center flex-col gap-2">
+                  <Award className="w-9 h-9 text-yellow-500/60" />
+                  <p className="text-xs text-muted-foreground">Image unavailable</p>
+                </div>
+                <span className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center z-10">
+                  <Maximize2 className="w-3.5 h-3.5 text-white" />
+                </span>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <Award className="w-9 h-9 text-yellow-500/60" />
+                <p className="text-xs text-muted-foreground">No image uploaded</p>
+              </div>
+            )}
+          </button>
 
           {/* Amount badge */}
           {s.amount && (
