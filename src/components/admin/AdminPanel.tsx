@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   X, Loader2, BadgeCheck, AlertTriangle, Trash2,
-  Megaphone, LayoutGrid, LogOut, Video,
+  Megaphone, LayoutGrid, LogOut, Video, School,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertsAdmin } from "@/components/admin/AdvertsAdminForm";
+import { UniversitiesAdmin } from "@/components/admin/UniversitiesAdmin";
 
 interface AdminPanelProps {
   profile: AdminProfile;
@@ -47,7 +48,7 @@ const EMPTY_AD_CONFIG: AdConfig = {
 };
 
 export function AdminPanel({ profile, onClose }: AdminPanelProps) {
-  const [tab, setTab] = useState<"content" | "ads" | "adverts">("content");
+  const [tab, setTab] = useState<"content" | "ads" | "adverts" | "universities">("content");
 
   const handleClose = async () => {
     await signOutAdmin(); // never leave an admin session sitting open in the background
@@ -72,10 +73,14 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
         <TabButton active={tab === "content"} onClick={() => setTab("content")} icon={<LayoutGrid className="w-3.5 h-3.5" />} label="Content" />
         <TabButton active={tab === "ads"} onClick={() => setTab("ads")} icon={<Megaphone className="w-3.5 h-3.5" />} label="Ads" />
         <TabButton active={tab === "adverts"} onClick={() => setTab("adverts")} icon={<Video className="w-3.5 h-3.5" />} label="Adverts" />
+        <TabButton active={tab === "universities"} onClick={() => setTab("universities")} icon={<School className="w-3.5 h-3.5" />} label="Universities" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8">
-        {tab === "content" ? <ContentModeration /> : tab === "ads" ? <AdConfigEditor adminId={profile.id} /> : <AdvertsAdmin />}
+        {tab === "content" ? <ContentModeration />
+          : tab === "ads" ? <AdConfigEditor adminId={profile.id} />
+          : tab === "adverts" ? <AdvertsAdmin />
+          : <UniversitiesAdmin />}
       </div>
 
       <button
