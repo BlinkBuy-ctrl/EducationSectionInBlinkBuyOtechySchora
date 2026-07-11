@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import {
   X, Download, Lock, Star, FileText,
   User, Calendar, BookOpen, Bookmark, BookmarkCheck,
-  ChevronLeft, ChevronRight, Loader2, CheckCircle2, BadgeCheck, Eye
+  ChevronLeft, ChevronRight, Loader2, CheckCircle2, Eye
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
@@ -438,13 +438,13 @@ export function ResourceDetailModal({
     const load = async () => {
       const [rRes, uRes] = await Promise.all([
         supabase.from("otechy_ratings")
-          .select("*, profiles(name, is_verified)")
+          .select("id,user_id,resource_id,rating,review,created_at")
           .eq("resource_id", resource.id)
           .order("created_at", { ascending: false }),
         supabase.from("profiles")
           .select("name, is_verified, bio, avatar_url")
           .eq("id", resource.uploader_id)
-          .single(),
+          .maybeSingle(),
       ]);
       if (rRes.data) {
         setRatings(rRes.data);
@@ -485,7 +485,6 @@ export function ResourceDetailModal({
         rating: myRating,
         review: myReview.trim() || null,
         created_at: new Date().toISOString(),
-        profiles: { name: uploader?.name ?? "You", is_verified: false },
       };
       setRatings(prev => {
         const without = prev.filter(r => r.user_id !== user.id);
@@ -493,12 +492,11 @@ export function ResourceDetailModal({
       });
       setSubmitted(true);
       toast({ title: "⭐ Review submitted!" });
-      // Scroll to reviews section so user sees their review
       setTimeout(() => reviewsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
 
-      // Then re-fetch in background to get accurate data
+      // Re-fetch in background to get accurate data
       supabase.from("otechy_ratings")
-        .select("*, profiles(name, is_verified)")
+        .select("id,user_id,resource_id,rating,review,created_at")
         .eq("resource_id", resource.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => { if (data) setRatings(data); });
@@ -641,12 +639,13 @@ export function ResourceDetailModal({
                     {ratings.map((r: any) => (
                       <div key={r.id} className="flex gap-2.5">
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/40 to-blue-500/40 flex items-center justify-center text-white text-[10px] font-black shrink-0">
-                          {r.profiles?.name?.[0]?.toUpperCase() ?? "?"}
+                          {(r.user_id ?? "??").slice(-2).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1 mb-0.5">
-                            <span className="text-[11px] font-semibold text-foreground">{r.profiles?.name ?? "User"}</span>
-                            {r.profiles?.is_verified && <BadgeCheck className="w-3 h-3 text-blue-400" />}
+                            <span className="text-[11px] font-semibold text-foreground">
+                              {r.user_id === user?.id ? "You" : `User ${(r.user_id ?? "0000").slice(-4).toUpperCase()}`}
+                            </span>
                           </div>
                           <StarRating value={r.rating} readonly />
                           {r.review && <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{r.review}</p>}
