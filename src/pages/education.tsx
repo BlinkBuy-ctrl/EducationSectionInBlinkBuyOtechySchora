@@ -363,6 +363,24 @@ export default function EducationPage() {
         </div>
       </div>
 
+      {/* Higher Education quick-access banner — always visible, no scrolling needed */}
+      <button
+        onClick={() => setTab("universities")}
+        className={`w-full flex items-center gap-3 rounded-2xl p-3.5 mb-5 active:scale-[0.98] transition-all border ${
+          tab === "universities"
+            ? "bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
+            : "bg-card border-border"
+        }`}
+      >
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tab === "universities" ? "bg-white/15" : "bg-purple-500/15"}`}>
+          <GraduationCap className={`w-5 h-5 ${tab === "universities" ? "text-white" : "text-purple-400"}`} />
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className={`text-sm font-bold ${tab === "universities" ? "text-white" : "text-foreground"}`}>Higher Education</p>
+          <p className={`text-[11px] ${tab === "universities" ? "text-white/70" : "text-muted-foreground"}`}>Find your university's official links & groups</p>
+        </div>
+      </button>
+
       {/* Tabs */}
       <div
         data-tour="tabs"
