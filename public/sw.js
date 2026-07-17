@@ -131,3 +131,26 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
+
+// ── E-BookStore real push notifications ──
+self.addEventListener("push", (event) => {
+  let data = { title: "SchoraHub", body: "You have a new update." };
+  try { data = event.data.json(); } catch { /* non-JSON payload, use default */ }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window" }).then((clients) => {
+      if (clients.length > 0) return clients[0].focus();
+      return self.clients.openWindow("/");
+    })
+  );
+});
