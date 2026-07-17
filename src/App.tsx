@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Switch, Route } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,6 +9,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { AdOverlay } from "@/components/AdOverlay";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { supabase } from "@/lib/supabase";
 
 const EducationPage     = lazy(() => import("@/pages/education"));
 const NotificationsPage = lazy(() => import("@/pages/notifications"));
@@ -33,9 +34,36 @@ function PageLoader() {
   );
 }
 
+// A stable per-device id so "unique visitors" can be counted, not just raw
+// opens. Falls back to a throwaway id if storage is unavailable — the view
+// still gets logged, it just won't count toward "unique" reliably that time.
+function getVisitorId(): string {
+  const KEY = "otechy_visitor_id";
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
+// Fire-and-forget: log one view per app open. Never blocks or throws into
+// the UI — if it fails, the person using the app just doesn't notice.
+function logPageView() {
+  supabase.from("otechy_page_views").insert({ visitor_id: getVisitorId() }).then(({ error }) => {
+    if (error) console.warn("[SchoraHub] view log failed:", error.message);
+  });
+}
+
 function AppInner() {
   const authState = useAuthState();
   useScrollToTop();
+
+  useEffect(() => { logPageView(); }, []);
 
   return (
     <AuthContext.Provider value={authState}>
