@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import {
   GraduationCap, Sun, Moon, Bell, RefreshCw,
   Home, BarChart2, Search, Upload, Megaphone,
+  ChevronUp, ChevronDown,
 } from "lucide-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -15,6 +16,44 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [unread, setUnread] = useState(0);
   // Track active tab via state so nav buttons never go stale
   const [activeTab, setActiveTab] = useState<string>("");
+
+  /* ── Scroll-sense up/down buttons ── */
+  const scrollRef = useRef<HTMLElement>(null);
+  const [showUp, setShowUp] = useState(false);
+  const [showDown, setShowDown] = useState(false);
+  const [scrollBtnsVisible, setScrollBtnsVisible] = useState(false);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const THRESHOLD = 24; // px slack near edges before hiding an arrow
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      const atTop = scrollTop <= THRESHOLD;
+      const atBottom = scrollTop + clientHeight >= scrollHeight - THRESHOLD;
+      const scrollable = scrollHeight - clientHeight > THRESHOLD * 2;
+
+      setShowUp(scrollable && !atTop);
+      setShowDown(scrollable && !atBottom);
+
+      // Buttons appear while scrolling, then fade away shortly after it stops
+      setScrollBtnsVisible(true);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = setTimeout(() => setScrollBtnsVisible(false), 1500);
+    };
+
+    handleScroll();
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", handleScroll);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [loc, activeTab]);
+
+  const scrollToTop = () => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  const scrollToBottom = () => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
 
   /* ── Unread notifications ── */
   const fetchUnread = async () => {
@@ -105,10 +144,37 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Scroll area ── */}
       <main
-        className="flex-1 overflow-x-hidden"
+        ref={scrollRef}
+        className="flex-1 overflow-x-hidden relative"
         style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
       >
         <div className="pb-24">{children}</div>
+
+        {/* ── Scroll-sense arrows ── */}
+        <div className="sticky bottom-4 w-full flex justify-end pr-3 pointer-events-none">
+          <div className="flex flex-col items-end gap-2">
+            {showUp && (
+              <button
+                onClick={scrollToTop}
+                aria-label="Scroll to top"
+                className={`w-10 h-10 rounded-full bg-sidebar/60 backdrop-blur-sm border border-sidebar-border/60 shadow-md flex items-center justify-center text-white/90 active:scale-90 transition-all duration-300 ${scrollBtnsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                style={{ transform: scrollBtnsVisible ? "translateY(0)" : "translateY(4px)" }}
+              >
+                <ChevronUp className="w-5 h-5" />
+              </button>
+            )}
+            {showDown && (
+              <button
+                onClick={scrollToBottom}
+                aria-label="Scroll to bottom"
+                className={`w-10 h-10 rounded-full bg-sidebar/60 backdrop-blur-sm border border-sidebar-border/60 shadow-md flex items-center justify-center text-white/90 active:scale-90 transition-all duration-300 ${scrollBtnsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+                style={{ transform: scrollBtnsVisible ? "translateY(0)" : "translateY(-4px)" }}
+              >
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
       </main>
 
       {/* ── Bottom nav ── */}
