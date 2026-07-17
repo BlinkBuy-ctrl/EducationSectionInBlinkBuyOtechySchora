@@ -436,6 +436,16 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
         filtered.map(s => <ScholarshipCard key={s.id} s={s} user={user} onOpen={setSelected} />)
       )}
 
+      {/* Verification CTA */}
+      <a
+        href="https://wa.me/265999626944"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-1.5 text-xs font-bold text-yellow-500 active:scale-[0.98] transition-all py-2"
+      >
+        <Shield className="w-3.5 h-3.5" /> Want to Get Verified? Click Here
+      </a>
+
       {showForm && (
         <ScholarshipPostForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} ensureProfile={ensureProfile} />
       )}

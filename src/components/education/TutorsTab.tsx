@@ -430,6 +430,16 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
         </div>
       )}
 
+      {/* Verification CTA */}
+      <a
+        href="https://wa.me/265999626944"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-1.5 text-xs font-bold text-blue-500 active:scale-[0.98] transition-all py-2"
+      >
+        <Shield className="w-3.5 h-3.5" /> Want to Get Verified as a Tutor? Click Here
+      </a>
+
       {showForm && <TutorRegisterForm user={user} onSuccess={onRefresh} onClose={() => setShowForm(false)} ensureProfile={ensureProfile} />}
       {selected  && <TutorDetailModal t={selected} user={user} onClose={() => setSelected(null)} />}
     </div>

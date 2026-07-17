@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Loader2, School } from "lucide-react";
+import { Building2, Link2, Loader2, School } from "lucide-react";
 import { getUniversities, type University } from "@/lib/universities";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { UniversityDetailModal } from "@/components/education/UniversityDetailModal";
@@ -96,6 +96,16 @@ export function UniversitiesTab() {
           {filtered.map(u => <UniversityCard key={u.id} u={u} onOpen={setSelected} />)}
         </div>
       )}
+
+      {/* Add-link CTA */}
+      <a
+        href="https://wa.me/265999626944"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center justify-center gap-1.5 text-xs font-bold text-purple-500 active:scale-[0.98] transition-all py-2"
+      >
+        <Link2 className="w-3.5 h-3.5" /> Want To Help Add Link? Click Here
+      </a>
 
       {selected && <UniversityDetailModal university={selected} onClose={() => setSelected(null)} />}
     </div>
