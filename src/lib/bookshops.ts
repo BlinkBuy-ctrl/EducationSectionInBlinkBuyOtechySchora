@@ -153,7 +153,7 @@ export async function subscribeToPush(anonId: string) {
   let sub = await reg.pushManager.getSubscription()
   if (!sub) {
     // TODO: replace with your generated VAPID public key
-    const VAPID_PUBLIC_KEY = 'YOUR-VAPID-PUBLIC-KEY'
+    const VAPID_PUBLIC_KEY = 'BGIoLhtHS59h97l8zrnMNnVKRM6gGcArrow9INvV8QGRz8Un7VJxUdOBo3bBkowsfmj86Lh4w2LK_xEzb2-xvOc'
     sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) })
   }
   const json = sub.toJSON()
