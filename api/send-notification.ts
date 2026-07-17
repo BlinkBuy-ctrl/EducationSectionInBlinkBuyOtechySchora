@@ -4,13 +4,13 @@ import { createClient } from '@supabase/supabase-js';
 
 // Hardcoded per your instruction — replace with your actual values.
 // Generate VAPID keys once with: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = 'YOUR-VAPID-PUBLIC-KEY';
-const VAPID_PRIVATE_KEY = 'YOUR-VAPID-PRIVATE-KEY';
+const VAPID_PUBLIC_KEY = 'BGIoLhtHS59h97l8zrnMNnVKRM6gGcArrow9INvV8QGRz8Un7VJxUdOBo3bBkowsfmj86Lh4w2LK_xEzb2-xvOc';
+const VAPID_PRIVATE_KEY = 'Gvy6zfX9tEnu_94iPvPfXuhGJAvQ92fNVgEFEOYX0UI';
 const BOOKSHOP_SUPABASE_URL = 'https://sahxijuxztcdncgoorun.supabase.co';
 // Service-role key (NOT the anon key) — needed here to delete dead
 // subscriptions server-side. Keep this file server-only, never import
 // it from client code.
-const BOOKSHOP_SUPABASE_SERVICE_ROLE_KEY = 'YOUR-SERVICE-ROLE-KEY';
+const BOOKSHOP_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaHhpanV4enRjZG5jZ29vcnVuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDI5MDAwMCwiZXhwIjoyMDk5ODY2MDAwfQ.VZa5ajKqABNbcBVq6nAJwnHxWa2NfEQr-ZdTff1wF5U';
 
 webpush.setVapidDetails('mailto:support@schorahub.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 const db = createClient(BOOKSHOP_SUPABASE_URL, BOOKSHOP_SUPABASE_SERVICE_ROLE_KEY);
