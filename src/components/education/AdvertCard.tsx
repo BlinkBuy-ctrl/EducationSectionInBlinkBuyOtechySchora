@@ -75,6 +75,13 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange, isAct
     else document.exitFullscreen?.();
   };
 
+  // Touching the video goes full-screen first (like tapping a video does on
+  // most apps). Once already full-screen, the same tap just plays/pauses.
+  const handleVideoTap = () => {
+    if (!isFullscreen) toggleFullscreen();
+    else togglePlay();
+  };
+
   const react = async (reaction: "like" | "dislike") => {
     if (busy) return;
     setBusy(true);
@@ -123,9 +130,9 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange, isAct
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-full snap-start shrink-0 bg-black overflow-hidden">
-      {/* Tap anywhere on the video to play/pause */}
-      <div className="absolute inset-0 z-10" onClick={togglePlay}>
+    <div ref={containerRef} className="relative w-full h-full snap-start shrink-0 bg-black rounded-2xl overflow-hidden">
+      {/* Tap the video to go full-screen; tap again (once full-screen) to play/pause */}
+      <div className="absolute inset-0 z-10" onClick={handleVideoTap}>
         <MuxPlayer
           ref={playerRef}
           playbackId={advert.mux_playback_id}
