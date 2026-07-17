@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   X, Loader2, BadgeCheck, AlertTriangle, Trash2,
-  Megaphone, LayoutGrid, LogOut, Video, School,
+  Megaphone, LayoutGrid, LogOut, Video, School, Eye,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
@@ -48,7 +48,7 @@ const EMPTY_AD_CONFIG: AdConfig = {
 };
 
 export function AdminPanel({ profile, onClose }: AdminPanelProps) {
-  const [tab, setTab] = useState<"content" | "ads" | "adverts" | "universities">("content");
+  const [tab, setTab] = useState<"content" | "ads" | "adverts" | "universities" | "stats">("content");
 
   const handleClose = async () => {
     await signOutAdmin(); // never leave an admin session sitting open in the background
@@ -74,13 +74,15 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
         <TabButton active={tab === "ads"} onClick={() => setTab("ads")} icon={<Megaphone className="w-3.5 h-3.5" />} label="Ads" />
         <TabButton active={tab === "adverts"} onClick={() => setTab("adverts")} icon={<Video className="w-3.5 h-3.5" />} label="Adverts" />
         <TabButton active={tab === "universities"} onClick={() => setTab("universities")} icon={<School className="w-3.5 h-3.5" />} label="Universities" />
+        <TabButton active={tab === "stats"} onClick={() => setTab("stats")} icon={<Eye className="w-3.5 h-3.5" />} label="Stats" />
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-8">
         {tab === "content" ? <ContentModeration />
           : tab === "ads" ? <AdConfigEditor adminId={profile.id} />
           : tab === "adverts" ? <AdvertsAdmin />
-          : <UniversitiesAdmin />}
+          : tab === "universities" ? <UniversitiesAdmin />
+          : <ViewStats />}
       </div>
 
       <button
@@ -88,6 +90,55 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
         className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-3 border-t border-border shrink-0"
       >
         <LogOut className="w-3.5 h-3.5" /> Log out of admin
+      </button>
+    </div>
+  );
+}
+
+// ── View stats ──────────────────────────────────────────────────────
+function ViewStats() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<{ total_views: number; unique_visitors: number; views_today: number } | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.rpc("otechy_page_views_stats").single();
+    if (error) {
+      toast({ title: "Failed to load stats", description: error.message, variant: "destructive" });
+    } else if (data) {
+      setStats({
+        total_views: Number((data as any).total_views) || 0,
+        unique_visitors: Number((data as any).unique_visitors) || 0,
+        views_today: Number((data as any).views_today) || 0,
+      });
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+
+  const cards = [
+    { label: "Total views", value: stats?.total_views ?? 0 },
+    { label: "Unique visitors", value: stats?.unique_visitors ?? 0 },
+    { label: "Views today", value: stats?.views_today ?? 0 },
+  ];
+
+  return (
+    <div className="pt-3 space-y-3">
+      {cards.map(c => (
+        <div key={c.label} className="bg-card border border-border rounded-2xl px-4 py-4 flex items-center justify-between">
+          <p className="text-sm font-semibold text-muted-foreground">{c.label}</p>
+          <p className="text-2xl font-black text-foreground">{c.value.toLocaleString()}</p>
+        </div>
+      ))}
+      <button
+        onClick={load}
+        className="w-full text-xs font-semibold py-2.5 rounded-xl border border-border text-muted-foreground"
+      >
+        Refresh
       </button>
     </div>
   );
