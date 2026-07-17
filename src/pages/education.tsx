@@ -13,6 +13,7 @@ import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
 import { TutorsTab } from "@/components/education/TutorsTab";
 import { AdvertsTab } from "@/components/education/AdvertsTab";
 import { UniversitiesTab } from "@/components/education/UniversitiesTab";
+import { BookshopsTab } from "@/components/education/BookshopsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
@@ -28,7 +29,7 @@ const RESOURCE_SEARCH_PHRASES = [
   "Search Textbooks…",
 ];
 type PriceFilter = "all" | "free" | "paid";
-type Tab = "resources" | "scholarships" | "tutors" | "universities" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
+type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
@@ -314,6 +315,7 @@ export default function EducationPage() {
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
     { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
     { key: "universities", emoji: "🎓", label: "Higher Education", count: null            },
+    { key: "bookshops",    emoji: "📖", label: "E-BookStore",     count: null            },
     { key: "adverts",      emoji: "📢", label: "Adverts",      count: null                },
     { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: saved.length        },
     { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
@@ -378,6 +380,24 @@ export default function EducationPage() {
         <div className="flex-1 min-w-0 text-left">
           <p className={`text-sm font-bold ${tab === "universities" ? "text-white" : "text-foreground"}`}>Higher Education</p>
           <p className={`text-[11px] ${tab === "universities" ? "text-white/70" : "text-muted-foreground"}`}>Find your university's official links & groups</p>
+        </div>
+      </button>
+
+      {/* E-BookStore quick-access banner — same pattern as Higher Education */}
+      <button
+        onClick={() => setTab("bookshops")}
+        className={`w-full flex items-center gap-3 rounded-2xl p-3.5 mb-5 active:scale-[0.98] transition-all border ${
+          tab === "bookshops"
+            ? "bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
+            : "bg-card border-border"
+        }`}
+      >
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tab === "bookshops" ? "bg-white/15" : "bg-purple-500/15"}`}>
+          <BookOpen className={`w-5 h-5 ${tab === "bookshops" ? "text-white" : "text-purple-400"}`} />
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className={`text-sm font-bold ${tab === "bookshops" ? "text-white" : "text-foreground"}`}>E-BookStore</p>
+          <p className={`text-[11px] ${tab === "bookshops" ? "text-white/70" : "text-muted-foreground"}`}>Malawi's verified bookshop marketplace</p>
         </div>
       </button>
 
@@ -450,6 +470,7 @@ export default function EducationPage() {
       {tab === "scholarships" && <ScholarshipsTab scholarships={scholarships} loading={loading} user={user} onRefresh={fetchAll} />}
       {tab === "tutors"       && <TutorsTab tutors={tutors} loading={loading} user={user} onRefresh={fetchAll} />}
       {tab === "universities" && <UniversitiesTab />}
+      {tab === "bookshops"    && <BookshopsTab />}
       {tab === "adverts"      && <AdvertsTab userId={user.id} />}
 
       {tab === "bookmarks" && (
