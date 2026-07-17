@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Megaphone, ChevronUp, ChevronDown } from "lucide-react";
+import { useLocation } from "wouter";
+import { Loader2, Megaphone, ChevronUp, ChevronDown, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertCard, type Advert } from "@/components/education/AdvertCard";
@@ -10,6 +11,7 @@ interface AdvertsTabProps {
 
 export function AdvertsTab({ userId }: AdvertsTabProps) {
   const { toast } = useToast();
+  const [, navigate] = useLocation();
   const [adverts, setAdverts] = useState<Advert[]>([]);
   const [myReactions, setMyReactions] = useState<Record<string, "like" | "dislike">>({});
   const [loading, setLoading] = useState(true);
@@ -62,6 +64,8 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
 
   // Watches which card is actually visible in the scroll container and marks
   // it "active" — this is what tells AdvertCard which one should be playing.
+  // Set up ONCE per adverts list (not on every like/count change), so a tap
+  // on like/dislike never tears down and rebuilds the observer mid-scroll.
   useEffect(() => {
     if (!containerRef.current || adverts.length === 0) return;
 
@@ -79,8 +83,11 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
 
     Object.values(cardRefs.current).forEach(el => { if (el) observer.observe(el); });
     return () => observer.disconnect();
-  }, [adverts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adverts.map(a => a.id).join(",")]);
 
+  // Locally reconcile counts the instant a reaction changes — no server
+  // round-trip needed, so counts never "flash back to 0" while swiping fast.
   const handleReactionChange = (
     advertId: string,
     reaction: "like" | "dislike" | null,
@@ -107,6 +114,8 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
   const goPrev = () => { if (canGoPrev) scrollToId(adverts[activeIndex - 1].id); };
   const goNext = () => { if (canGoNext) scrollToId(adverts[activeIndex + 1].id); };
 
+  const close = () => navigate("/");
+
   if (loading) {
     return <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
   }
@@ -122,17 +131,20 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
   }
 
   return (
-    <div className="relative w-full">
+    // Full-screen immersive takeover — sits above the app's header/bottom
+    // nav so each video gets the whole display, TikTok-style.
+    <div className="fixed inset-0 z-[60] bg-black" style={{ height: "100dvh" }}>
       <div
         ref={containerRef}
-        className="h-[72vh] w-full overflow-y-scroll snap-y snap-mandatory rounded-2xl [&>*]:h-full"
+        className="h-full w-full overflow-y-scroll snap-y snap-mandatory [&>*]:h-full"
+        style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
       >
         {adverts.map(advert => (
           <div
             key={advert.id}
             ref={el => { cardRefs.current[advert.id] = el; }}
             data-advert-id={advert.id}
-            className="h-full snap-start"
+            className="h-full snap-start snap-always"
           >
             <AdvertCard
               advert={advert}
@@ -145,8 +157,18 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
         ))}
       </div>
 
+      {/* Close — exits full mode back to normal browsing */}
+      <button
+        onClick={close}
+        aria-label="Close"
+        className="absolute z-[70] w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md bg-black/40 text-white"
+        style={{ top: "max(12px, env(safe-area-inset-top,0px) + 12px)", left: 12 }}
+      >
+        <X className="w-5 h-5" />
+      </button>
+
       {/* Up/down nav for people who'd rather tap than swipe */}
-      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-30">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-[70]">
         <button
           onClick={goPrev}
           disabled={!canGoPrev}

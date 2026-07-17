@@ -79,7 +79,22 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange, isAct
     if (busy) return;
     setBusy(true);
 
-    const clearing = myReaction === reaction; // tapping the same one again removes it
+    const prevReaction = myReaction;
+    const clearing = prevReaction === reaction; // tapping the same one again removes it
+    const nextReaction: "like" | "dislike" | null = clearing ? null : reaction;
+
+    // Work out the new counts locally so the UI updates instantly —
+    // no second fetch to race against a fast swipe to the next video.
+    let { like_count, dislike_count } = advert;
+    if (prevReaction === "like") like_count -= 1;
+    if (prevReaction === "dislike") dislike_count -= 1;
+    if (nextReaction === "like") like_count += 1;
+    if (nextReaction === "dislike") dislike_count += 1;
+    like_count = Math.max(0, like_count);
+    dislike_count = Math.max(0, dislike_count);
+
+    // Reflect it immediately, then persist in the background.
+    onReactionChange(advert.id, nextReaction, { like_count, dislike_count });
 
     try {
       if (clearing) {
@@ -98,16 +113,9 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange, isAct
           );
         if (error) throw error;
       }
-
-      const { data, error: refetchError } = await supabase
-        .from("otechy_reels")
-        .select("like_count,dislike_count")
-        .eq("id", advert.id)
-        .single();
-      if (refetchError) throw refetchError;
-
-      onReactionChange(advert.id, clearing ? null : reaction, data);
     } catch (e: any) {
+      // Roll back on failure
+      onReactionChange(advert.id, prevReaction, { like_count: advert.like_count, dislike_count: advert.dislike_count });
       toast({ title: "Couldn't save your reaction", description: e.message, variant: "destructive" });
     } finally {
       setBusy(false);
@@ -115,7 +123,7 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange, isAct
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-full snap-start shrink-0 bg-black rounded-2xl overflow-hidden">
+    <div ref={containerRef} className="relative w-full h-full snap-start shrink-0 bg-black overflow-hidden">
       {/* Tap anywhere on the video to play/pause */}
       <div className="absolute inset-0 z-10" onClick={togglePlay}>
         <MuxPlayer
