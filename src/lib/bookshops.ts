@@ -160,9 +160,19 @@ export async function getApplications(status: 'pending' | 'approved' | 'rejected
   return data ?? []
 }
 
+// Must match ADMIN_REVIEW_SECRET in api/review-bookshop.ts exactly.
+const ADMIN_REVIEW_SECRET = 'GJf0-fxkRB2o6_VG8qassX4Qpi-90WEpQe0ruEevnJ4'
+
 export async function reviewApplication(app: Bookshop, status: 'approved' | 'rejected') {
-  const { error } = await db.from('bookshops').update({ status, reviewed_at: new Date().toISOString() }).eq('id', app.id)
-  if (error) throw error
+  const res = await fetch('/api/review-bookshop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_REVIEW_SECRET },
+    body: JSON.stringify({ bookshopId: app.id, status }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to update application')
+  }
 
   if (app.owner_anon_id) {
     fetch('/api/send-notification', {
