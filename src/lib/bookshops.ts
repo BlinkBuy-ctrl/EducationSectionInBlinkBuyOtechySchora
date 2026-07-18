@@ -3,6 +3,8 @@ import { bookshopSupabase as db } from '@/lib/bookshopSupabase'
 export interface Bookshop {
   id: string
   owner_user_id: string | null
+  owner_anon_id: string | null
+  owner_email: string | null
   name: string
   logo_url: string | null
   about: string | null
@@ -90,7 +92,7 @@ export async function addTestimonial(t: { bookshop_id: string; author_name: stri
 
 // ── Application (Phase 1 — anon apply; owner_user_id gets linked once they sign up in Phase 2) ──
 export async function applyAsBookshop(input: {
-  name: string; about: string; location: string; contact: string
+  name: string; about: string; location: string; contact: string; email: string; ownerAnonId: string
   logoFile: File | null; certFile: File; ownerUserId?: string
 }): Promise<Bookshop> {
   const stamp = Date.now()
@@ -112,13 +114,37 @@ export async function applyAsBookshop(input: {
     about: input.about,
     location: input.location,
     contact: input.contact,
+    owner_email: input.email || null,
+    owner_anon_id: input.ownerAnonId,
     logo_url,
     cert_url,
     owner_user_id: input.ownerUserId ?? null,
     status: 'pending',
   }).select().single()
   if (error) throw error
+
+  if (input.email) {
+    sendEmail(
+      input.email,
+      "We've received your bookshop application",
+      `<p>Hi,</p><p>Thanks for applying to open <b>${input.name}</b> on SchoraHub's E-BookStore.</p>
+       <p>Our team is reviewing your certificate/registration proof now. You'll get another email (and an in-app notification) the moment a decision is made.</p>
+       <p>— SchoraHub</p>`
+    )
+  }
+
   return data
+}
+
+// ── Email (Resend, via /api/send-email) ──
+async function sendEmail(to: string, subject: string, html: string) {
+  try {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, html }),
+    })
+  } catch { /* email is best-effort — push notification is the reliable channel */ }
 }
 
 // ── Owner-managed shop details (Phase 2) ──
@@ -134,15 +160,34 @@ export async function getApplications(status: 'pending' | 'approved' | 'rejected
   return data ?? []
 }
 
-export async function reviewApplication(id: string, status: 'approved' | 'rejected') {
-  const { error } = await db.from('bookshops').update({ status, reviewed_at: new Date().toISOString() }).eq('id', id)
+export async function reviewApplication(app: Bookshop, status: 'approved' | 'rejected') {
+  const { error } = await db.from('bookshops').update({ status, reviewed_at: new Date().toISOString() }).eq('id', app.id)
   if (error) throw error
-  if (status === 'approved') {
+
+  if (app.owner_anon_id) {
     fetch('/api/send-notification', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: 'Shop approved! 🎉', body: 'Your bookshop is now live on SchoraHub.' }),
+      body: JSON.stringify({
+        title: status === 'approved' ? 'Shop approved! 🎉' : 'Application update',
+        body: status === 'approved' ? 'Your bookshop is now live on SchoraHub.' : 'Your bookshop application was not approved this time.',
+        anonId: app.owner_anon_id, // targets only the applicant's device — not a broadcast
+      }),
     }).catch(() => {})
+  }
+
+  if (app.owner_email) {
+    sendEmail(
+      app.owner_email,
+      status === 'approved' ? `🎉 ${app.name} is now live on SchoraHub!` : `Update on your ${app.name} application`,
+      status === 'approved'
+        ? `<p>Congratulations — <b>${app.name}</b> is now approved and visible in the E-BookStore section on SchoraHub.</p>
+           <p>Customers can find and contact your shop right away. Book/order management tools are coming in the next update.</p>
+           <p>— SchoraHub</p>`
+        : `<p>Thanks for applying to open <b>${app.name}</b> on SchoraHub.</p>
+           <p>We weren't able to approve it this time — this is usually due to the certificate/registration proof not being clear or verifiable. You're welcome to re-apply with clearer documents.</p>
+           <p>— SchoraHub</p>`
+    )
   }
 }
 
