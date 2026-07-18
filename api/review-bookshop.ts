@@ -19,8 +19,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { bookshopId, status } = req.body ?? {};
-  if (!bookshopId || !['approved', 'rejected'].includes(status)) {
+  if (!bookshopId || !['approved', 'rejected', 'deleted'].includes(status)) {
     return res.status(400).json({ error: 'bookshopId and a valid status are required' });
+  }
+
+  if (status === 'deleted') {
+    // Cascades to books/testimonials/orders/ads via FK ON DELETE CASCADE
+    const { error } = await db.from('bookshops').delete().eq('id', bookshopId);
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ ok: true });
   }
 
   const { error } = await db
