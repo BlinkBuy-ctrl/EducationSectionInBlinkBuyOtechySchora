@@ -19,7 +19,8 @@
     "react-dom": "^19.2.5",
     "react-icons": "^5.7.0",
     "wouter": "^3.3.5",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "resend": "^4.0.1"
   },
   "devDependencies": {
     "@radix-ui/react-toast": "^1.2.7",
