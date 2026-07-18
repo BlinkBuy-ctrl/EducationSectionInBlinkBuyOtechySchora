@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Loader2, Store } from "lucide-react";
+import { BookOpen, Loader2, Store, ArrowRight, ShieldCheck, UserCircle2 } from "lucide-react";
 import { getApprovedBookshops, subscribeToPush, type Bookshop } from "@/lib/bookshops";
-import { useAuth } from "@/hooks/useAuth";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { BookshopDetailModal } from "@/components/education/BookshopDetailModal";
 import { BookshopApplyModal } from "@/components/education/BookshopApplyModal";
+import { BookshopOwnerPanel } from "@/components/education/BookshopOwnerPanel";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const SHOP_SEARCH_PHRASES = [
   "Search bookshops…",
@@ -13,24 +14,53 @@ const SHOP_SEARCH_PHRASES = [
   "Search your favorite shop…",
 ];
 
-function BookshopCard({ shop, onOpen }: { shop: Bookshop; onOpen: (s: Bookshop) => void }) {
-  const [imgFailed, setImgFailed] = useState(false);
-  const showLogo = !!shop.logo_url && !imgFailed;
+// "Big storefront" card — banner as background, logo overlapping top-left,
+// bold name + motto over a dark gradient, Visit Shop CTA bottom-right.
+function StorefrontCard({ shop, onOpen }: { shop: Bookshop; onOpen: (s: Bookshop) => void }) {
+  const [bannerFailed, setBannerFailed] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const showBanner = !!shop.banner_url && !bannerFailed;
+  const showLogo = !!shop.logo_url && !logoFailed;
+  const accent = shop.brand_color || "#7c3aed";
+
   return (
     <div
       onClick={() => onOpen(shop)}
-      className="flex flex-col items-center gap-2.5 bg-card border border-border rounded-2xl p-5 active:scale-[0.97] transition-all cursor-pointer"
-      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+      className="relative w-full rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-all border border-border"
+      style={{ height: 168, background: showBanner ? undefined : `linear-gradient(135deg, ${accent}, #1e1b4b)` }}
     >
-      <div className="w-20 h-20 rounded-2xl bg-muted/40 border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
+      {showBanner && (
+        <img src={shop.banner_url!} alt="" className="absolute inset-0 w-full h-full object-cover" onError={() => setBannerFailed(true)} />
+      )}
+      {/* Dark overlay so text stays readable over any banner */}
+      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.65) 100%)" }} />
+
+      {/* Logo, overlapping top-left */}
+      <div className="absolute top-3 left-3 w-14 h-14 rounded-full border-2 border-white/80 bg-card flex items-center justify-center overflow-hidden shadow-lg">
         {showLogo ? (
-          <img src={shop.logo_url!} alt={shop.name} className="w-full h-full object-cover" onError={() => setImgFailed(true)} />
+          <img src={shop.logo_url!} alt={shop.name} className="w-full h-full object-cover" onError={() => setLogoFailed(true)} />
         ) : (
-          <Store className="w-9 h-9 text-purple-400" />
+          <Store className="w-6 h-6 text-purple-400" />
         )}
       </div>
-      <p className="text-sm font-bold text-foreground text-center line-clamp-2 leading-snug">{shop.name}</p>
-      <span className="text-[10px] font-semibold text-green-500 flex items-center gap-1">✓ Verified</span>
+
+      {/* Verified badge */}
+      <div className="absolute top-3 right-3 flex items-center gap-1 bg-green-500/90 text-white text-[10px] font-bold px-2 py-1 rounded-full">
+        <ShieldCheck className="w-3 h-3" /> Verified
+      </div>
+
+      {/* Name + motto */}
+      <div className="absolute left-3 bottom-12 right-3">
+        <p className="text-white font-black text-lg leading-tight drop-shadow-sm truncate">{shop.name}</p>
+        {shop.motto && <p className="text-white/85 text-xs mt-0.5 line-clamp-1">{shop.motto}</p>}
+      </div>
+
+      {/* Visit Shop CTA */}
+      <div className="absolute bottom-3 right-3">
+        <span className="flex items-center gap-1 bg-white/95 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-full">
+          Visit Shop <ArrowRight className="w-3.5 h-3.5" />
+        </span>
+      </div>
     </div>
   );
 }
@@ -43,6 +73,7 @@ export function BookshopsTab() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Bookshop | null>(null);
   const [showApply, setShowApply] = useState(false);
+  const [showOwnerPanel, setShowOwnerPanel] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -60,6 +91,9 @@ export function BookshopsTab() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{shops.length} bookshop{shops.length !== 1 ? "s" : ""}</p>
+        <button onClick={() => setShowOwnerPanel(true)} className="flex items-center gap-1 text-xs font-bold text-purple-500">
+          <UserCircle2 className="w-3.5 h-3.5" /> My Bookshop
+        </button>
       </div>
 
       <AnimatedSearchInput
@@ -82,8 +116,9 @@ export function BookshopsTab() {
           <p className="text-sm text-muted-foreground">Try a different search.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {filtered.map(s => <BookshopCard key={s.id} shop={s} onOpen={setSelected} />)}
+        // Vertical scroll of big storefront cards — no pagination
+        <div className="flex flex-col gap-3">
+          {filtered.map(s => <StorefrontCard key={s.id} shop={s} onOpen={setSelected} />)}
         </div>
       )}
 
@@ -96,6 +131,7 @@ export function BookshopsTab() {
 
       {selected && <BookshopDetailModal bookshop={selected} onClose={() => setSelected(null)} />}
       {showApply && <BookshopApplyModal onClose={() => setShowApply(false)} />}
+      {showOwnerPanel && <BookshopOwnerPanel onClose={() => setShowOwnerPanel(false)} />}
     </div>
   );
 }

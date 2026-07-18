@@ -63,27 +63,40 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
          onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg bg-card rounded-t-3xl flex flex-col overflow-hidden" style={{ height: "90vh", maxHeight: "90vh" }} onClick={e => e.stopPropagation()}>
 
-        {/* Header */}
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0 relative">
-          <div className="w-14 h-14 rounded-2xl bg-muted/40 border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
-            {bookshop.logo_url && !logoFailed ? (
-              <img src={bookshop.logo_url} alt={bookshop.name} className="w-full h-full object-cover" onError={() => setLogoFailed(true)} />
-            ) : <Store className="w-7 h-7 text-purple-400" />}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-black text-base text-foreground leading-tight truncate">{bookshop.name}</h2>
-            <p className="text-xs text-green-500 font-semibold">✓ Verified bookshop</p>
-          </div>
+        {/* Header — branded banner to match the storefront card */}
+        <div
+          className="relative px-4 pt-4 pb-3 shrink-0"
+          style={{
+            background: bookshop.banner_url
+              ? `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.6)), url(${bookshop.banner_url}) center/cover`
+              : `linear-gradient(135deg, ${bookshop.brand_color || "#7c3aed"}, #1e1b4b)`,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-full border-2 border-white/80 bg-card flex items-center justify-center overflow-hidden shrink-0">
+              {bookshop.logo_url && !logoFailed ? (
+                <img src={bookshop.logo_url} alt={bookshop.name} className="w-full h-full object-cover" onError={() => setLogoFailed(true)} />
+              ) : <Store className="w-7 h-7 text-purple-400" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="font-black text-base text-white leading-tight truncate drop-shadow-sm">{bookshop.name}</h2>
+              {bookshop.motto ? (
+                <p className="text-xs text-white/85 truncate">{bookshop.motto}</p>
+              ) : (
+                <p className="text-xs text-green-300 font-semibold">✓ Verified bookshop</p>
+              )}
+            </div>
 
-          <button onClick={() => setShowMenu(v => !v)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <Menu className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-            <X className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
+            <button onClick={() => setShowMenu(v => !v)} className="w-8 h-8 rounded-full bg-black/30 flex items-center justify-center shrink-0">
+              <Menu className="w-4 h-4 text-white" />
+            </button>
+            <button onClick={onClose} className="w-7 h-7 rounded-full bg-black/30 flex items-center justify-center shrink-0">
+              <X className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
 
           {showMenu && (
-            <div className="absolute top-14 right-4 z-10 w-44 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+            <div className="absolute top-16 right-4 z-10 w-44 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
               <button onClick={handleShare} className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold hover:bg-muted/50">
                 <Share2 className="w-3.5 h-3.5" /> Share shop
               </button>
