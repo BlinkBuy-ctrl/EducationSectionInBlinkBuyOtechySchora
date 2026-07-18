@@ -10,6 +10,7 @@ export interface Bookshop {
   banner_url: string | null
   motto: string | null
   brand_color: string | null
+  categories: string[]
   about: string | null
   location: string | null
   lat: number | null
@@ -67,6 +68,37 @@ export async function getMyBookshop(userId: string): Promise<Bookshop | null> {
   const { data, error } = await db.from('bookshops').select('*').eq('owner_user_id', userId).maybeSingle()
   if (error) throw error
   return data
+}
+
+export interface ShopStats { bookCount: number; avgRating: number | null; reviewCount: number }
+
+// One pair of queries for ALL shops at once — avoids an N+1 query per card
+// in the storefront list.
+export async function getShopStats(bookshopIds: string[]): Promise<Record<string, ShopStats>> {
+  if (bookshopIds.length === 0) return {}
+  const [{ data: books }, { data: reviews }] = await Promise.all([
+    db.from('bookshop_books').select('bookshop_id').in('bookshop_id', bookshopIds),
+    db.from('bookshop_testimonials').select('bookshop_id, rating').in('bookshop_id', bookshopIds),
+  ])
+
+  const stats: Record<string, ShopStats> = {}
+  for (const id of bookshopIds) stats[id] = { bookCount: 0, avgRating: null, reviewCount: 0 }
+
+  for (const b of books ?? []) stats[b.bookshop_id].bookCount++
+
+  const ratingSums: Record<string, { sum: number; count: number }> = {}
+  for (const r of reviews ?? []) {
+    if (r.rating == null) continue
+    ratingSums[r.bookshop_id] ??= { sum: 0, count: 0 }
+    ratingSums[r.bookshop_id].sum += r.rating
+    ratingSums[r.bookshop_id].count++
+  }
+  for (const [id, { sum, count }] of Object.entries(ratingSums)) {
+    stats[id].avgRating = Math.round((sum / count) * 10) / 10
+    stats[id].reviewCount = count
+  }
+
+  return stats
 }
 
 // ── Public catalog ──
@@ -180,7 +212,7 @@ export async function claimMyBookshop(): Promise<Bookshop> {
 }
 
 export async function ownerUpdateShop(bookshopId: string, patch: Partial<Pick<Bookshop,
-  'about' | 'location' | 'contact' | 'motto' | 'logo_url' | 'banner_url' | 'brand_color' | 'gallery' | 'social_links'
+  'about' | 'location' | 'contact' | 'motto' | 'logo_url' | 'banner_url' | 'brand_color' | 'gallery' | 'social_links' | 'categories' | 'lat' | 'lng'
 >>) {
   await callOwnerManage('update_shop', { bookshopId, patch })
 }
@@ -247,7 +279,8 @@ export async function reviewApplication(app: Bookshop, status: 'approved' | 'rej
       status === 'approved' ? `🎉 ${app.name} is now live on SchoraHub!` : `Update on your ${app.name} application`,
       status === 'approved'
         ? `<p>Congratulations — <b>${app.name}</b> is now approved and visible in the E-BookStore section on SchoraHub.</p>
-           <p>Customers can find and contact your shop right away. Book/order management tools are coming in the next update.</p>
+           <p><b>To manage your shop:</b> open SchoraHub → E-BookStore → tap "My Bookshop" → tap "First time? Create a login" → sign up using <b>this same email address</b> (${app.owner_email}) and any password you choose. No password is sent to you — you set it yourself the first time.</p>
+           <p>Once logged in you can add books, upload your banner/logo, set your shop location on the map, and edit your shop details anytime.</p>
            <p>— SchoraHub</p>`
         : `<p>Thanks for applying to open <b>${app.name}</b> on SchoraHub.</p>
            <p>We weren't able to approve it this time — this is usually due to the certificate/registration proof not being clear or verifiable. You're welcome to re-apply with clearer documents.</p>
