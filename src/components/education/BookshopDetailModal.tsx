@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Store, Star, MapPin, Phone, BookOpen, Menu, Share2, Flag, Image as ImageIcon } from "lucide-react";
+import { X, Loader2, Store, Star, MapPin, Phone, BookOpen, Menu, Share2, Flag, Image as ImageIcon, Navigation } from "lucide-react";
 import { FaWhatsapp, FaFacebook, FaInstagram } from "react-icons/fa";
 import { getBooks, getTestimonials, addTestimonial, type Bookshop, type Book, type Testimonial } from "@/lib/bookshops";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +17,23 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
   const [logoFailed, setLogoFailed] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (bookshop.lat == null || bookshop.lng == null || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const R = 6371;
+        const dLat = (bookshop.lat! - pos.coords.latitude) * Math.PI / 180;
+        const dLng = (bookshop.lng! - pos.coords.longitude) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) ** 2 +
+          Math.cos(pos.coords.latitude * Math.PI / 180) * Math.cos(bookshop.lat! * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+        setDistanceKm(Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10);
+      },
+      () => {}, // silently ignore if the user denies location — map still shows
+      { timeout: 5000 }
+    );
+  }, [bookshop.id]);
   const [tName, setTName] = useState("");
   const [tMsg, setTMsg] = useState("");
   const [tRating, setTRating] = useState(5);
@@ -133,7 +150,23 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
                     })}
                   </div>
                 )}
-                {/* Phase 4: interactive distance map renders here once lat/lng + maps key are wired in */}
+                {/* Real map — free OpenStreetMap embed, no API key needed */}
+                {bookshop.lat != null && bookshop.lng != null && (
+                  <div className="mt-3 rounded-xl overflow-hidden border border-border">
+                    <iframe
+                      title="Shop location"
+                      className="w-full h-40"
+                      loading="lazy"
+                      style={{ border: 0 }}
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${bookshop.lng - 0.01}%2C${bookshop.lat - 0.01}%2C${bookshop.lng + 0.01}%2C${bookshop.lat + 0.01}&layer=mapnik&marker=${bookshop.lat}%2C${bookshop.lng}`}
+                    />
+                    {distanceKm != null && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-background text-[11px] font-semibold text-muted-foreground">
+                        <Navigation className="w-3 h-3" /> {distanceKm} km from you
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Gallery */}

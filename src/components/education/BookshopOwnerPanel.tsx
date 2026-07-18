@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, Store, Upload, Trash2, PlusCircle, LogOut } from "lucide-react";
+import { X, Loader2, Store, Upload, Trash2, PlusCircle, LogOut, MapPin } from "lucide-react";
 import {
   signUpOwner, signInOwner, signOutOwner, getOwnerSession, claimMyBookshop,
   getMyBookshop, ownerUpdateShop, ownerDeleteShop, ownerUploadAsset,
@@ -81,7 +81,9 @@ export function BookshopOwnerPanel({ onClose }: Props) {
           ) : !loggedIn ? (
             <div className="space-y-2.5 max-w-sm mx-auto pt-6">
               <p className="text-xs text-muted-foreground text-center mb-3">
-                {mode === "signin" ? "Sign in with the email you applied with." : "Create your shop login (use the same email from your application)."}
+                {mode === "signin"
+                  ? "Sign in with the email + password you created after approval."
+                  : "No one sends you a password — you create it yourself, right here, using the same email you applied with."}
               </p>
               <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email"
                 className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
@@ -126,6 +128,9 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
   const [location, setLocation] = useState(shop.location ?? "");
   const [contact, setContact] = useState(shop.contact ?? "");
   const [brandColor, setBrandColor] = useState(shop.brand_color ?? "#7c3aed");
+  const [categories, setCategories] = useState((shop.categories ?? []).join(", "));
+  const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({ lat: shop.lat, lng: shop.lng });
+  const [locatingGPS, setLocatingGPS] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
@@ -141,11 +146,21 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
   const saveDetails = async () => {
     setSaving(true);
     try {
-      await ownerUpdateShop(shop.id, { motto, about, location, contact, brand_color: brandColor });
-      onShopChange({ ...shop, motto, about, location, contact, brand_color: brandColor });
+      const categoryList = categories.split(",").map(c => c.trim()).filter(Boolean);
+      await ownerUpdateShop(shop.id, { motto, about, location, contact, brand_color: brandColor, categories: categoryList, lat: coords.lat, lng: coords.lng });
+      onShopChange({ ...shop, motto, about, location, contact, brand_color: brandColor, categories: categoryList, lat: coords.lat, lng: coords.lng });
       toast({ title: "✅ Saved" });
     } catch (e: any) { toast({ title: "Failed to save", description: e.message, variant: "destructive" }); }
     finally { setSaving(false); }
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocatingGPS(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => { setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLocatingGPS(false); },
+      () => { toast({ title: "Couldn't get your location", description: "Check location permission and try again.", variant: "destructive" }); setLocatingGPS(false); }
+    );
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -228,6 +243,13 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
           className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
         <input value={contact} onChange={e => setContact(e.target.value)} placeholder="Contact"
           className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+        <input value={categories} onChange={e => setCategories(e.target.value)} placeholder="Categories, comma separated (e.g. Fiction, Textbooks, Kids)"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+        <button onClick={useMyLocation} disabled={locatingGPS}
+          className="w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-lg border border-border text-muted-foreground">
+          {locatingGPS ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+          {coords.lat != null ? "Update map pin to my current location" : "Set shop location on the map (uses your GPS)"}
+        </button>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Brand color</span>
           <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)} className="w-9 h-9 rounded-lg border border-border" />
