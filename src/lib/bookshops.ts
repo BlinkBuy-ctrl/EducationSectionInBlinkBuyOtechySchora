@@ -7,6 +7,9 @@ export interface Bookshop {
   owner_email: string | null
   name: string
   logo_url: string | null
+  banner_url: string | null
+  motto: string | null
+  brand_color: string | null
   about: string | null
   location: string | null
   lat: number | null
@@ -153,6 +156,58 @@ export async function updateMyBookshop(id: string, patch: Partial<Pick<Bookshop,
   if (error) throw error
 }
 
+// ── Owner-authenticated actions (Phase 2) — all go through the secured
+// server endpoint, which verifies the session token server-side and
+// checks the shop actually belongs to that user before writing anything.
+async function callOwnerManage(action: string, payload: Record<string, any>) {
+  const session = await getOwnerSession()
+  if (!session) throw new Error('You need to be logged in.')
+  const res = await fetch('/api/owner-manage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ action, ...payload }),
+  })
+  const body = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(body.error || 'Request failed')
+  return body
+}
+
+// Links a just-approved shop (matched by the email used when applying)
+// to the owner's new login, the first time they sign in.
+export async function claimMyBookshop(): Promise<Bookshop> {
+  const body = await callOwnerManage('claim', {})
+  return body.bookshop
+}
+
+export async function ownerUpdateShop(bookshopId: string, patch: Partial<Pick<Bookshop,
+  'about' | 'location' | 'contact' | 'motto' | 'logo_url' | 'banner_url' | 'brand_color' | 'gallery' | 'social_links'
+>>) {
+  await callOwnerManage('update_shop', { bookshopId, patch })
+}
+
+export async function ownerDeleteShop(bookshopId: string) {
+  await callOwnerManage('delete_shop', { bookshopId })
+}
+
+export async function ownerUploadAsset(file: File, folder: 'logos' | 'banners' | 'gallery'): Promise<string> {
+  const path = `${folder}/${Date.now()}-${file.name}`
+  const { error } = await db.storage.from('bookshop-assets').upload(path, file)
+  if (error) throw error
+  return db.storage.from('bookshop-assets').getPublicUrl(path).data.publicUrl
+}
+
+export async function ownerAddBook(bookshopId: string, book: { title: string; author: string; price: number; stock: number; cover_url: string | null }) {
+  await callOwnerManage('add_book', { bookshopId, book })
+}
+
+export async function ownerUpdateBook(bookshopId: string, bookId: string, patch: Partial<Book>) {
+  await callOwnerManage('update_book', { bookshopId, bookId, patch })
+}
+
+export async function ownerDeleteBook(bookshopId: string, bookId: string) {
+  await callOwnerManage('delete_book', { bookshopId, bookId })
+}
+
 // ── Admin ──
 export async function getApplications(status: 'pending' | 'approved' | 'rejected' = 'pending'): Promise<Bookshop[]> {
   const { data, error } = await db.from('bookshops').select('*').eq('status', status).order('created_at')
@@ -201,7 +256,17 @@ export async function reviewApplication(app: Bookshop, status: 'approved' | 'rej
   }
 }
 
-// ── Push ──
+export async function deleteBookshop(bookshopId: string) {
+  const res = await fetch('/api/review-bookshop', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-admin-secret': ADMIN_REVIEW_SECRET },
+    body: JSON.stringify({ bookshopId, status: 'deleted' }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || 'Failed to delete bookshop')
+  }
+}
 export async function subscribeToPush(anonId: string) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
   const reg = await navigator.serviceWorker.ready
