@@ -3,30 +3,33 @@ import { createPortal } from "react-dom";
 import { X, Loader2, Upload, Store } from "lucide-react";
 import { applyAsBookshop } from "@/lib/bookshops";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Props { onClose: () => void; }
 
 export function BookshopApplyModal({ onClose }: Props) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const certRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [about, setAbout] = useState("");
   const [location, setLocation] = useState("");
   const [contact, setContact] = useState("");
+  const [email, setEmail] = useState("");
   const [certFile, setCertFile] = useState<File | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
-    if (!name.trim() || !contact.trim() || !certFile) {
-      toast({ title: "Missing required info", description: "Shop name, contact, and a registration/certificate photo are all required.", variant: "destructive" });
+    if (!name.trim() || !contact.trim() || !email.trim() || !certFile) {
+      toast({ title: "Missing required info", description: "Shop name, contact, email, and a registration/certificate photo are all required.", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
-      await applyAsBookshop({ name: name.trim(), about: about.trim(), location: location.trim(), contact: contact.trim(), logoFile, certFile });
-      toast({ title: "✅ Application submitted", description: "We'll review your certificate and notify you once approved." });
+      await applyAsBookshop({ name: name.trim(), about: about.trim(), location: location.trim(), contact: contact.trim(), email: email.trim(), ownerAnonId: user.id, logoFile, certFile });
+      toast({ title: "✅ Application submitted", description: "We'll review your certificate — you'll get a notification here once approved." });
       onClose();
     } catch (e: any) {
       toast({ title: "Failed to submit", description: e.message, variant: "destructive" });
@@ -50,6 +53,8 @@ export function BookshopApplyModal({ onClose }: Props) {
           <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Location (e.g. Blantyre, Limbe)"
             className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
           <input value={contact} onChange={e => setContact(e.target.value)} placeholder="Contact (WhatsApp/phone) *"
+            className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+          <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email * (approval confirmation sent here)"
             className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
 
           <div onClick={() => logoRef.current?.click()} className="h-20 rounded-xl border-2 border-dashed border-border cursor-pointer flex items-center justify-center gap-2 text-muted-foreground text-xs">
