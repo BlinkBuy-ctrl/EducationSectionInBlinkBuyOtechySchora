@@ -21,7 +21,7 @@ export function BookshopApplicationsAdmin() {
   const handle = async (app: Bookshop, status: "approved" | "rejected") => {
     setBusyId(app.id);
     try {
-      await reviewApplication(app.id, status);
+      await reviewApplication(app, status);
       setApps(prev => prev.filter(a => a.id !== app.id));
       toast({ title: status === "approved" ? `✅ ${app.name} approved` : `${app.name} rejected` });
     } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
@@ -45,6 +45,7 @@ export function BookshopApplicationsAdmin() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{app.name}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{app.location} · {app.contact}</p>
+                {app.owner_email && <p className="text-[11px] text-muted-foreground truncate">✉️ {app.owner_email}</p>}
               </div>
             </div>
             <p className="text-xs text-muted-foreground">{app.about}</p>
