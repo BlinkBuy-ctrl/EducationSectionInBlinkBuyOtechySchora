@@ -14,79 +14,58 @@ const SHOP_SEARCH_PHRASES = [
   "Search your favorite shop…",
 ];
 
-// "Digital shopping mall" storefront — a real shop building, not a profile
-// card: roof/awning, signboard carrying the shop name + logo, a glass
-// window showing the shop's own banner as its "interior", a shelf ledge,
-// then stats + a big Visit Shop button underneath.
+// Flat storefront-icon card, Material-style: a signboard physically
+// overlapping the top edge, a big flat colored icon panel as the shop's
+// visual identity (no photo, no 3D), then stats + a full-width CTA.
 function StorefrontCard({ shop, stats, onOpen }: { shop: Bookshop; stats?: ShopStats; onOpen: (s: Bookshop) => void }) {
-  const [bannerFailed, setBannerFailed] = useState(false);
-  const [logoFailed, setLogoFailed] = useState(false);
   const accent = shop.brand_color || "#7c3aed";
-  const showBanner = !!shop.banner_url && !bannerFailed;
-  const showLogo = !!shop.logo_url && !logoFailed;
 
   return (
-    <div onClick={() => onOpen(shop)} className="rounded-2xl overflow-hidden border border-border cursor-pointer active:scale-[0.98] transition-all bg-card">
-      {/* ── Storefront building ── */}
-      <div className="relative" style={{ height: 190 }}>
-        {/* Roof / awning */}
-        <div className="absolute top-0 left-0 right-0 h-8" style={{
-          background: `repeating-linear-gradient(115deg, ${accent} 0 18px, #1e1b4b 18px 36px)`,
-          clipPath: "polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)",
-        }} />
-
-        {/* Signboard: shop name + logo, sitting right under the roof */}
-        <div className="absolute top-7 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/95 px-3 py-1.5 rounded-lg shadow-md z-10 max-w-[85%]">
-          <div className="w-5 h-5 rounded-full overflow-hidden bg-muted/40 flex items-center justify-center shrink-0">
-            {showLogo ? <img src={shop.logo_url!} className="w-full h-full object-cover" onError={() => setLogoFailed(true)} /> : <Store className="w-3 h-3 text-purple-500" />}
-          </div>
-          <p className="text-[13px] font-black truncate" style={{ color: accent }}>{shop.name}</p>
-        </div>
-
-        {/* Glass window showing the shop's "interior" (banner) */}
-        <div className="absolute top-16 left-3 right-3 bottom-8 rounded-t-lg overflow-hidden border-[3px]" style={{ borderColor: accent }}>
-          {showBanner ? (
-            <img src={shop.banner_url!} alt="" className="w-full h-full object-cover" onError={() => setBannerFailed(true)} />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ background: `linear-gradient(160deg, ${accent}22, #1e1b4b11)` }}>
-              <BookOpen className="w-8 h-8" style={{ color: accent }} />
-            </div>
-          )}
-          {/* faint glass reflection */}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(120deg, rgba(255,255,255,0.18) 0%, transparent 40%)" }} />
-        </div>
-
-        {/* Shelf ledge under the window */}
-        <div className="absolute bottom-0 left-0 right-0 h-8" style={{ background: accent }} />
-        {shop.motto && (
-          <p className="absolute bottom-1.5 left-3 right-3 text-white text-[11px] font-semibold text-center truncate drop-shadow-sm">{shop.motto}</p>
-        )}
+    <div
+      onClick={() => onOpen(shop)}
+      className="relative rounded-2xl border border-border bg-card pt-6 cursor-pointer active:scale-[0.98] transition-all"
+    >
+      {/* Signboard — attached to the top edge, like a real shop sign */}
+      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 max-w-[85%] bg-card border border-border rounded-xl px-4 py-2 shadow-sm">
+        <p className="text-sm font-black text-foreground truncate">{shop.name}</p>
       </div>
 
-      {/* ── Info strip below the storefront ── */}
-      <div className="p-3 space-y-2">
+      {/* Big flat storefront icon — this IS the shop's visual identity */}
+      <div
+        className="mx-3 rounded-xl flex items-center justify-center"
+        style={{ height: 140, background: `linear-gradient(135deg, ${accent}, ${accent}cc)` }}
+      >
+        <Store className="w-16 h-16 text-white" strokeWidth={1.5} />
+      </div>
+
+      <div className="p-4 space-y-3">
+        {shop.motto && <p className="text-xs text-muted-foreground text-center">{shop.motto}</p>}
+
         <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1 text-yellow-500 font-bold">
-            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+          <span className="flex items-center gap-1 font-bold" style={{ color: stats?.avgRating ? "#eab308" : undefined }}>
+            <Star className="w-3.5 h-3.5" style={stats?.avgRating ? { fill: "#facc15", color: "#facc15" } : {}} />
             {stats?.avgRating ? `${stats.avgRating} (${stats.reviewCount})` : "New"}
-          </div>
-          <span className="text-muted-foreground">{stats?.bookCount ?? 0} books</span>
+          </span>
+          <span className="text-muted-foreground">{stats?.bookCount ?? 0} book{stats?.bookCount === 1 ? "" : "s"}</span>
           {shop.location && (
-            <span className="flex items-center gap-1 text-muted-foreground truncate max-w-[40%]">
+            <span className="flex items-center gap-1 text-muted-foreground truncate max-w-[35%]">
               <MapPin className="w-3 h-3 shrink-0" /> {shop.location}
             </span>
           )}
         </div>
 
         {shop.categories?.length > 0 && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {shop.categories.slice(0, 3).map(c => (
-              <span key={c} className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${accent}1a`, color: accent }}>{c}</span>
+              <span key={c} className="text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{ background: `${accent}1a`, color: accent }}>{c}</span>
             ))}
           </div>
         )}
 
-        <button className="w-full flex items-center justify-center gap-1.5 font-bold text-sm py-2 rounded-xl text-white" style={{ background: accent }}>
+        <button
+          className="w-full flex items-center justify-center gap-1.5 font-bold text-sm py-2.5 rounded-xl text-white"
+          style={{ background: accent }}
+        >
           Visit Shop <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -121,7 +100,7 @@ export function BookshopsTab() {
   const suggestionPool = useMemo(() => shops.map(s => s.name), [shops]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{shops.length} bookshop{shops.length !== 1 ? "s" : ""}</p>
         <button onClick={() => setShowOwnerPanel(true)} className="flex items-center gap-1 text-xs font-bold text-purple-500">
@@ -150,7 +129,7 @@ export function BookshopsTab() {
         </div>
       ) : (
         // Vertical "street" of storefronts — scroll down for more, no pagination
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {filtered.map(s => <StorefrontCard key={s.id} shop={s} stats={stats[s.id]} onOpen={setSelected} />)}
         </div>
       )}
