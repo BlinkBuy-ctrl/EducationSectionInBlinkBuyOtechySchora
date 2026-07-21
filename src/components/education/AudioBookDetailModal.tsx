@@ -10,6 +10,12 @@ import { AudioBook, TABLE_AUDIOBOOK_REVIEWS, getSignedAudioUrl, formatDuration, 
 
 const SPEEDS = [1, 1.25, 1.5, 1.75, 2, 0.75];
 
+// Seamlessly-tiling sine-ish wave: starts/ends at the same phase (y=10,
+// midline of a 0-20 viewBox) so two copies placed side by side and
+// scrolled by exactly one tile-width loop with no visible seam.
+const WAVE_PATH =
+  "M0,10 Q5,0 10,10 T20,10 T30,10 T40,10 T50,10 T60,10 T70,10 T80,10 T90,10 T100,10";
+
 interface Review {
   id: string;
   user_id: string;
@@ -38,6 +44,102 @@ function formatClock(seconds: number): string {
   const s = Math.floor(seconds % 60);
   if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ── Animated, colored waveform seek bar ────────────────────────────────────
+// Two full-width wave layers (muted behind, colored in front) render the
+// SAME scrolling pattern so they always line up pixel-for-pixel. The
+// colored layer is masked with clip-path to only show the played fraction —
+// that avoids any width-percentage math drifting the wave shape out of
+// alignment. The wave only scrolls (looks "alive") while audio is playing;
+// it freezes in place the instant playback pauses.
+function WaveformSeekBar({
+  progressPct,
+  isPlaying,
+  disabled,
+  onSeekInput,
+  onSeekCommit,
+}: {
+  progressPct: number;
+  isPlaying: boolean;
+  disabled: boolean;
+  onSeekInput: (pct: number) => void;
+  onSeekCommit: (pct: number) => void;
+}) {
+  const clampedPct = Math.min(100, Math.max(0, progressPct));
+
+  return (
+    <div className="relative w-full h-9 select-none">
+      <style>{`
+        @keyframes shWaveScroll {
+          from { transform: translateX(0); }
+          to   { transform: translateX(-50%); }
+        }
+        .sh-wave-scroll { animation: shWaveScroll 2.4s linear infinite; }
+        .sh-wave-scroll.sh-wave-paused { animation-play-state: paused; }
+      `}</style>
+
+      {/* Shared gradient def — referenced by the colored wave tiles below */}
+      <svg width="0" height="0" style={{ position: "absolute" }}>
+        <defs>
+          <linearGradient id="shWaveGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#db2777" />
+            <stop offset="100%" stopColor="#7c3aed" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* Muted background wave — always full track, always visible */}
+      <div className="absolute inset-0 overflow-hidden rounded-full">
+        <div className={`flex h-full w-[200%] sh-wave-scroll ${isPlaying ? "" : "sh-wave-paused"}`}>
+          {[0, 1].map(i => (
+            <svg key={i} viewBox="0 0 100 20" preserveAspectRatio="none" className="w-1/2 h-full shrink-0">
+              <path d={WAVE_PATH} fill="none" stroke="var(--border)" strokeWidth="3.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            </svg>
+          ))}
+        </div>
+      </div>
+
+      {/* Colored wave — identical pattern, masked to the played fraction */}
+      <div
+        className="absolute inset-0 overflow-hidden rounded-full pointer-events-none"
+        style={{ clipPath: `inset(0 ${100 - clampedPct}% 0 0)` }}
+      >
+        <div className={`flex h-full w-[200%] sh-wave-scroll ${isPlaying ? "" : "sh-wave-paused"}`}>
+          {[0, 1].map(i => (
+            <svg key={i} viewBox="0 0 100 20" preserveAspectRatio="none" className="w-1/2 h-full shrink-0">
+              <path d={WAVE_PATH} fill="none" stroke="url(#shWaveGradient)" strokeWidth="3.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            </svg>
+          ))}
+        </div>
+      </div>
+
+      {/* Thumb — sits on top of both wave layers at the current position */}
+      <div
+        className="absolute top-1/2 w-3.5 h-3.5 rounded-full pointer-events-none shadow-md"
+        style={{
+          left: `${clampedPct}%`,
+          transform: "translate(-50%, -50%)",
+          background: "linear-gradient(135deg,#db2777,#7c3aed)",
+          boxShadow: "0 0 0 3px rgba(219,39,119,0.15)",
+        }}
+      />
+
+      {/* Invisible range input on top — keeps drag-to-seek working exactly as before */}
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={0.1}
+        value={clampedPct}
+        disabled={disabled}
+        onChange={e => onSeekInput(Number(e.target.value))}
+        onMouseUp={e => onSeekCommit(Number((e.target as HTMLInputElement).value))}
+        onTouchEnd={e => onSeekCommit(Number((e.target as HTMLInputElement).value))}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default"
+      />
+    </div>
+  );
 }
 
 interface Props {
@@ -107,8 +209,6 @@ export function AudioBookDetailModal({
     setReviewsLoading(false);
   }, [audiobook.id]);
 
-  // This was the actual bug: nothing ever fetched the reviews, so a
-  // successful insert had nowhere to render to.
   useEffect(() => { loadReviews(); }, [loadReviews]);
 
   const togglePlay = async () => {
@@ -189,10 +289,8 @@ export function AudioBookDetailModal({
       <div className="relative w-full shrink-0 overflow-hidden" style={{ aspectRatio: "4/3", maxHeight: 340 }}>
         {showCover ? (
           <>
-            {/* Blurred backdrop fills the frame so letterboxing never looks empty */}
             <img src={audiobook.cover_url!} alt="" aria-hidden="true"
               className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" />
-            {/* Full, uncropped cover on top */}
             <img src={audiobook.cover_url!} alt={audiobook.title}
               className="relative w-full h-full object-contain"
               onError={() => setCoverFailed(true)} />
@@ -204,11 +302,7 @@ export function AudioBookDetailModal({
             </div>
           </div>
         )}
-        {/* Real scrim: solid black up from the bottom, not the page's --background var.
-            The old version used `from-background`, which is near-white in light mode —
-            that's why the title read as washed-out/shaded on lighter covers. */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/5 pointer-events-none" />
-        {/* Extra tight scrim right behind the text block, independent of cover brightness */}
         <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4"
@@ -235,8 +329,6 @@ export function AudioBookDetailModal({
           </div>
         </div>
 
-        {/* Title block over the hero — always on solid black scrim now, so it's
-            readable regardless of how light the cover art is */}
         <div className="absolute bottom-0 left-0 right-0 p-5">
           <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm text-white mb-2 tracking-wide">
             🎧 {audiobook.category}
@@ -252,7 +344,6 @@ export function AudioBookDetailModal({
         </div>
       </div>
 
-      {/* Full-size cover lightbox */}
       {coverOpen && showCover && (
         <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center p-6"
           onClick={() => setCoverOpen(false)}>
@@ -270,7 +361,6 @@ export function AudioBookDetailModal({
       {/* Body */}
       <div className="flex-1 px-5 py-5 flex flex-col gap-5 max-w-lg w-full mx-auto">
 
-        {/* Stats row */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
             <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
@@ -300,17 +390,14 @@ export function AudioBookDetailModal({
             <p className="text-center text-xs text-red-500 py-4">Couldn't load audio. Pull down to retry.</p>
           ) : (
             <>
-              {/* Seek bar */}
+              {/* Waveform seek bar — colored, animated, snake-like motion while playing */}
               <div className="flex flex-col gap-1.5">
-                <input
-                  type="range" min={0} max={100} step={0.1}
-                  value={displayPct}
+                <WaveformSeekBar
+                  progressPct={displayPct}
+                  isPlaying={playing}
                   disabled={urlLoading}
-                  onChange={e => onSeekInput(Number(e.target.value))}
-                  onMouseUp={e => onSeekCommit(Number((e.target as HTMLInputElement).value))}
-                  onTouchEnd={e => onSeekCommit(Number((e.target as HTMLInputElement).value))}
-                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-pink-600"
-                  style={{ background: `linear-gradient(to right,#db2777 ${displayPct}%,var(--muted) ${displayPct}%)` }}
+                  onSeekInput={onSeekInput}
+                  onSeekCommit={onSeekCommit}
                 />
                 <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
                   <span>{formatClock(seeking ? (scrubPct / 100) * duration : currentTime)}</span>
@@ -318,7 +405,6 @@ export function AudioBookDetailModal({
                 </div>
               </div>
 
-              {/* Transport controls */}
               <div className="flex items-center justify-center gap-6">
                 <button onClick={() => skip(-15)} disabled={urlLoading}
                   className="flex flex-col items-center gap-0.5 text-muted-foreground active:scale-90 transition-transform disabled:opacity-40">
@@ -340,7 +426,6 @@ export function AudioBookDetailModal({
                 </button>
               </div>
 
-              {/* Speed + Download */}
               <div className="flex items-center gap-2">
                 <button onClick={cycleSpeed}
                   className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold py-2 rounded-xl border border-border text-muted-foreground active:scale-[0.98] transition-all">
@@ -355,7 +440,6 @@ export function AudioBookDetailModal({
           )}
         </div>
 
-        {/* Description */}
         {audiobook.description && (
           <div>
             <h2 className="text-xs font-bold text-muted-foreground mb-1.5 uppercase tracking-wide">About</h2>
@@ -363,14 +447,14 @@ export function AudioBookDetailModal({
           </div>
         )}
 
-        {/* Rate this audio book */}
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <h2 className="text-xs font-bold text-muted-foreground mb-2.5 uppercase tracking-wide">Rate this audio book</h2>
-          <div className="flex items-center gap-1.5 mb-3">
+        {/* Rate this audio book — compact version */}
+        <div className="rounded-xl border border-border bg-card p-3">
+          <h2 className="text-[11px] font-bold text-muted-foreground mb-2 uppercase tracking-wide">Rate this audio book</h2>
+          <div className="flex items-center gap-1 mb-2">
             {[1, 2, 3, 4, 5].map(n => (
               <button key={n} disabled={ratingBusy} onClick={() => { setMyRating(n); setRatingSent(false); }}
                 className="active:scale-90 transition-transform disabled:opacity-50">
-                <Star className={`w-6 h-6 ${n <= myRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
+                <Star className={`w-4.5 h-4.5 ${n <= myRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} style={{ width: 18, height: 18 }} />
               </button>
             ))}
           </div>
@@ -379,47 +463,47 @@ export function AudioBookDetailModal({
             onChange={e => { setReviewText(e.target.value); setRatingSent(false); }}
             disabled={ratingBusy}
             placeholder="Write a review (optional)…"
-            rows={3}
+            rows={2}
             maxLength={500}
-            className="w-full bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pink-500/40 resize-none mb-3"
+            className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pink-500/40 resize-none mb-2"
           />
           <button onClick={submitRating} disabled={ratingBusy || myRating === 0}
-            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
-            {ratingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : ratingSent ? "✅ Submitted" : "Submit Rating"}
+            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
+            {ratingBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : ratingSent ? "✅ Submitted" : "Submit Rating"}
           </button>
         </div>
 
-        {/* Reviews list — this is what was missing entirely before */}
+        {/* Reviews list — compact version */}
         <div>
-          <div className="flex items-center gap-1.5 mb-3">
+          <div className="flex items-center gap-1.5 mb-2">
             <MessageSquareText className="w-3.5 h-3.5 text-muted-foreground" />
-            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+            <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">
               Reviews {reviews.length > 0 && `(${reviews.length})`}
             </h2>
           </div>
 
           {reviewsLoading ? (
-            <div className="flex items-center justify-center py-6 text-muted-foreground">
+            <div className="flex items-center justify-center py-4 text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : reviews.length === 0 ? (
-            <p className="text-sm text-muted-foreground/70 text-center py-4">
+            <p className="text-xs text-muted-foreground/70 text-center py-3">
               No reviews yet — be the first to share your thoughts.
             </p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {reviews.map(r => (
-                <div key={r.id} className="rounded-xl border border-border bg-card/60 p-3.5">
-                  <div className="flex items-center justify-between mb-1">
+                <div key={r.id} className="rounded-lg border border-border bg-card/60 p-2.5">
+                  <div className="flex items-center justify-between mb-0.5">
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map(n => (
-                        <Star key={n} className={`w-3 h-3 ${n <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/25"}`} />
+                        <Star key={n} style={{ width: 10, height: 10 }} className={`${n <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/25"}`} />
                       ))}
                     </div>
-                    <span className="text-[10px] text-muted-foreground">{timeAgo(r.created_at)}</span>
+                    <span className="text-[9px] text-muted-foreground">{timeAgo(r.created_at)}</span>
                   </div>
                   {r.review_text && (
-                    <p className="text-sm text-foreground/85 leading-relaxed">{r.review_text}</p>
+                    <p className="text-xs text-foreground/85 leading-relaxed">{r.review_text}</p>
                   )}
                 </div>
               ))}
