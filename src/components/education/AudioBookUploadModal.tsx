@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Upload, Music, Loader2, CheckCircle2, AlertCircle, Image as ImageIcon, Mic2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { useToast } from "@/hooks/use-toast";
 import {
   AUDIOBOOK_CATEGORIES, TABLE_AUDIOBOOKS, BUCKET_COVERS,
@@ -86,7 +87,7 @@ export function AudioBookUploadModal({ userId, onClose, onSuccess }: Props) {
       setProgress(90); setStatus("saving");
 
       const ext = audioFile.name.split(".").pop()?.toLowerCase() ?? "mp3";
-      const { error: dbErr } = await supabase.from(TABLE_AUDIOBOOKS).insert({
+      const { error: dbErr } = await bookshopSupabase.from(TABLE_AUDIOBOOKS).insert({
         uploader_id:      userId,
         title:            form.title.trim(),
         description:      form.description.trim() || null,

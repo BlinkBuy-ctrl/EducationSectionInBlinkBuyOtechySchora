@@ -4,7 +4,7 @@ import {
   X, Play, Pause, RotateCcw, RotateCw, Download, Lock, Star,
   Bookmark, Share2, Loader2, Music, Mic2, Gauge,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { useToast } from "@/hooks/use-toast";
 import { AudioBook, TABLE_AUDIOBOOK_REVIEWS, getSignedAudioUrl, formatDuration, shareAudioBook } from "@/lib/audiobooks";
 
@@ -111,7 +111,7 @@ export function AudioBookDetailModal({
   const submitRating = useCallback(async (rating: number) => {
     setRatingBusy(true);
     try {
-      const { error } = await supabase.from(TABLE_AUDIOBOOK_REVIEWS)
+      const { error } = await bookshopSupabase.from(TABLE_AUDIOBOOK_REVIEWS)
         .upsert({ audiobook_id: audiobook.id, user_id: userId, rating }, { onConflict: "audiobook_id,user_id" });
       if (error) throw error;
       setMyRating(rating);
