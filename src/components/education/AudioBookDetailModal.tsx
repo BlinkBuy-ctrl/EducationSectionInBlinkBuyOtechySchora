@@ -2,13 +2,34 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Play, Pause, RotateCcw, RotateCw, Download, Lock, Star,
-  Bookmark, Share2, Loader2, Music, Mic2, Gauge,
+  Bookmark, Share2, Loader2, Music, Mic2, Gauge, Expand, MessageSquareText,
 } from "lucide-react";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { useToast } from "@/hooks/use-toast";
 import { AudioBook, TABLE_AUDIOBOOK_REVIEWS, getSignedAudioUrl, formatDuration, shareAudioBook } from "@/lib/audiobooks";
 
 const SPEEDS = [1, 1.25, 1.5, 1.75, 2, 0.75];
+
+interface Review {
+  id: string;
+  user_id: string;
+  rating: number;
+  review_text: string | null;
+  created_at: string;
+  reviewer_name?: string | null;
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 function formatClock(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -54,6 +75,9 @@ export function AudioBookDetailModal({
   const [seeking,     setSeeking]     = useState(false);
   const [scrubPct,    setScrubPct]    = useState(0);
   const [coverFailed, setCoverFailed] = useState(false);
+  const [reviews,     setReviews]     = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [coverOpen,   setCoverOpen]   = useState(false);
 
   const isFree    = !audiobook.price || Number(audiobook.price) === 0;
   const canAccess = isFree || isPurchased;
@@ -71,6 +95,21 @@ export function AudioBookDetailModal({
 
   // Pause + release audio if the modal closes
   useEffect(() => () => { audioRef.current?.pause(); }, []);
+
+  const loadReviews = useCallback(async () => {
+    setReviewsLoading(true);
+    const { data, error } = await bookshopSupabase
+      .from(TABLE_AUDIOBOOK_REVIEWS)
+      .select("*")
+      .eq("audiobook_id", audiobook.id)
+      .order("created_at", { ascending: false });
+    if (!error && data) setReviews(data as Review[]);
+    setReviewsLoading(false);
+  }, [audiobook.id]);
+
+  // This was the actual bug: nothing ever fetched the reviews, so a
+  // successful insert had nowhere to render to.
+  useEffect(() => { loadReviews(); }, [loadReviews]);
 
   const togglePlay = async () => {
     if (!canAccess) { onBuy(audiobook); return; }
@@ -122,6 +161,7 @@ export function AudioBookDetailModal({
       if (error) throw error;
       onRatingSubmit(audiobook.id);
       setRatingSent(true);
+      await loadReviews();
       toast({ title: "⭐ Thanks for rating!" });
     } catch (e: any) {
       toast({ title: "Rating failed", description: e.message, variant: "destructive" });
@@ -164,7 +204,12 @@ export function AudioBookDetailModal({
             </div>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-black/30" />
+        {/* Real scrim: solid black up from the bottom, not the page's --background var.
+            The old version used `from-background`, which is near-white in light mode —
+            that's why the title read as washed-out/shaded on lighter covers. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/5 pointer-events-none" />
+        {/* Extra tight scrim right behind the text block, independent of cover brightness */}
+        <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black to-transparent pointer-events-none" />
 
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4"
           style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px) + 8px)" }}>
@@ -173,6 +218,12 @@ export function AudioBookDetailModal({
             <X className="w-4 h-4 text-white" />
           </button>
           <div className="flex items-center gap-2">
+            {showCover && (
+              <button onClick={() => setCoverOpen(true)}
+                className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform">
+                <Expand className="w-4 h-4 text-white" />
+              </button>
+            )}
             <button onClick={handleShare}
               className="w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform">
               <Share2 className="w-4 h-4 text-white" />
@@ -184,14 +235,15 @@ export function AudioBookDetailModal({
           </div>
         </div>
 
-        {/* Title block over the hero */}
+        {/* Title block over the hero — always on solid black scrim now, so it's
+            readable regardless of how light the cover art is */}
         <div className="absolute bottom-0 left-0 right-0 p-5">
-          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm text-white mb-2">
+          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm text-white mb-2 tracking-wide">
             🎧 {audiobook.category}
           </span>
-          <h1 className="text-xl font-black text-white leading-tight mb-1">{audiobook.title}</h1>
+          <h1 className="text-2xl font-black text-white leading-tight mb-1 drop-shadow-sm">{audiobook.title}</h1>
           {(audiobook.author || audiobook.narrator) && (
-            <p className="text-xs text-white/70">
+            <p className="text-xs text-white/80">
               {audiobook.author && <>By {audiobook.author}</>}
               {audiobook.author && audiobook.narrator && " · "}
               {audiobook.narrator && <span className="inline-flex items-center gap-1"><Mic2 className="w-3 h-3" />Narrated by {audiobook.narrator}</span>}
@@ -199,6 +251,21 @@ export function AudioBookDetailModal({
           )}
         </div>
       </div>
+
+      {/* Full-size cover lightbox */}
+      {coverOpen && showCover && (
+        <div className="fixed inset-0 z-[70] bg-black/95 flex items-center justify-center p-6"
+          onClick={() => setCoverOpen(false)}>
+          <button onClick={() => setCoverOpen(false)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 border border-white/15 flex items-center justify-center active:scale-90 transition-transform"
+            style={{ marginTop: "env(safe-area-inset-top, 0px)" }}>
+            <X className="w-4 h-4 text-white" />
+          </button>
+          <img src={audiobook.cover_url!} alt={audiobook.title}
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            onClick={e => e.stopPropagation()} />
+        </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 px-5 py-5 flex flex-col gap-5 max-w-lg w-full mx-auto">
@@ -320,6 +387,44 @@ export function AudioBookDetailModal({
             className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
             {ratingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : ratingSent ? "✅ Submitted" : "Submit Rating"}
           </button>
+        </div>
+
+        {/* Reviews list — this is what was missing entirely before */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-3">
+            <MessageSquareText className="w-3.5 h-3.5 text-muted-foreground" />
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+              Reviews {reviews.length > 0 && `(${reviews.length})`}
+            </h2>
+          </div>
+
+          {reviewsLoading ? (
+            <div className="flex items-center justify-center py-6 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : reviews.length === 0 ? (
+            <p className="text-sm text-muted-foreground/70 text-center py-4">
+              No reviews yet — be the first to share your thoughts.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {reviews.map(r => (
+                <div key={r.id} className="rounded-xl border border-border bg-card/60 p-3.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <Star key={n} className={`w-3 h-3 ${n <= r.rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/25"}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">{timeAgo(r.created_at)}</span>
+                  </div>
+                  {r.review_text && (
+                    <p className="text-sm text-foreground/85 leading-relaxed">{r.review_text}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>,
