@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Rotates through these messages — one sent daily at 9 AM UTC
-// Add/edit as many as you want
+// Rotates through these messages — one sent daily at 9 AM UTC.
+// Index 0 (free PDF hook) appears every OTHER day; the rest fill the gaps.
 const REMINDERS = [
   {
     title: "📚 Did you know?",
-    body: "SchoraHub has free PDFs — past papers, textbooks & notes for Malawian students!",
+    body: "With SchoraHub you can get different PDFs for free — even offline once installed!",
     url: "/",
   },
   {
@@ -14,13 +14,18 @@ const REMINDERS = [
     url: "/",
   },
   {
+    title: "📚 Did you know?",
+    body: "With SchoraHub you can get different PDFs for free — even offline once installed!",
+    url: "/",
+  },
+  {
     title: "💡 SchoraHub Tip",
     body: "Find scholarships tailored for Malawian students — check the Scholarships tab now!",
     url: "/",
   },
   {
-    title: "📖 New resources uploaded weekly",
-    body: "Students and tutors upload new notes & past papers every week on SchoraHub!",
+    title: "📚 Did you know?",
+    body: "With SchoraHub you can get different PDFs for free — even offline once installed!",
     url: "/",
   },
   {
