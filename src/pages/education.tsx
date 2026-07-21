@@ -397,14 +397,14 @@ export default function EducationPage() {
   // ── Audio Book handlers — mirror the resource handlers above exactly ───
   const handleAudioDownload = async (audiobook: AudioBook) => {
     try {
-      const url = await getSignedAudioUrl(audiobook.audio_url, 300);
-      const blob = await (await fetch(url)).blob();
-      const objUrl = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement("a"), {
-        href: objUrl, download: `${audiobook.title}.${audiobook.audio_format ?? "mp3"}`,
-      });
+      // download: true asks Supabase Storage to serve this with
+      // Content-Disposition: attachment, so the browser streams the file
+      // straight to disk instead of us fetching the whole thing into a JS
+      // blob first — much faster, especially for large audio files.
+      const filename = `${audiobook.title}.${audiobook.audio_format ?? "mp3"}`;
+      const url = await getSignedAudioUrl(audiobook.audio_url, 300, { download: filename });
+      const a = Object.assign(document.createElement("a"), { href: url, download: filename });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
       try {
         await bookshopSupabase.rpc("increment_audiobook_download", { audiobook_id: audiobook.id, caller_id: user.id });
         const { data: fresh } = await bookshopSupabase
