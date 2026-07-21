@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
 import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
@@ -235,38 +236,71 @@ export default function EducationPage() {
 
   const fetchAll = async () => {
     setLoading(true);
-    try {
-      const noTable = (e: any) => e?.code === "42P01";
-      const [rRes, sRes, tRes, pRes, bRes, abRes, apRes, abmRes] = await Promise.all([
-        supabase.from("otechy_resources")
-          // ✅ thumbnail_url added to select so cards can show the cover image
-          .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
-          .order("created_at", { ascending: false }),
-        supabase.from("otechy_scholarships").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-        supabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-        supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
-        supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
-        supabase.from(TABLE_AUDIOBOOKS)
-          .select("id,uploader_id,title,description,author,narrator,category,price,audio_url,audio_format,file_size,duration_seconds,cover_url,play_count,download_count,avg_rating,review_count,created_at")
-          .order("created_at", { ascending: false }),
-        supabase.from(TABLE_AUDIOBOOK_PURCHASES).select("audiobook_id").eq("buyer_id", user.id),
-        supabase.from(TABLE_AUDIOBOOK_BOOKMARKS).select("audiobook_id").eq("user_id", user.id),
-      ]);
-      if (rRes.error && !noTable(rRes.error)) throw rRes.error;
-      if (sRes.error && !noTable(sRes.error)) throw sRes.error;
-      if (tRes.error && !noTable(tRes.error)) throw tRes.error;
-      if (abRes.error && !noTable(abRes.error)) throw abRes.error;
-      setResources(rRes.data ?? []);
-      setScholarships(sRes.data ?? []);
-      setTutors(tRes.data ?? []);
-      setAudiobooks(abRes.data ?? []);
-      if (!pRes?.error) setPurchases(new Set((pRes?.data ?? []).map((p: any) => p.resource_id)));
-      if (!bRes?.error) setBookmarks(new Set((bRes?.data ?? []).map((b: any) => b.resource_id)));
-      if (!apRes?.error) setAudiobookPurchases(new Set((apRes?.data ?? []).map((p: any) => p.audiobook_id)));
-      if (!abmRes?.error) setAudiobookBookmarks(new Set((abmRes?.data ?? []).map((b: any) => b.audiobook_id)));
-    } catch (e: any) {
-      toast({ title: "Failed to load", description: e.message, variant: "destructive" });
-    } finally { setLoading(false); }
+    const noTable = (e: any) => e?.code === "42P01";
+    const errors: string[] = [];
+
+    // Each table's fetch settles independently — Promise.allSettled means a
+    // rejected/unexpected-error table can never block the others from
+    // setting state. Main app data reads from `supabase` (Vercel env vars);
+    // audiobooks read from `bookshopSupabase` (the separate, hardcoded
+    // E-BookStore backend).
+    const [rRes, sRes, tRes, pRes, bRes, abRes, apRes, abmRes] = await Promise.allSettled([
+      supabase.from("otechy_resources")
+        .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
+        .order("created_at", { ascending: false }),
+      supabase.from("otechy_scholarships").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+      supabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+      supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
+      supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
+      bookshopSupabase.from(TABLE_AUDIOBOOKS)
+        .select("id,uploader_id,title,description,author,narrator,category,price,audio_url,audio_format,file_size,duration_seconds,cover_url,play_count,download_count,avg_rating,review_count,created_at")
+        .order("created_at", { ascending: false }),
+      bookshopSupabase.from(TABLE_AUDIOBOOK_PURCHASES).select("audiobook_id").eq("buyer_id", user.id),
+      bookshopSupabase.from(TABLE_AUDIOBOOK_BOOKMARKS).select("audiobook_id").eq("user_id", user.id),
+    ]);
+
+    // Resources
+    if (rRes.status === "fulfilled" && (!rRes.value.error || noTable(rRes.value.error))) {
+      setResources(rRes.value.data ?? []);
+    } else errors.push("resources");
+
+    // Scholarships
+    if (sRes.status === "fulfilled" && (!sRes.value.error || noTable(sRes.value.error))) {
+      setScholarships(sRes.value.data ?? []);
+    } else errors.push("scholarships");
+
+    // Tutors
+    if (tRes.status === "fulfilled" && (!tRes.value.error || noTable(tRes.value.error))) {
+      setTutors(tRes.value.data ?? []);
+    } else errors.push("tutors");
+
+    // Audiobooks (hardcoded backend)
+    if (abRes.status === "fulfilled" && (!abRes.value.error || noTable(abRes.value.error))) {
+      setAudiobooks(abRes.value.data ?? []);
+    } else errors.push("audiobooks");
+
+    // Non-critical sets — quietly skip on failure, never block the tables above
+    if (pRes.status === "fulfilled" && !pRes.value.error) {
+      setPurchases(new Set((pRes.value.data ?? []).map((p: any) => p.resource_id)));
+    }
+    if (bRes.status === "fulfilled" && !bRes.value.error) {
+      setBookmarks(new Set((bRes.value.data ?? []).map((b: any) => b.resource_id)));
+    }
+    if (apRes.status === "fulfilled" && !apRes.value.error) {
+      setAudiobookPurchases(new Set((apRes.value.data ?? []).map((p: any) => p.audiobook_id)));
+    }
+    if (abmRes.status === "fulfilled" && !abmRes.value.error) {
+      setAudiobookBookmarks(new Set((abmRes.value.data ?? []).map((b: any) => b.audiobook_id)));
+    }
+
+    if (errors.length) {
+      toast({
+        title: "Some content failed to load",
+        description: `Couldn't load: ${errors.join(", ")}. The rest of the page loaded fine.`,
+        variant: "destructive",
+      });
+    }
+    setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, [user.id]);
@@ -372,8 +406,8 @@ export default function EducationPage() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
       try {
-        await supabase.rpc("increment_audiobook_download", { audiobook_id: audiobook.id, caller_id: user.id });
-        const { data: fresh } = await supabase
+        await bookshopSupabase.rpc("increment_audiobook_download", { audiobook_id: audiobook.id, caller_id: user.id });
+        const { data: fresh } = await bookshopSupabase
           .from(TABLE_AUDIOBOOKS)
           .select("download_count,avg_rating,review_count")
           .eq("id", audiobook.id)
@@ -391,7 +425,7 @@ export default function EducationPage() {
     await ensureProfile();
     if (!window.confirm(`Purchase "${audiobook.title}" for MK ${Number(audiobook.price).toLocaleString()}?`)) return;
     try {
-      const { error } = await supabase.from(TABLE_AUDIOBOOK_PURCHASES).insert({
+      const { error } = await bookshopSupabase.from(TABLE_AUDIOBOOK_PURCHASES).insert({
         buyer_id: user.id, audiobook_id: audiobook.id, amount_paid: audiobook.price,
       });
       if (error && error.code !== "23505") throw error;
@@ -405,11 +439,11 @@ export default function EducationPage() {
     const has = audiobookBookmarks.has(audiobook.id);
     try {
       if (has) {
-        await supabase.from(TABLE_AUDIOBOOK_BOOKMARKS).delete().eq("user_id", user.id).eq("audiobook_id", audiobook.id);
+        await bookshopSupabase.from(TABLE_AUDIOBOOK_BOOKMARKS).delete().eq("user_id", user.id).eq("audiobook_id", audiobook.id);
         setAudiobookBookmarks(p => { const n = new Set(p); n.delete(audiobook.id); return n; });
         toast({ title: "Bookmark removed" });
       } else {
-        await supabase.from(TABLE_AUDIOBOOK_BOOKMARKS).insert({ user_id: user.id, audiobook_id: audiobook.id });
+        await bookshopSupabase.from(TABLE_AUDIOBOOK_BOOKMARKS).insert({ user_id: user.id, audiobook_id: audiobook.id });
         setAudiobookBookmarks(p => new Set([...p, audiobook.id]));
         toast({ title: "🔖 Bookmarked!" });
       }
@@ -418,7 +452,7 @@ export default function EducationPage() {
 
   const handleAudioPlayStart = async (audiobook: AudioBook) => {
     try {
-      await supabase.rpc("increment_audiobook_play", { audiobook_id: audiobook.id, caller_id: user.id });
+      await bookshopSupabase.rpc("increment_audiobook_play", { audiobook_id: audiobook.id, caller_id: user.id });
     } catch { /* non-critical — playback already succeeded */ }
   };
 
@@ -731,7 +765,7 @@ export default function EducationPage() {
           onBookmarkToggle={handleAudioBookmark}
           onPlayStart={handleAudioPlayStart}
           onRatingSubmit={async (audiobookId: string) => {
-            const { data: fresh } = await supabase
+            const { data: fresh } = await bookshopSupabase
               .from(TABLE_AUDIOBOOKS)
               .select("download_count,avg_rating,review_count")
               .eq("id", audiobookId)
