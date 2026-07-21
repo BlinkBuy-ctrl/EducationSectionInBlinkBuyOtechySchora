@@ -68,10 +68,19 @@ async function renderPage(doc: any, pageNum: number, canvas: HTMLCanvasElement) 
   const page = await doc.getPage(pageNum);
   const w = canvas.parentElement?.clientWidth || window.innerWidth;
   const vp = page.getViewport({ scale: 1 });
-  const scale = w / vp.width;
-  const scaled = page.getViewport({ scale });
+  const cssScale = w / vp.width;
+
+  // Render at device pixel ratio so text is crisp on retina/high-DPI phones,
+  // while keeping the on-screen CSS size unchanged.
+  const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3x to bound memory/perf
+  const renderScale = cssScale * dpr;
+  const scaled = page.getViewport({ scale: renderScale });
+
   canvas.width  = scaled.width;
   canvas.height = scaled.height;
+  canvas.style.width  = `${cssScale * vp.width}px`;
+  canvas.style.height = `${scaled.height / dpr}px`;
+
   const ctx = canvas.getContext("2d")!;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const task = page.render({ canvasContext: ctx, viewport: scaled });
