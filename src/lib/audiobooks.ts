@@ -9,7 +9,7 @@
  * Mirrors the table/bucket names created in education_schema_v4_audiobooks.sql.
  */
 
-import { supabase } from "@/lib/supabase";
+import { bookshopSupabase } from "@/lib/bookshopSupabase";
 
 // ── Backend constants — must match the schema file exactly ────────────────
 export const TABLE_AUDIOBOOKS           = "otechy_audiobooks";
@@ -93,7 +93,7 @@ export function getAudioDuration(file: File): Promise<number> {
  * through this. Default 1hr expiry covers a full listening session.
  */
 export async function getSignedAudioUrl(path: string, expiresInSeconds = 3600): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET_AUDIO).createSignedUrl(path, expiresInSeconds);
+  const { data, error } = await bookshopSupabase.storage.from(BUCKET_AUDIO).createSignedUrl(path, expiresInSeconds);
   if (error || !data) throw new Error(error?.message ?? "Could not get audio URL");
   return data.signedUrl;
 }
@@ -113,10 +113,10 @@ export async function uploadAudioWithProgress(
   const path = `${uploaderId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   await new Promise<void>((resolve, reject) => {
-    supabase.storage.from(BUCKET_AUDIO).createSignedUploadUrl(path).then(({ data, error }) => {
+    bookshopSupabase.storage.from(BUCKET_AUDIO).createSignedUploadUrl(path).then(({ data, error }) => {
       if (error || !data) {
         // Fallback: direct SDK upload (no progress events, but still works)
-        supabase.storage.from(BUCKET_AUDIO).upload(path, file, {
+        bookshopSupabase.storage.from(BUCKET_AUDIO).upload(path, file, {
           upsert: false,
           contentType: file.type || "audio/mpeg",
         }).then(({ error: e }) => (e ? reject(new Error(e.message)) : resolve()));
@@ -139,7 +139,7 @@ export async function uploadAudioWithProgress(
 
 /** Removes an uploaded audio file — used to clean up if the DB insert after upload fails. */
 export async function removeAudioFile(path: string): Promise<void> {
-  await supabase.storage.from(BUCKET_AUDIO).remove([path]).catch(() => {});
+  await bookshopSupabase.storage.from(BUCKET_AUDIO).remove([path]).catch(() => {});
 }
 
 /**
