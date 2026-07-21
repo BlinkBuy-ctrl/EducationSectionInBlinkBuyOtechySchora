@@ -6,9 +6,11 @@ import {
   FileText, Loader2, Trash2, AlertTriangle,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
-  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass
+  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { bookshopSupabase } from "@/lib/bookshopSupabase";
+import { TABLE_AUDIOBOOKS, deleteOwnedAudiobook, formatDuration } from "@/lib/audiobooks";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/lib/storage";
@@ -127,11 +129,13 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
   const [stats,      setStats]      = useState<any>(null);
   const [resources,  setResources]  = useState<any[]>([]);
   const [tutors,     setTutors]     = useState<any[]>([]);
+  const [audiobooks, setAudiobooks] = useState<any[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [deleting,   setDeleting]   = useState<string | null>(null);
-  const [activeTab,  setActiveTab]  = useState<"resources" | "tutors">("resources");
-  const [showAllResources, setShowAllResources] = useState(false);
-  const [showAllTutors,    setShowAllTutors]    = useState(false);
+  const [activeTab,  setActiveTab]  = useState<"resources" | "tutors" | "audiobooks">("resources");
+  const [showAllResources,  setShowAllResources]  = useState(false);
+  const [showAllTutors,     setShowAllTutors]     = useState(false);
+  const [showAllAudiobooks, setShowAllAudiobooks] = useState(false);
   const [notifEnabled, setNotifEnabled] = useState(() => {
     const saved = safeGetItem(NOTIF_PREF_KEY);
     return saved === null ? true : saved === "1";
@@ -158,6 +162,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
   const RESOURCE_PREVIEW_COUNT = 3;
   const TUTOR_PREVIEW_COUNT = 3;
+  const AUDIOBOOK_PREVIEW_COUNT = 3;
 
   const toggleNotifications = () => {
     const next = !notifEnabled;
@@ -198,7 +203,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
   const load = async () => {
     setLoading(true);
     try {
-      const [statsRes, resourcesRes, tutorsRes] = await Promise.all([
+      const [statsRes, resourcesRes, tutorsRes, audiobooksRes] = await Promise.all([
         supabase.rpc("get_seller_stats", { p_user_id: userId }),
         supabase.from("otechy_resources")
           .select("id,title,category,price,download_count,avg_rating,review_count,created_at,file_url")
@@ -208,10 +213,15 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
           .select("id,name,tagline,subjects,location,is_online,likes_count,created_at,is_active")
           .eq("user_id", userId)
           .order("created_at", { ascending: false }),
+        bookshopSupabase.from(TABLE_AUDIOBOOKS)
+          .select("id,title,category,price,audio_url,cover_url,duration_seconds,download_count,play_count,avg_rating,review_count,created_at")
+          .eq("uploader_id", userId)
+          .order("created_at", { ascending: false }),
       ]);
       if (statsRes.data)     setStats(statsRes.data);
       if (resourcesRes.data) setResources(resourcesRes.data);
       if (tutorsRes.data)    setTutors(tutorsRes.data);
+      if (audiobooksRes.data) setAudiobooks(audiobooksRes.data);
     } catch (e: any) {
       toast({ title: "Failed to load dashboard", description: e.message, variant: "destructive" });
     } finally { setLoading(false); }
@@ -240,6 +250,18 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
       const { error } = await supabase.from("otechy_tutors").delete().eq("id", item.id);
       if (error) throw error;
       toast({ title: "Tutor profile removed" });
+      load(); onRefresh();
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    } finally { setDeleting(null); }
+  };
+
+  const handleDeleteAudiobook = async (item: any) => {
+    if (!window.confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
+    setDeleting(item.id);
+    try {
+      await deleteOwnedAudiobook(item);
+      toast({ title: "Deleted" });
       load(); onRefresh();
     } catch (e: any) {
       toast({ title: "Delete failed", description: e.message, variant: "destructive" });
@@ -331,6 +353,17 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
             <Users className="w-3.5 h-3.5" /> Tutor Profiles
             <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === "tutors" ? "bg-white/20" : "bg-muted"}`}>
               {tutors.length}
+            </span>
+          </button>
+          <button onClick={() => setActiveTab("audiobooks")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === "audiobooks"
+                ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-sm"
+                : "text-muted-foreground"
+            }`}>
+            <Headphones className="w-3.5 h-3.5" /> Audio Books
+            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === "audiobooks" ? "bg-white/20" : "bg-muted"}`}>
+              {audiobooks.length}
             </span>
           </button>
         </div>
@@ -448,6 +481,71 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
                   onClick={() => setShowAllTutors(v => !v)}
                   className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-muted/40 border border-border text-xs font-bold text-muted-foreground hover:text-foreground transition-colors">
                   {showAllTutors ? <>Show Less <ChevronUp className="w-3.5 h-3.5" /></> : <>Show More ({tutors.length - TUTOR_PREVIEW_COUNT} more) <ChevronDown className="w-3.5 h-3.5" /></>}
+                </button>
+              )}
+            </div>
+          )
+        )}
+
+        {/* Audio Books list */}
+        {activeTab === "audiobooks" && (
+          audiobooks.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
+              <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center">
+                <Headphones className="w-6 h-6 text-pink-400" />
+              </div>
+              <p className="text-sm font-semibold text-foreground">No audio books yet</p>
+              <p className="text-xs text-muted-foreground">Hit Upload to publish your first audio book.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {(showAllAudiobooks ? audiobooks : audiobooks.slice(0, AUDIOBOOK_PREVIEW_COUNT)).map(item => (
+                <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                  <div className="flex items-center gap-3 p-3">
+                    {item.cover_url ? (
+                      <img src={item.cover_url} alt={item.title} className="w-8 h-8 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-600/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                        <Headphones className="w-4 h-4 text-pink-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-foreground line-clamp-1">{item.title}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-pink-500/15 text-pink-400">
+                          {item.category}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{formatDuration(item.duration_seconds)}</span>
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                          <Download className="w-2.5 h-2.5" /> {item.download_count ?? 0}
+                        </span>
+                        {item.review_count > 0 && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
+                            {Number(item.avg_rating).toFixed(1)}
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-bold ml-auto ${Number(item.price) === 0 ? "text-emerald-400" : "text-foreground"}`}>
+                          {Number(item.price) === 0 ? "Free" : `MK ${Number(item.price).toLocaleString()}`}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteAudiobook(item)}
+                      disabled={deleting === item.id}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40 shrink-0">
+                      {deleting === item.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {audiobooks.length > AUDIOBOOK_PREVIEW_COUNT && (
+                <button
+                  onClick={() => setShowAllAudiobooks(v => !v)}
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-muted/40 border border-border text-xs font-bold text-muted-foreground hover:text-foreground transition-colors">
+                  {showAllAudiobooks ? <>Show Less <ChevronUp className="w-3.5 h-3.5" /></> : <>Show More ({audiobooks.length - AUDIOBOOK_PREVIEW_COUNT} more) <ChevronDown className="w-3.5 h-3.5" /></>}
                 </button>
               )}
             </div>

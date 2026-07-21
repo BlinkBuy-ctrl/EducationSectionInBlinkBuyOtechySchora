@@ -48,7 +48,9 @@ export function AudioBookDetailModal({
   const [duration,    setDuration]    = useState(audiobook.duration_seconds ?? 0);
   const [speedIdx,    setSpeedIdx]    = useState(0);
   const [myRating,    setMyRating]    = useState(0);
+  const [reviewText,  setReviewText]  = useState("");
   const [ratingBusy,  setRatingBusy]  = useState(false);
+  const [ratingSent,  setRatingSent]  = useState(false);
   const [seeking,     setSeeking]     = useState(false);
   const [scrubPct,    setScrubPct]    = useState(0);
   const [coverFailed, setCoverFailed] = useState(false);
@@ -108,19 +110,23 @@ export function AudioBookDetailModal({
     else if (result === "failed") toast({ title: "Couldn't share", variant: "destructive" });
   };
 
-  const submitRating = useCallback(async (rating: number) => {
+  const submitRating = useCallback(async () => {
+    if (myRating === 0) { toast({ title: "Pick a star rating first", variant: "destructive" }); return; }
     setRatingBusy(true);
     try {
       const { error } = await bookshopSupabase.from(TABLE_AUDIOBOOK_REVIEWS)
-        .upsert({ audiobook_id: audiobook.id, user_id: userId, rating }, { onConflict: "audiobook_id,user_id" });
+        .upsert(
+          { audiobook_id: audiobook.id, user_id: userId, rating: myRating, review_text: reviewText.trim() || null },
+          { onConflict: "audiobook_id,user_id" }
+        );
       if (error) throw error;
-      setMyRating(rating);
       onRatingSubmit(audiobook.id);
+      setRatingSent(true);
       toast({ title: "⭐ Thanks for rating!" });
     } catch (e: any) {
       toast({ title: "Rating failed", description: e.message, variant: "destructive" });
     } finally { setRatingBusy(false); }
-  }, [audiobook.id, userId, onRatingSubmit, toast]);
+  }, [audiobook.id, userId, myRating, reviewText, onRatingSubmit, toast]);
 
   const displayPct = seeking ? scrubPct : progressPct;
   const showCover = !!audiobook.cover_url && !coverFailed;
@@ -140,10 +146,17 @@ export function AudioBookDetailModal({
       )}
 
       {/* Hero */}
-      <div className="relative w-full shrink-0" style={{ aspectRatio: "4/3", maxHeight: 340 }}>
+      <div className="relative w-full shrink-0 overflow-hidden" style={{ aspectRatio: "4/3", maxHeight: 340 }}>
         {showCover ? (
-          <img src={audiobook.cover_url!} alt={audiobook.title} className="w-full h-full object-cover"
-            onError={() => setCoverFailed(true)} />
+          <>
+            {/* Blurred backdrop fills the frame so letterboxing never looks empty */}
+            <img src={audiobook.cover_url!} alt="" aria-hidden="true"
+              className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60" />
+            {/* Full, uncropped cover on top */}
+            <img src={audiobook.cover_url!} alt={audiobook.title}
+              className="relative w-full h-full object-contain"
+              onError={() => setCoverFailed(true)} />
+          </>
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-600 via-purple-700 to-indigo-800 flex items-center justify-center">
             <div className="w-24 h-28 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-xl">
@@ -286,14 +299,27 @@ export function AudioBookDetailModal({
         {/* Rate this audio book */}
         <div className="rounded-2xl border border-border bg-card p-4">
           <h2 className="text-xs font-bold text-muted-foreground mb-2.5 uppercase tracking-wide">Rate this audio book</h2>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 mb-3">
             {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} disabled={ratingBusy} onClick={() => submitRating(n)}
+              <button key={n} disabled={ratingBusy} onClick={() => { setMyRating(n); setRatingSent(false); }}
                 className="active:scale-90 transition-transform disabled:opacity-50">
                 <Star className={`w-6 h-6 ${n <= myRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`} />
               </button>
             ))}
           </div>
+          <textarea
+            value={reviewText}
+            onChange={e => { setReviewText(e.target.value); setRatingSent(false); }}
+            disabled={ratingBusy}
+            placeholder="Write a review (optional)…"
+            rows={3}
+            maxLength={500}
+            className="w-full bg-muted/40 border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pink-500/40 resize-none mb-3"
+          />
+          <button onClick={submitRating} disabled={ratingBusy || myRating === 0}
+            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-sm font-bold py-2.5 rounded-xl active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
+            {ratingBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : ratingSent ? "✅ Submitted" : "Submit Rating"}
+          </button>
         </div>
       </div>
     </div>,
