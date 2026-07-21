@@ -143,6 +143,19 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
 
       setProgress(100); setStatus("done");
       toast({ title: "✅ Published!", description: "Your resource is now live." });
+
+      // Fire a real phone push notification to every subscribed user —
+      // fire-and-forget, never blocks or breaks the upload flow if it fails
+      fetch("/api/send-app-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "📚 New free PDF on SchoraHub!",
+          body: `"${form.title.trim()}" just got uploaded — grab it now.`,
+          url: "/",
+        }),
+      }).catch(() => {}); // notification failure should never block the upload
+
       setTimeout(() => { onSuccess(); onClose(); }, 800);
 
     } catch (e: any) {

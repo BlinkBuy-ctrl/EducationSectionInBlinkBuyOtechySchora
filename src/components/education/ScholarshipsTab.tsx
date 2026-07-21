@@ -73,6 +73,19 @@ function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user
       });
       if (error) throw error;
       toast({ title: "🏆 Scholarship posted!" });
+
+      // Fire a real phone push notification to every subscribed user —
+      // fire-and-forget, never blocks or breaks the post flow if it fails
+      fetch("/api/send-app-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "🎓 New scholarship on SchoraHub!",
+          body: `"${form.title}" from ${form.provider} — check if you're eligible.`,
+          url: "/",
+        }),
+      }).catch(() => {}); // notification failure should never block posting
+
       onSuccess();
       onClose();
     } catch (e: any) {
