@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,9 @@ import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput"
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
 import { UploadModal } from "@/components/education/UploadModal";
+import { AudioBookCard } from "@/components/education/AudioBookCard";
+import { AudioBookDetailModal } from "@/components/education/AudioBookDetailModal";
+import { AudioBookUploadModal } from "@/components/education/AudioBookUploadModal";
 import { SellerDashboard } from "@/components/education/SellerDashboard";
 import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
 import { TutorsTab } from "@/components/education/TutorsTab";
@@ -17,8 +20,14 @@ import { BookshopsTab } from "@/components/education/BookshopsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
+import {
+  AudioBook, AUDIOBOOK_CATEGORIES, TABLE_AUDIOBOOKS,
+  TABLE_AUDIOBOOK_PURCHASES, TABLE_AUDIOBOOK_BOOKMARKS,
+  getSignedAudioUrl,
+} from "@/lib/audiobooks";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
+const ACATS = ["All", ...AUDIOBOOK_CATEGORIES] as const;
 const RESOURCE_SEARCH_PHRASES = [
   "Search Physics…",
   "Search Chemistry…",
@@ -28,7 +37,15 @@ const RESOURCE_SEARCH_PHRASES = [
   "Search Past Papers…",
   "Search Textbooks…",
 ];
+const AUDIO_SEARCH_PHRASES = [
+  "Search Fiction…",
+  "Search Educational…",
+  "Search by author…",
+  "Search by narrator…",
+  "Search Audio Books…",
+];
 type PriceFilter = "all" | "free" | "paid";
+type ContentType = "documents" | "audio";
 type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
@@ -124,6 +141,15 @@ export default function EducationPage() {
   const [tab,          setTab]          = useState<Tab>("resources");
   const [showOnboard,  setShowOnboard]  = useState(false);
 
+  // ── Audio Books state — parallel to the resource state above ───────────
+  const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
+  const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
+  const [audiobookBookmarks, setAudiobookBookmarks] = useState<Set<string>>(new Set());
+  const [contentType,        setContentType]        = useState<ContentType>("documents");
+  const [audiobookCat,       setAudiobookCat]       = useState<typeof ACATS[number]>("All");
+  const [showAudioUpload,    setShowAudioUpload]    = useState(false);
+  const [detailAudiobook,    setDetailAudiobook]    = useState<AudioBook | null>(null);
+
   // Ref so event listeners always call the latest handleUploadClick without stale closures
   const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
 
@@ -199,19 +225,19 @@ export default function EducationPage() {
   // Snapping scroll to top and locking body scroll while the modal is open
   // guarantees the Upload modal always appears immediately, with no scrolling needed.
   useEffect(() => {
-    if (showUpload) {
+    if (showUpload || showAudioUpload) {
       window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => { document.body.style.overflow = prevOverflow; };
     }
-  }, [showUpload]);
+  }, [showUpload, showAudioUpload]);
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const noTable = (e: any) => e?.code === "42P01";
-      const [rRes, sRes, tRes, pRes, bRes] = await Promise.all([
+      const [rRes, sRes, tRes, pRes, bRes, abRes, apRes, abmRes] = await Promise.all([
         supabase.from("otechy_resources")
           // ✅ thumbnail_url added to select so cards can show the cover image
           .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
@@ -220,15 +246,24 @@ export default function EducationPage() {
         supabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
         supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
         supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
+        supabase.from(TABLE_AUDIOBOOKS)
+          .select("id,uploader_id,title,description,author,narrator,category,price,audio_url,audio_format,file_size,duration_seconds,cover_url,play_count,download_count,avg_rating,review_count,created_at")
+          .order("created_at", { ascending: false }),
+        supabase.from(TABLE_AUDIOBOOK_PURCHASES).select("audiobook_id").eq("buyer_id", user.id),
+        supabase.from(TABLE_AUDIOBOOK_BOOKMARKS).select("audiobook_id").eq("user_id", user.id),
       ]);
       if (rRes.error && !noTable(rRes.error)) throw rRes.error;
       if (sRes.error && !noTable(sRes.error)) throw sRes.error;
       if (tRes.error && !noTable(tRes.error)) throw tRes.error;
+      if (abRes.error && !noTable(abRes.error)) throw abRes.error;
       setResources(rRes.data ?? []);
       setScholarships(sRes.data ?? []);
       setTutors(tRes.data ?? []);
+      setAudiobooks(abRes.data ?? []);
       if (!pRes?.error) setPurchases(new Set((pRes?.data ?? []).map((p: any) => p.resource_id)));
       if (!bRes?.error) setBookmarks(new Set((bRes?.data ?? []).map((b: any) => b.resource_id)));
+      if (!apRes?.error) setAudiobookPurchases(new Set((apRes?.data ?? []).map((p: any) => p.audiobook_id)));
+      if (!abmRes?.error) setAudiobookBookmarks(new Set((abmRes?.data ?? []).map((b: any) => b.audiobook_id)));
     } catch (e: any) {
       toast({ title: "Failed to load", description: e.message, variant: "destructive" });
     } finally { setLoading(false); }
@@ -244,14 +279,33 @@ export default function EducationPage() {
     return mS && mC && mP;
   });
 
+  const filteredAudiobooks = audiobooks.filter(a => {
+    const q = search.toLowerCase();
+    const mS = !q
+      || a.title?.toLowerCase().includes(q)
+      || (a.description ?? "").toLowerCase().includes(q)
+      || (a.author ?? "").toLowerCase().includes(q)
+      || (a.narrator ?? "").toLowerCase().includes(q);
+    const mC = audiobookCat === "All" || a.category === audiobookCat;
+    const mP = price === "all" || (price === "free" ? Number(a.price) === 0 : Number(a.price) > 0);
+    return mS && mC && mP;
+  });
+
   // Client-side autocomplete pool — built from data already loaded, no extra fetch.
+  // Switches source based on which content type is active in Browse.
   const searchSuggestions = useMemo(() => {
+    if (contentType === "audio") {
+      const titles = audiobooks.map(a => a.title).filter(Boolean);
+      const categories = AUDIOBOOK_CATEGORIES.filter(c => c !== "All" as any);
+      return [...new Set([...categories, ...titles])];
+    }
     const titles = resources.map(r => r.title).filter(Boolean);
     const categories = CATS.filter(c => c !== "All");
     return [...new Set([...categories, ...titles])];
-  }, [resources]);
+  }, [resources, audiobooks, contentType]);
 
   const saved = resources.filter(r => bookmarks.has(r.id));
+  const savedAudiobooks = audiobooks.filter(a => audiobookBookmarks.has(a.id));
 
   const handleDownload = async (resource: any) => {
     try {
@@ -306,18 +360,84 @@ export default function EducationPage() {
     } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
   };
 
-  const handleUploadClick = async () => { await ensureProfile(); setShowUpload(true); };
+  // ── Audio Book handlers — mirror the resource handlers above exactly ───
+  const handleAudioDownload = async (audiobook: AudioBook) => {
+    try {
+      const url = await getSignedAudioUrl(audiobook.audio_url, 300);
+      const blob = await (await fetch(url)).blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement("a"), {
+        href: objUrl, download: `${audiobook.title}.${audiobook.audio_format ?? "mp3"}`,
+      });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(objUrl), 10000);
+      try {
+        await supabase.rpc("increment_audiobook_download", { audiobook_id: audiobook.id, caller_id: user.id });
+        const { data: fresh } = await supabase
+          .from(TABLE_AUDIOBOOKS)
+          .select("download_count,avg_rating,review_count")
+          .eq("id", audiobook.id)
+          .single();
+        if (fresh) {
+          setAudiobooks(prev => prev.map(a => a.id === audiobook.id ? { ...a, ...fresh } : a));
+          if (detailAudiobook?.id === audiobook.id) setDetailAudiobook(d => (d ? { ...d, ...fresh } : d));
+        }
+      } catch { /* non-critical — download already succeeded */ }
+      toast({ title: "✅ Download started!" });
+    } catch (e: any) { toast({ title: "Download failed", description: e.message, variant: "destructive" }); }
+  };
+
+  const handleAudioBuy = async (audiobook: AudioBook) => {
+    await ensureProfile();
+    if (!window.confirm(`Purchase "${audiobook.title}" for MK ${Number(audiobook.price).toLocaleString()}?`)) return;
+    try {
+      const { error } = await supabase.from(TABLE_AUDIOBOOK_PURCHASES).insert({
+        buyer_id: user.id, audiobook_id: audiobook.id, amount_paid: audiobook.price,
+      });
+      if (error && error.code !== "23505") throw error;
+      setAudiobookPurchases(p => new Set([...p, audiobook.id]));
+      toast({ title: "✅ Purchase successful!" });
+    } catch (e: any) { toast({ title: "Purchase failed", description: e.message, variant: "destructive" }); }
+  };
+
+  const handleAudioBookmark = async (audiobook: AudioBook) => {
+    await ensureProfile();
+    const has = audiobookBookmarks.has(audiobook.id);
+    try {
+      if (has) {
+        await supabase.from(TABLE_AUDIOBOOK_BOOKMARKS).delete().eq("user_id", user.id).eq("audiobook_id", audiobook.id);
+        setAudiobookBookmarks(p => { const n = new Set(p); n.delete(audiobook.id); return n; });
+        toast({ title: "Bookmark removed" });
+      } else {
+        await supabase.from(TABLE_AUDIOBOOK_BOOKMARKS).insert({ user_id: user.id, audiobook_id: audiobook.id });
+        setAudiobookBookmarks(p => new Set([...p, audiobook.id]));
+        toast({ title: "🔖 Bookmarked!" });
+      }
+    } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
+  };
+
+  const handleAudioPlayStart = async (audiobook: AudioBook) => {
+    try {
+      await supabase.rpc("increment_audiobook_play", { audiobook_id: audiobook.id, caller_id: user.id });
+    } catch { /* non-critical — playback already succeeded */ }
+  };
+
+  const handleUploadClick = async () => {
+    await ensureProfile();
+    if (contentType === "audio") setShowAudioUpload(true);
+    else setShowUpload(true);
+  };
   // Keep ref in sync so the event listener always calls the latest version
   handleUploadClickRef.current = handleUploadClick;
 
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
-    { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length    },
+    { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length + audiobooks.length },
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
     { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
     { key: "universities", emoji: "🎓", label: "Higher Education", count: null            },
     { key: "bookshops",    emoji: "📖", label: "E-BookStore",     count: null            },
     { key: "adverts",      emoji: "📢", label: "Adverts",      count: null                },
-    { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: saved.length        },
+    { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: saved.length + savedAudiobooks.length },
     { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
     { key: "aboutus",      emoji: "ℹ️",  label: "About Us",     count: null                },
   ];
@@ -347,7 +467,12 @@ export default function EducationPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {[{ icon: FileText, label: `${resources.length} Resources` }, { icon: Award, label: `${scholarships.length} Scholarships` }, { icon: Users, label: `${tutors.length} Tutors` }].map(({ icon: Icon, label }) => (
+              {[
+                { icon: FileText, label: `${resources.length} Resources` },
+                { icon: Headphones, label: `${audiobooks.length} Audio Books` },
+                { icon: Award, label: `${scholarships.length} Scholarships` },
+                { icon: Users, label: `${tutors.length} Tutors` },
+              ].map(({ icon: Icon, label }) => (
                 <div key={label} className="flex items-center gap-1">
                   <Icon className="w-3 h-3 text-purple-400" />
                   <span className="text-[10px] text-white/55 font-medium">{label}</span>
@@ -358,7 +483,11 @@ export default function EducationPage() {
           <button
             data-tour="upload-btn"
             onClick={handleUploadClick}
-            className="shrink-0 flex items-center gap-1.5 bg-gradient-to-r from-purple-500 to-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-all shadow-lg shadow-purple-500/30"
+            className={`shrink-0 flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-all shadow-lg ${
+              contentType === "audio"
+                ? "bg-gradient-to-r from-pink-500 to-purple-600 shadow-pink-500/30"
+                : "bg-gradient-to-r from-purple-500 to-blue-600 shadow-purple-500/30"
+            }`}
           >
             <Upload className="w-3.5 h-3.5" /> Upload
           </button>
@@ -425,44 +554,93 @@ export default function EducationPage() {
             <AnimatedSearchInput
               value={search}
               onChange={setSearch}
-              phrases={RESOURCE_SEARCH_PHRASES}
-              ringColorClass="focus:ring-purple-500/50"
-              ariaLabel="Search resources"
+              phrases={contentType === "audio" ? AUDIO_SEARCH_PHRASES : RESOURCE_SEARCH_PHRASES}
+              ringColorClass={contentType === "audio" ? "focus:ring-pink-500/50" : "focus:ring-purple-500/50"}
+              ariaLabel={contentType === "audio" ? "Search audio books" : "Search resources"}
               suggestionPool={searchSuggestions}
             />
           </div>
+
+          {/* Price filter + content-type toggle — the 🎧 Audio pill lives here */}
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
             {(["all","free","paid"] as PriceFilter[]).map(f => (
               <button key={f} onClick={() => setPrice(f)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${price === f ? "bg-purple-600 border-purple-600 text-white" : "border-border text-muted-foreground"}`}>
                 {f === "all" ? "All" : f === "free" ? "Free" : "Paid"}
               </button>
             ))}
+            <span className="w-px bg-border shrink-0 my-0.5" />
+            <button
+              onClick={() => setContentType(t => (t === "documents" ? "audio" : "documents"))}
+              className={`shrink-0 flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                contentType === "audio"
+                  ? "bg-gradient-to-r from-pink-600 to-purple-600 border-transparent text-white shadow-sm shadow-pink-500/30"
+                  : "border-border text-muted-foreground"
+              }`}
+            >
+              <Headphones className="w-3 h-3" /> Audio
+            </button>
           </div>
+
+          {/* Category filter — switches source list based on content type */}
           <div
             ref={catsScrollRef}
             onClick={handleCatsBarTap}
             onTouchEnd={handleCatsBarTap}
             className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide scroll-smooth"
           >
-            {CATS.map(c => (
-              <button key={c} onClick={() => setCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${cat === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
-                {c}
-              </button>
-            ))}
+            {contentType === "audio"
+              ? ACATS.map(c => (
+                  <button key={c} onClick={() => setAudiobookCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${audiobookCat === c ? "bg-pink-600 border-pink-600 text-white" : "border-border text-muted-foreground"}`}>
+                    {c}
+                  </button>
+                ))
+              : CATS.map(c => (
+                  <button key={c} onClick={() => setCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${cat === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
+                    {c}
+                  </button>
+                ))}
           </div>
-          {loading ? <Skeleton /> : filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-14 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-purple-400" /></div>
-              <p className="font-semibold text-foreground">No resources found</p>
-              <p className="text-sm text-muted-foreground">Be the first to upload one!</p>
-              <button onClick={handleUploadClick} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-all">
-                <Upload className="w-4 h-4" /> Upload Resource
-              </button>
-            </div>
+
+          {contentType === "audio" ? (
+            loading ? <Skeleton /> : filteredAudiobooks.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-14 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center"><Headphones className="w-7 h-7 text-pink-400" /></div>
+                <p className="font-semibold text-foreground">No audio books found</p>
+                <p className="text-sm text-muted-foreground">Be the first to upload one!</p>
+                <button onClick={handleUploadClick} className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-all">
+                  <Upload className="w-4 h-4" /> Upload Audio Book
+                </button>
+              </div>
+            ) : (
+              <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
+                {filteredAudiobooks.map(a => (
+                  <AudioBookCard
+                    key={a.id}
+                    audiobook={a}
+                    isPurchased={audiobookPurchases.has(a.id)}
+                    onBuy={handleAudioBuy}
+                    onDownload={handleAudioDownload}
+                    onOpen={setDetailAudiobook}
+                    onPlayStart={handleAudioPlayStart}
+                  />
+                ))}
+              </div>
+            )
           ) : (
-            <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
-              {filtered.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
-            </div>
+            loading ? <Skeleton /> : filtered.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-14 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-purple-400" /></div>
+                <p className="font-semibold text-foreground">No resources found</p>
+                <p className="text-sm text-muted-foreground">Be the first to upload one!</p>
+                <button onClick={handleUploadClick} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-all">
+                  <Upload className="w-4 h-4" /> Upload Resource
+                </button>
+              </div>
+            ) : (
+              <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
+                {filtered.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+              </div>
+            )
           )}
         </>
       )}
@@ -474,15 +652,40 @@ export default function EducationPage() {
       {tab === "adverts"      && <AdvertsTab userId={user.id} />}
 
       {tab === "bookmarks" && (
-        saved.length === 0 ? (
+        saved.length === 0 && savedAudiobooks.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-14 text-center">
             <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><Bookmark className="w-7 h-7 text-purple-400" /></div>
-            <p className="font-semibold">No saved resources</p>
-            <p className="text-sm text-muted-foreground">Tap the bookmark icon on any resource.</p>
+            <p className="font-semibold">No saved items</p>
+            <p className="text-sm text-muted-foreground">Tap the bookmark icon on any resource or audio book.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+          <div className="flex flex-col gap-5">
+            {saved.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">Resources</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                </div>
+              </div>
+            )}
+            {savedAudiobooks.length > 0 && (
+              <div>
+                <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">Audio Books</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {savedAudiobooks.map(a => (
+                    <AudioBookCard
+                      key={a.id}
+                      audiobook={a}
+                      isPurchased={audiobookPurchases.has(a.id)}
+                      onBuy={handleAudioBuy}
+                      onDownload={handleAudioDownload}
+                      onOpen={setDetailAudiobook}
+                      onPlayStart={handleAudioPlayStart}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )
       )}
@@ -491,6 +694,8 @@ export default function EducationPage() {
       {tab === "aboutus"   && <AboutUs onBack={() => setTab("resources")} />}
 
       {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />}
+      {showAudioUpload && <AudioBookUploadModal userId={user.id} onClose={() => setShowAudioUpload(false)} onSuccess={fetchAll} />}
+
       {detailRes  && (
         <ResourceDetailModal
           resource={detailRes}
@@ -509,6 +714,31 @@ export default function EducationPage() {
             if (fresh) {
               setResources(prev => prev.map(r => r.id === resourceId ? { ...r, ...fresh } : r));
               setDetailRes((d: any) => d ? { ...d, ...fresh } : d);
+            }
+          }}
+        />
+      )}
+
+      {detailAudiobook && (
+        <AudioBookDetailModal
+          audiobook={detailAudiobook}
+          userId={user.id}
+          isPurchased={audiobookPurchases.has(detailAudiobook.id)}
+          isBookmarked={audiobookBookmarks.has(detailAudiobook.id)}
+          onClose={() => setDetailAudiobook(null)}
+          onBuy={handleAudioBuy}
+          onDownload={handleAudioDownload}
+          onBookmarkToggle={handleAudioBookmark}
+          onPlayStart={handleAudioPlayStart}
+          onRatingSubmit={async (audiobookId: string) => {
+            const { data: fresh } = await supabase
+              .from(TABLE_AUDIOBOOKS)
+              .select("download_count,avg_rating,review_count")
+              .eq("id", audiobookId)
+              .single();
+            if (fresh) {
+              setAudiobooks(prev => prev.map(a => a.id === audiobookId ? { ...a, ...fresh } : a));
+              setDetailAudiobook(d => d ? { ...d, ...fresh } : d);
             }
           }}
         />
