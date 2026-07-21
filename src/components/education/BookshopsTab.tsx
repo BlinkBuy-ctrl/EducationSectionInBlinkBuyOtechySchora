@@ -7,6 +7,7 @@ import { BookshopApplyModal } from "@/components/education/BookshopApplyModal";
 import { BookshopOwnerPanel } from "@/components/education/BookshopOwnerPanel";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { getCache, setCache } from "@/lib/offlineCache";
 
 const SHOP_SEARCH_PHRASES = [
   "Search bookshops…",
@@ -14,9 +15,20 @@ const SHOP_SEARCH_PHRASES = [
   "Search your favorite shop…",
 ];
 
-// Flat storefront-icon card, Material-style: a signboard physically
-// overlapping the top edge, a big flat colored icon panel as the shop's
-// visual identity (no photo, no 3D), then stats + a full-width CTA.
+// ── Cached row shapes ────────────────────────────────────────────────────
+// ShopStats has no natural "id", so it's cached as a flat row per shop with
+// the shop's own id as the key — converted back to a Record on read.
+type CachedStatRow = ShopStats & { id: string };
+
+function statsRecordToRows(stats: Record<string, ShopStats>): CachedStatRow[] {
+  return Object.entries(stats).map(([id, s]) => ({ id, ...s }));
+}
+function statsRowsToRecord(rows: CachedStatRow[]): Record<string, ShopStats> {
+  const rec: Record<string, ShopStats> = {};
+  for (const { id, ...s } of rows) rec[id] = s;
+  return rec;
+}
+
 function StorefrontCard({ shop, stats, onOpen }: { shop: Bookshop; stats?: ShopStats; onOpen: (s: Bookshop) => void }) {
   const accent = shop.brand_color || "#7c3aed";
 
@@ -25,12 +37,10 @@ function StorefrontCard({ shop, stats, onOpen }: { shop: Bookshop; stats?: ShopS
       onClick={() => onOpen(shop)}
       className="relative rounded-2xl border border-border bg-card pt-6 cursor-pointer active:scale-[0.98] transition-all"
     >
-      {/* Signboard — attached to the top edge, like a real shop sign */}
       <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 max-w-[85%] bg-card border border-border rounded-xl px-4 py-2 shadow-sm">
         <p className="text-sm font-black text-foreground truncate">{shop.name}</p>
       </div>
 
-      {/* Big flat storefront icon — this IS the shop's visual identity */}
       <div
         className="mx-3 rounded-xl flex items-center justify-center"
         style={{ height: 140, background: `linear-gradient(135deg, ${accent}, ${accent}cc)` }}
@@ -84,17 +94,48 @@ export function BookshopsTab() {
   const [showApply, setShowApply] = useState(false);
   const [showOwnerPanel, setShowOwnerPanel] = useState(false);
 
+  // ── OFFLINE-FIRST: cached shops + stats show immediately, then a live
+  // Supabase fetch refreshes both and re-populates the cache.
   const load = async () => {
-    setLoading(true);
+    const [cachedShops, cachedStatRows] = await Promise.all([
+      getCache<Bookshop>("bookshops"),
+      getCache<CachedStatRow>("bookshop_stats"),
+    ]);
+    if (cachedShops.length) {
+      setShops(cachedShops);
+      setStats(statsRowsToRecord(cachedStatRows));
+      setLoading(false);
+    }
+
     try {
       const list = await getApprovedBookshops();
       setShops(list);
-      setStats(await getShopStats(list.map(s => s.id)));
-    } catch (e: any) { toast({ title: "Failed to load bookshops", description: e.message, variant: "destructive" }); }
-    finally { setLoading(false); }
+      setCache("bookshops", list);
+
+      const freshStats = await getShopStats(list.map(s => s.id));
+      setStats(freshStats);
+      setCache("bookshop_stats", statsRecordToRows(freshStats));
+    } catch (e: any) {
+      if (navigator.onLine) {
+        toast({ title: "Failed to load bookshops", description: e.message, variant: "destructive" });
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { load(); subscribeToPush(user.id).catch(() => {}); }, []);
+  useEffect(() => {
+    load();
+    subscribeToPush(user.id).catch(() => {});
+  }, []);
+
+  // Re-sync automatically the instant connectivity returns.
+  useEffect(() => {
+    const handler = () => { load(); };
+    window.addEventListener("online", handler);
+    return () => window.removeEventListener("online", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = shops.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
   const suggestionPool = useMemo(() => shops.map(s => s.name), [shops]);
@@ -113,7 +154,7 @@ export function BookshopsTab() {
         ringColorClass="focus:ring-purple-500/50" ariaLabel="Search bookshops" suggestionPool={suggestionPool}
       />
 
-      {loading ? (
+      {loading && shops.length === 0 ? (
         <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : shops.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -128,7 +169,6 @@ export function BookshopsTab() {
           <p className="text-sm text-muted-foreground">Try a different search.</p>
         </div>
       ) : (
-        // Vertical "street" of storefronts — scroll down for more, no pagination
         <div className="flex flex-col gap-5">
           {filtered.map(s => <StorefrontCard key={s.id} shop={s} stats={stats[s.id]} onOpen={setSelected} />)}
         </div>

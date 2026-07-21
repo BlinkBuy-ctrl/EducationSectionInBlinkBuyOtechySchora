@@ -3,6 +3,7 @@ import { Loader2, Megaphone, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertCard, type Advert } from "@/components/education/AdvertCard";
+import { getCache, setCache } from "@/lib/offlineCache";
 
 interface AdvertsTabProps {
   userId: string;
@@ -18,54 +19,63 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data: advertRows, error: advertError } = await supabase
-        .from("otechy_reels")
-        .select("id,mux_playback_id,title,description,like_count,dislike_count")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-
-      if (advertError) {
-        toast({ title: "Failed to load adverts", description: advertError.message, variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-
-      const rows = (advertRows || []) as Advert[];
-      setAdverts(rows);
-
-      if (rows.length > 0) {
-        const { data: reactionRows } = await supabase
-          .from("otechy_reel_reactions")
-          .select("reel_id,reaction")
-          .eq("user_id", userId)
-          .in("reel_id", rows.map(r => r.id));
-
-        const map: Record<string, "like" | "dislike"> = {};
-        (reactionRows || []).forEach((r: any) => { map[r.reel_id] = r.reaction; });
-        setMyReactions(map);
-      }
-
+  const load = async () => {
+    // ── OFFLINE-FIRST: show cached adverts immediately ──────────────────
+    const cached = await getCache<Advert>("adverts");
+    if (cached.length) {
+      setAdverts(cached);
       setLoading(false);
-    };
-    load();
+    }
+
+    const { data: advertRows, error: advertError } = await supabase
+      .from("otechy_reels")
+      .select("id,mux_playback_id,title,description,like_count,dislike_count")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (advertError) {
+      if (navigator.onLine) {
+        toast({ title: "Failed to load adverts", description: advertError.message, variant: "destructive" });
+      }
+      setLoading(false);
+      return;
+    }
+
+    const rows = (advertRows || []) as Advert[];
+    setAdverts(rows);
+    setCache("adverts", rows);
+
+    if (rows.length > 0) {
+      const { data: reactionRows } = await supabase
+        .from("otechy_reel_reactions")
+        .select("reel_id,reaction")
+        .eq("user_id", userId)
+        .in("reel_id", rows.map(r => r.id));
+
+      const map: Record<string, "like" | "dislike"> = {};
+      (reactionRows || []).forEach((r: any) => { map[r.reel_id] = r.reaction; });
+      setMyReactions(map);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [userId]);
+
+  // Re-sync automatically the instant connectivity returns.
+  useEffect(() => {
+    const handler = () => { load(); };
+    window.addEventListener("online", handler);
+    return () => window.removeEventListener("online", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // Default the first video to "active" as soon as the list loads
   useEffect(() => {
     if (adverts.length > 0 && activeId === null) {
       setActiveId(adverts[0].id);
     }
   }, [adverts, activeId]);
 
-  // Watches which card is actually visible in the scroll container and marks
-  // it "active" — this is what tells AdvertCard which one should be playing.
-  // Keyed on the list of ids (not the whole adverts array), so a like/dislike
-  // tap — which only changes counts, not the id list — never tears down and
-  // rebuilds the observer mid-scroll. That rebuild was the main cause of the
-  // feed "losing grip" while scrolling.
   useEffect(() => {
     if (!containerRef.current || adverts.length === 0) return;
 
@@ -86,8 +96,6 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adverts.map(a => a.id).join(",")]);
 
-  // Locally reconcile counts the instant a reaction changes — no server
-  // round-trip needed, so counts never flash back to 0 while swiping fast.
   const handleReactionChange = (
     advertId: string,
     reaction: "like" | "dislike" | null,
@@ -114,7 +122,7 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
   const goPrev = () => { if (canGoPrev) scrollToId(adverts[activeIndex - 1].id); };
   const goNext = () => { if (canGoNext) scrollToId(adverts[activeIndex + 1].id); };
 
-  if (loading) {
+  if (loading && adverts.length === 0) {
     return <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
   }
 
@@ -153,7 +161,6 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
         ))}
       </div>
 
-      {/* Up/down nav for people who'd rather tap than swipe */}
       <div className="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-30">
         <button
           onClick={goPrev}

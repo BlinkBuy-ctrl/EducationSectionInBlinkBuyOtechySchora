@@ -4,6 +4,7 @@ import { getUniversities, type University } from "@/lib/universities";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { UniversityDetailModal } from "@/components/education/UniversityDetailModal";
 import { useToast } from "@/hooks/use-toast";
+import { getCache, setCache } from "@/lib/offlineCache";
 
 const UNI_SEARCH_PHRASES = [
   "Search LUANAR…",
@@ -42,18 +43,39 @@ export function UniversitiesTab() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<University | null>(null);
 
+  // ── OFFLINE-FIRST: always show whatever's cached immediately, then
+  // refresh from Supabase in the background and update both state + cache.
   const load = async () => {
-    setLoading(true);
+    const cached = await getCache<University>("universities");
+    if (cached.length) {
+      setUniversities(cached);
+      setLoading(false);
+    }
+
     try {
-      setUniversities(await getUniversities());
+      const fresh = await getUniversities();
+      setUniversities(fresh);
+      setCache("universities", fresh);
     } catch (e: any) {
-      toast({ title: "Failed to load universities", description: e.message, variant: "destructive" });
+      // Only surface an error toast if we're online — an offline failure
+      // here is expected and cached data (if any) is already showing.
+      if (navigator.onLine) {
+        toast({ title: "Failed to load universities", description: e.message, variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { load(); }, []);
+
+  // Re-sync automatically the instant connectivity returns.
+  useEffect(() => {
+    const handler = () => { load(); };
+    window.addEventListener("online", handler);
+    return () => window.removeEventListener("online", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = universities.filter(u => u.name.toLowerCase().includes(search.toLowerCase()));
   const suggestionPool = useMemo(() => universities.map(u => u.name), [universities]);
@@ -73,7 +95,7 @@ export function UniversitiesTab() {
         suggestionPool={suggestionPool}
       />
 
-      {loading ? (
+      {loading && universities.length === 0 ? (
         <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : universities.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -97,8 +119,7 @@ export function UniversitiesTab() {
         </div>
       )}
 
-      {/* Add-link CTA */}
-      <a
+      
         href="https://wa.me/265999626944"
         target="_blank"
         rel="noopener noreferrer"
