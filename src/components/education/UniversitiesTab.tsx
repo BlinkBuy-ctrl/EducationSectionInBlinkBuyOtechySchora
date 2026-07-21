@@ -43,8 +43,6 @@ export function UniversitiesTab() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<University | null>(null);
 
-  // ── OFFLINE-FIRST: always show whatever's cached immediately, then
-  // refresh from Supabase in the background and update both state + cache.
   const load = async () => {
     const cached = await getCache<University>("universities");
     if (cached.length) {
@@ -57,8 +55,6 @@ export function UniversitiesTab() {
       setUniversities(fresh);
       setCache("universities", fresh);
     } catch (e: any) {
-      // Only surface an error toast if we're online — an offline failure
-      // here is expected and cached data (if any) is already showing.
       if (navigator.onLine) {
         toast({ title: "Failed to load universities", description: e.message, variant: "destructive" });
       }
@@ -69,7 +65,6 @@ export function UniversitiesTab() {
 
   useEffect(() => { load(); }, []);
 
-  // Re-sync automatically the instant connectivity returns.
   useEffect(() => {
     const handler = () => { load(); };
     window.addEventListener("online", handler);
@@ -119,12 +114,7 @@ export function UniversitiesTab() {
         </div>
       )}
 
-      
-        href="https://wa.me/265999626944"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-1.5 text-xs font-bold text-purple-500 active:scale-[0.98] transition-all py-2"
-      >
+      <a href="https://wa.me/265999626944" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 text-xs font-bold text-purple-500 active:scale-[0.98] transition-all py-2">
         <Link2 className="w-3.5 h-3.5" /> Want To Help Add Link? Click Here
       </a>
 
