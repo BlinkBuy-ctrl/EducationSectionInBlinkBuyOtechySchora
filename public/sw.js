@@ -5,11 +5,8 @@
 // reusing a shell that references deleted hashed asset filenames.
 const BUILD_ID = "BUILD_ID_PLACEHOLDER";
 const CACHE = `schorahub-${BUILD_ID}`;
+const API_CACHE = `schorahub-api-${BUILD_ID}`;
 
-// Only the navigation shell and static (non-hashed) public assets are
-// precached. Hashed bundle filenames under /assets/* are NEVER hardcoded
-// here — they change every build and this file has no way to know them in
-// advance. Those are handled by the runtime fetch handler below instead.
 const PRECACHE_ASSETS = [
   "/",
   "/index.html",
@@ -29,7 +26,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+        Promise.all(keys.filter((k) => k !== CACHE && k !== API_CACHE).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
   );
@@ -43,15 +40,42 @@ self.addEventListener("fetch", (event) => {
   const isSameOrigin = url.origin === self.location.origin;
   const isNavigation = request.mode === "navigate";
 
-  // Cross-origin, non-navigation requests (Supabase API/storage calls,
-  // analytics, etc.) are never intercepted — straight to network.
+  // ── Supabase REST API reads (any *.supabase.co /rest/v1/... GET) ──────
+  // Stale-while-revalidate: serve the cached response instantly if we have
+  // one, refresh it in the background from the network. This is what makes
+  // Higher Education / E-BookStore / Adverts tabs work even if the app's own
+  // IndexedDB cache were ever unavailable — a second, SW-level safety net.
+  const isSupabaseRest = url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/rest/v1/");
+  if (isSupabaseRest) {
+    event.respondWith(
+      caches.open(API_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        const networkFetch = fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              cache.put(request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => undefined);
+
+        if (cached) {
+          networkFetch.catch(() => {});
+          return cached;
+        }
+        return networkFetch.then((response) => response || new Response("[]", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }));
+      })
+    );
+    return;
+  }
+
+  // Cross-origin, non-navigation requests other than Supabase REST (storage
+  // downloads, Mux, analytics, etc.) are never intercepted — straight to network.
   if (!isSameOrigin && !isNavigation) return;
 
-  // Navigation requests (loading the app shell itself): always try the
-  // network first. This is what makes "update behaves correctly" true —
-  // a user with connectivity always gets the latest index.html, which
-  // references the current deploy's correctly-hashed asset filenames.
-  // Cache is only a fallback for genuinely offline use.
   if (isNavigation) {
     event.respondWith(
       fetch(request)
@@ -70,13 +94,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Hashed build assets (/assets/*.js, /assets/*.css, etc.) are
-  // content-addressed and immutable per deploy — but this service
-  // worker's cache can outlive a deploy. Network-first with a cache
-  // fallback ensures that if the network has the file, we always use
-  // the live (correct) version, and we only fall back to cache when
-  // truly offline. This prevents ever serving a 404'd stale asset
-  // reference as if it were valid.
   if (url.pathname.startsWith("/assets/")) {
     event.respondWith(
       fetch(request)
@@ -90,18 +107,12 @@ self.addEventListener("fetch", (event) => {
         .catch(async () => {
           const cached = await caches.match(request);
           if (cached) return cached;
-          // No cached copy and offline — let it fail naturally rather
-          // than throwing inside the SW, which can otherwise surface
-          // as a generic page load failure.
           return new Response("", { status: 504, statusText: "Offline" });
         })
     );
     return;
   }
 
-  // Everything else (images, manifest, favicon): cache-first with a
-  // background revalidation, since these rarely change and cache-first
-  // gives the best offline/slow-network experience.
   event.respondWith(
     caches.match(request).then((cached) => {
       const networkFetch = fetch(request)
@@ -115,7 +126,6 @@ self.addEventListener("fetch", (event) => {
         .catch(() => undefined);
 
       if (cached) {
-        // Serve cached immediately, refresh in background.
         networkFetch.catch(() => {});
         return cached;
       }
@@ -124,15 +134,12 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Allow the page to trigger an immediate SW update check + activation,
-// used by the update-prompt flow in main.tsx.
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
 
-// ── Push notifications (whole app — not just E-BookStore) ──────────────────
 self.addEventListener("push", (event) => {
   let data = { title: "SchoraHub", body: "You have a new update.", url: "/" };
   try { data = { ...data, ...event.data.json() }; } catch { /* non-JSON payload, use defaults */ }
@@ -142,9 +149,9 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-maskable-192.png",
-      data: { url: data.url },          // passed to notificationclick
-      vibrate: [200, 100, 200],         // phone vibration pattern
-      requireInteraction: false,        // auto-dismiss after a few seconds
+      data: { url: data.url },
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
     })
   );
 });
@@ -157,14 +164,12 @@ self.addEventListener("notificationclick", (event) => {
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
-        // If app already open — focus it and navigate to the right section
         const existing = clients.find((c) => c.url.startsWith(self.location.origin));
         if (existing) {
           existing.focus();
           existing.navigate(targetUrl);
           return;
         }
-        // App closed — open it at the target URL
         return self.clients.openWindow(targetUrl);
       })
   );
