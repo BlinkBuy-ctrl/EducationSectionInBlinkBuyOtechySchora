@@ -21,6 +21,7 @@ import { BookshopsTab } from "@/components/education/BookshopsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
+import { getCache, setCache } from "@/lib/offlineCache";
 import {
   AudioBook, AUDIOBOOK_CATEGORIES, TABLE_AUDIOBOOKS,
   TABLE_AUDIOBOOK_PURCHASES, TABLE_AUDIOBOOK_BOOKMARKS,
@@ -30,20 +31,11 @@ import {
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 const ACATS = ["All", ...AUDIOBOOK_CATEGORIES] as const;
 const RESOURCE_SEARCH_PHRASES = [
-  "Search Physics…",
-  "Search Chemistry…",
-  "Search Agriculture…",
-  "Search Mathematics…",
-  "Search Biology…",
-  "Search Past Papers…",
-  "Search Textbooks…",
+  "Search Physics…", "Search Chemistry…", "Search Agriculture…", "Search Mathematics…",
+  "Search Biology…", "Search Past Papers…", "Search Textbooks…",
 ];
 const AUDIO_SEARCH_PHRASES = [
-  "Search Fiction…",
-  "Search Educational…",
-  "Search by author…",
-  "Search by narrator…",
-  "Search Audio Books…",
+  "Search Fiction…", "Search Educational…", "Search by author…", "Search by narrator…", "Search Audio Books…",
 ];
 type PriceFilter = "all" | "free" | "paid";
 type ContentType = "documents" | "audio";
@@ -52,22 +44,15 @@ const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
 
-/**
- * Slowly auto-scrolls a horizontally-scrollable row back and forth as a
- * visual hint that it's scrollable. Pauses the moment the user touches it,
- * resumes after a short idle period.
- */
 function useScrollHintAnimation(ref: RefObject<HTMLDivElement>, enabled: boolean) {
   const pausedRef = useRef(false);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-
     let raf = 0;
-    let dir = 1; // 1 = right, -1 = left
-    const SPEED = 0.35; // px per frame — slow, subtle hint
+    let dir = 1;
+    const SPEED = 0.35;
     let resumeTimeout: ReturnType<typeof setTimeout> | null = null;
-
     const step = () => {
       if (enabled && !pausedRef.current) {
         const maxScroll = el.scrollWidth - el.clientWidth;
@@ -81,7 +66,6 @@ function useScrollHintAnimation(ref: RefObject<HTMLDivElement>, enabled: boolean
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-
     const pause = () => {
       pausedRef.current = true;
       if (resumeTimeout) clearTimeout(resumeTimeout);
@@ -90,7 +74,6 @@ function useScrollHintAnimation(ref: RefObject<HTMLDivElement>, enabled: boolean
     el.addEventListener("touchstart", pause, { passive: true });
     el.addEventListener("mousedown", pause);
     el.addEventListener("wheel", pause, { passive: true });
-
     return () => {
       cancelAnimationFrame(raf);
       if (resumeTimeout) clearTimeout(resumeTimeout);
@@ -101,7 +84,6 @@ function useScrollHintAnimation(ref: RefObject<HTMLDivElement>, enabled: boolean
   }, [enabled, ref]);
 }
 
-/** Fires onTriple only after exactly 3 taps land within 650ms of each other. */
 function handleTripleTap(stateRef: MutableRefObject<{ count: number; timer: ReturnType<typeof setTimeout> | null }>, onTriple: () => void) {
   const state = stateRef.current;
   state.count += 1;
@@ -142,7 +124,6 @@ export default function EducationPage() {
   const [tab,          setTab]          = useState<Tab>("resources");
   const [showOnboard,  setShowOnboard]  = useState(false);
 
-  // ── Audio Books state — parallel to the resource state above ───────────
   const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
   const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
   const [audiobookBookmarks, setAudiobookBookmarks] = useState<Set<string>>(new Set());
@@ -151,13 +132,8 @@ export default function EducationPage() {
   const [showAudioUpload,    setShowAudioUpload]    = useState(false);
   const [detailAudiobook,    setDetailAudiobook]    = useState<AudioBook | null>(null);
 
-  // Ref so event listeners always call the latest handleUploadClick without stale closures
   const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
 
-  // ── Tab bar & category filter "scroll hint" animations ─────────────────
-  // Both rows overflow and scroll horizontally, but nothing visually signals
-  // that. Each auto-scrolls back and forth as a hint, pauses the instant the
-  // user touches it, and can be toggled on/off with a triple-tap.
   const tabsScrollRef = useRef<HTMLDivElement>(null);
   const catsScrollRef = useRef<HTMLDivElement>(null);
 
@@ -194,7 +170,6 @@ export default function EducationPage() {
     });
   });
 
-  // Listen for bottom nav tab events
   useEffect(() => {
     const tabHandler = (e: Event) => {
       const t = (e as CustomEvent).detail as Tab;
@@ -205,13 +180,10 @@ export default function EducationPage() {
     window.addEventListener("otechy:open-upload", uploadHandler);
     return () => {
       window.removeEventListener("otechy:set-tab", tabHandler);
-      window.removeEventListener("otechy:open-upload", uploadHandler);  // was missing — memory leak fixed
+      window.removeEventListener("otechy:open-upload", uploadHandler);
     };
   }, []);
 
-  // Tutorial no longer auto-plays for first-time users. It now only opens
-  // when the user presses "Replay Tutorial" from My Stats → Support & Info,
-  // which sends them Home and shows the full walkthrough from scratch.
   useEffect(() => {
     const handler = () => {
       setTab("resources");
@@ -221,10 +193,6 @@ export default function EducationPage() {
     return () => window.removeEventListener("otechy:start-tutorial", handler);
   }, []);
 
-  // Fixed-position overlays can render far below the viewport on some mobile
-  // WebViews/PWAs once the page has been scrolled down a long resource list.
-  // Snapping scroll to top and locking body scroll while the modal is open
-  // guarantees the Upload modal always appears immediately, with no scrolling needed.
   useEffect(() => {
     if (showUpload || showAudioUpload) {
       window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
@@ -234,16 +202,44 @@ export default function EducationPage() {
     }
   }, [showUpload, showAudioUpload]);
 
+  // ── OFFLINE-FIRST: load cache immediately, then refresh from network ────
+  const loadFromCacheFirst = async () => {
+    const [
+      cachedResources, cachedScholarships, cachedTutors,
+      cachedPurchases, cachedBookmarks,
+      cachedAudiobooks, cachedAudiobookPurchases, cachedAudiobookBookmarks,
+    ] = await Promise.all([
+      getCache<any>("resources"),
+      getCache<any>("scholarships"),
+      getCache<any>("tutors"),
+      getCache<{ id: string; resource_id: string }>("purchases"),
+      getCache<{ id: string; resource_id: string }>("bookmarks"),
+      getCache<AudioBook>("audiobooks"),
+      getCache<{ id: string; audiobook_id: string }>("audiobook_purchases"),
+      getCache<{ id: string; audiobook_id: string }>("audiobook_bookmarks"),
+    ]);
+
+    if (cachedResources.length)    setResources(cachedResources);
+    if (cachedScholarships.length) setScholarships(cachedScholarships);
+    if (cachedTutors.length)       setTutors(cachedTutors);
+    if (cachedAudiobooks.length)   setAudiobooks(cachedAudiobooks);
+    if (cachedPurchases.length)    setPurchases(new Set(cachedPurchases.map(p => p.resource_id)));
+    if (cachedBookmarks.length)    setBookmarks(new Set(cachedBookmarks.map(b => b.resource_id)));
+    if (cachedAudiobookPurchases.length) setAudiobookPurchases(new Set(cachedAudiobookPurchases.map(p => p.audiobook_id)));
+    if (cachedAudiobookBookmarks.length) setAudiobookBookmarks(new Set(cachedAudiobookBookmarks.map(b => b.audiobook_id)));
+  };
+
   const fetchAll = async () => {
+    // Show cached content immediately if this is the very first load and we
+    // have nothing on screen yet — avoids a blank/loading flash on reopen.
+    if (resources.length === 0 && audiobooks.length === 0) {
+      await loadFromCacheFirst();
+    }
+
     setLoading(true);
     const noTable = (e: any) => e?.code === "42P01";
     const errors: string[] = [];
 
-    // Each table's fetch settles independently — Promise.allSettled means a
-    // rejected/unexpected-error table can never block the others from
-    // setting state. Main app data reads from `supabase` (Vercel env vars);
-    // audiobooks read from `bookshopSupabase` (the separate, hardcoded
-    // E-BookStore backend).
     const [rRes, sRes, tRes, pRes, bRes, abRes, apRes, abmRes] = await Promise.allSettled([
       supabase.from("otechy_resources")
         .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
@@ -261,39 +257,55 @@ export default function EducationPage() {
 
     // Resources
     if (rRes.status === "fulfilled" && (!rRes.value.error || noTable(rRes.value.error))) {
-      setResources(rRes.value.data ?? []);
+      const rows = rRes.value.data ?? [];
+      setResources(rows);
+      setCache("resources", rows);
     } else errors.push("resources");
 
     // Scholarships
     if (sRes.status === "fulfilled" && (!sRes.value.error || noTable(sRes.value.error))) {
-      setScholarships(sRes.value.data ?? []);
+      const rows = sRes.value.data ?? [];
+      setScholarships(rows);
+      setCache("scholarships", rows);
     } else errors.push("scholarships");
 
     // Tutors
     if (tRes.status === "fulfilled" && (!tRes.value.error || noTable(tRes.value.error))) {
-      setTutors(tRes.value.data ?? []);
+      const rows = tRes.value.data ?? [];
+      setTutors(rows);
+      setCache("tutors", rows);
     } else errors.push("tutors");
 
     // Audiobooks (hardcoded backend)
     if (abRes.status === "fulfilled" && (!abRes.value.error || noTable(abRes.value.error))) {
-      setAudiobooks(abRes.value.data ?? []);
+      const rows = abRes.value.data ?? [];
+      setAudiobooks(rows);
+      setCache("audiobooks", rows);
     } else errors.push("audiobooks");
 
-    // Non-critical sets — quietly skip on failure, never block the tables above
+    // Non-critical sets
     if (pRes.status === "fulfilled" && !pRes.value.error) {
-      setPurchases(new Set((pRes.value.data ?? []).map((p: any) => p.resource_id)));
+      const rows = pRes.value.data ?? [];
+      setPurchases(new Set(rows.map((p: any) => p.resource_id)));
+      setCache("purchases", rows.map((p: any) => ({ id: p.resource_id, resource_id: p.resource_id })));
     }
     if (bRes.status === "fulfilled" && !bRes.value.error) {
-      setBookmarks(new Set((bRes.value.data ?? []).map((b: any) => b.resource_id)));
+      const rows = bRes.value.data ?? [];
+      setBookmarks(new Set(rows.map((b: any) => b.resource_id)));
+      setCache("bookmarks", rows.map((b: any) => ({ id: b.resource_id, resource_id: b.resource_id })));
     }
     if (apRes.status === "fulfilled" && !apRes.value.error) {
-      setAudiobookPurchases(new Set((apRes.value.data ?? []).map((p: any) => p.audiobook_id)));
+      const rows = apRes.value.data ?? [];
+      setAudiobookPurchases(new Set(rows.map((p: any) => p.audiobook_id)));
+      setCache("audiobook_purchases", rows.map((p: any) => ({ id: p.audiobook_id, audiobook_id: p.audiobook_id })));
     }
     if (abmRes.status === "fulfilled" && !abmRes.value.error) {
-      setAudiobookBookmarks(new Set((abmRes.value.data ?? []).map((b: any) => b.audiobook_id)));
+      const rows = abmRes.value.data ?? [];
+      setAudiobookBookmarks(new Set(rows.map((b: any) => b.audiobook_id)));
+      setCache("audiobook_bookmarks", rows.map((b: any) => ({ id: b.audiobook_id, audiobook_id: b.audiobook_id })));
     }
 
-    if (errors.length) {
+    if (errors.length && navigator.onLine) {
       toast({
         title: "Some content failed to load",
         description: `Couldn't load: ${errors.join(", ")}. The rest of the page loaded fine.`,
@@ -304,6 +316,15 @@ export default function EducationPage() {
   };
 
   useEffect(() => { fetchAll(); }, [user.id]);
+
+  // Re-sync automatically the moment connectivity returns — no manual
+  // refresh needed from the user.
+  useEffect(() => {
+    const handler = () => { fetchAll(); };
+    window.addEventListener("online", handler);
+    return () => window.removeEventListener("online", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
 
   const filtered = resources.filter(r => {
     const q = search.toLowerCase();
@@ -325,8 +346,6 @@ export default function EducationPage() {
     return mS && mC && mP;
   });
 
-  // Client-side autocomplete pool — built from data already loaded, no extra fetch.
-  // Switches source based on which content type is active in Browse.
   const searchSuggestions = useMemo(() => {
     if (contentType === "audio") {
       const titles = audiobooks.map(a => a.title).filter(Boolean);
@@ -352,7 +371,6 @@ export default function EducationPage() {
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       try {
         await supabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-        // Re-fetch just this resource's fresh counts and update the card in state
         const { data: fresh } = await supabase
           .from("otechy_resources")
           .select("download_count,avg_rating,review_count")
@@ -394,13 +412,8 @@ export default function EducationPage() {
     } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
   };
 
-  // ── Audio Book handlers — mirror the resource handlers above exactly ───
   const handleAudioDownload = async (audiobook: AudioBook) => {
     try {
-      // download: true asks Supabase Storage to serve this with
-      // Content-Disposition: attachment, so the browser streams the file
-      // straight to disk instead of us fetching the whole thing into a JS
-      // blob first — much faster, especially for large audio files.
       const filename = `${audiobook.title}.${audiobook.audio_format ?? "mp3"}`;
       const url = await getSignedAudioUrl(audiobook.audio_url, 300, { download: filename });
       const a = Object.assign(document.createElement("a"), { href: url, download: filename });
@@ -461,7 +474,6 @@ export default function EducationPage() {
     if (contentType === "audio") setShowAudioUpload(true);
     else setShowUpload(true);
   };
-  // Keep ref in sync so the event listener always calls the latest version
   handleUploadClickRef.current = handleUploadClick;
 
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
@@ -486,7 +498,6 @@ export default function EducationPage() {
         />
       )}
 
-      {/* Hero */}
       <div className="relative rounded-2xl overflow-hidden bg-[hsl(215,55%,12%)] p-4 mb-5">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600/25 via-blue-600/15 to-transparent pointer-events-none" />
         <div className="relative flex items-start justify-between gap-3">
@@ -528,7 +539,6 @@ export default function EducationPage() {
         </div>
       </div>
 
-      {/* Higher Education quick-access banner — always visible, no scrolling needed */}
       <button
         onClick={() => setTab("universities")}
         className={`w-full flex items-center gap-3 rounded-2xl p-3.5 mb-5 active:scale-[0.98] transition-all border ${
@@ -546,7 +556,6 @@ export default function EducationPage() {
         </div>
       </button>
 
-      {/* E-BookStore quick-access banner — same pattern as Higher Education */}
       <button
         onClick={() => setTab("bookshops")}
         className={`w-full flex items-center gap-3 rounded-2xl p-3.5 mb-5 active:scale-[0.98] transition-all border ${
@@ -564,7 +573,6 @@ export default function EducationPage() {
         </div>
       </button>
 
-      {/* Tabs */}
       <div
         data-tour="tabs"
         ref={tabsScrollRef}
@@ -581,7 +589,6 @@ export default function EducationPage() {
         ))}
       </div>
 
-      {/* Browse */}
       {tab === "resources" && (
         <>
           <div className="mb-3">
@@ -595,7 +602,6 @@ export default function EducationPage() {
             />
           </div>
 
-          {/* Price filter + content-type toggle — the 🎧 Audio pill lives here */}
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
             {(["all","free","paid"] as PriceFilter[]).map(f => (
               <button key={f} onClick={() => setPrice(f)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${price === f ? "bg-purple-600 border-purple-600 text-white" : "border-border text-muted-foreground"}`}>
@@ -615,7 +621,6 @@ export default function EducationPage() {
             </button>
           </div>
 
-          {/* Category filter — switches source list based on content type */}
           <div
             ref={catsScrollRef}
             onClick={handleCatsBarTap}
@@ -636,7 +641,7 @@ export default function EducationPage() {
           </div>
 
           {contentType === "audio" ? (
-            loading ? <Skeleton /> : filteredAudiobooks.length === 0 ? (
+            loading && filteredAudiobooks.length === 0 ? <Skeleton /> : filteredAudiobooks.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center"><Headphones className="w-7 h-7 text-pink-400" /></div>
                 <p className="font-semibold text-foreground">No audio books found</p>
@@ -661,7 +666,7 @@ export default function EducationPage() {
               </div>
             )
           ) : (
-            loading ? <Skeleton /> : filtered.length === 0 ? (
+            loading && filtered.length === 0 ? <Skeleton /> : filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-purple-400" /></div>
                 <p className="font-semibold text-foreground">No resources found</p>
