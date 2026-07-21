@@ -132,25 +132,40 @@ self.addEventListener("message", (event) => {
   }
 });
 
-// ── E-BookStore real push notifications ──
+// ── Push notifications (whole app — not just E-BookStore) ──────────────────
 self.addEventListener("push", (event) => {
-  let data = { title: "SchoraHub", body: "You have a new update." };
-  try { data = event.data.json(); } catch { /* non-JSON payload, use default */ }
+  let data = { title: "SchoraHub", body: "You have a new update.", url: "/" };
+  try { data = { ...data, ...event.data.json() }; } catch { /* non-JSON payload, use defaults */ }
+
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-192.png",
+      badge: "/icons/icon-maskable-192.png",
+      data: { url: data.url },          // passed to notificationclick
+      vibrate: [200, 100, 200],         // phone vibration pattern
+      requireInteraction: false,        // auto-dismiss after a few seconds
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
+
   event.waitUntil(
-    self.clients.matchAll({ type: "window" }).then((clients) => {
-      if (clients.length > 0) return clients[0].focus();
-      return self.clients.openWindow("/");
-    })
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        // If app already open — focus it and navigate to the right section
+        const existing = clients.find((c) => c.url.startsWith(self.location.origin));
+        if (existing) {
+          existing.focus();
+          existing.navigate(targetUrl);
+          return;
+        }
+        // App closed — open it at the target URL
+        return self.clients.openWindow(targetUrl);
+      })
   );
 });
