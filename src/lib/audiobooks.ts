@@ -10,6 +10,7 @@
  */
 
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
+import { supabase as mainSupabase } from "@/lib/supabase";
 
 // ── Backend constants — must match the schema file exactly ────────────────
 export const TABLE_AUDIOBOOKS           = "otechy_audiobooks";
@@ -91,9 +92,22 @@ export function getAudioDuration(file: File): Promise<number> {
 /**
  * Signed URL for playback/download — bucket is private, so every read goes
  * through this. Default 1hr expiry covers a full listening session.
+ *
+ * Pass `download: true` (or a filename string) when the URL is for saving
+ * the file rather than streaming playback — Supabase then serves it with a
+ * Content-Disposition: attachment header, so the browser can stream the
+ * download straight from storage instead of Claude/JS having to fetch the
+ * whole file into memory first. That's what makes the download button fast
+ * even for large audio files.
  */
-export async function getSignedAudioUrl(path: string, expiresInSeconds = 3600): Promise<string> {
-  const { data, error } = await bookshopSupabase.storage.from(BUCKET_AUDIO).createSignedUrl(path, expiresInSeconds);
+export async function getSignedAudioUrl(
+  path: string,
+  expiresInSeconds = 3600,
+  options?: { download?: boolean | string }
+): Promise<string> {
+  const { data, error } = await bookshopSupabase.storage
+    .from(BUCKET_AUDIO)
+    .createSignedUrl(path, expiresInSeconds, options?.download !== undefined ? { download: options.download } : undefined);
   if (error || !data) throw new Error(error?.message ?? "Could not get audio URL");
   return data.signedUrl;
 }
@@ -140,6 +154,36 @@ export async function uploadAudioWithProgress(
 /** Removes an uploaded audio file — used to clean up if the DB insert after upload fails. */
 export async function removeAudioFile(path: string): Promise<void> {
   await bookshopSupabase.storage.from(BUCKET_AUDIO).remove([path]).catch(() => {});
+}
+
+/**
+ * Pulls the storage path back out of a public cover URL, e.g.
+ * ".../storage/v1/object/public/otechy-images/audiobook-covers/xyz.jpg"
+ * -> "audiobook-covers/xyz.jpg". Returns null if the URL doesn't match the
+ * expected shape (so callers can skip the cover delete rather than guess).
+ */
+export function coverPathFromPublicUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const marker = `/public/${BUCKET_COVERS}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(url.slice(idx + marker.length));
+}
+
+/**
+ * Deletes everything tied to one uploaded audio book: the audio file, the
+ * cover image (if any — lives in the shared otechy-images bucket on the
+ * main backend), and the row itself in the audiobook backend. Used by the
+ * uploader's own "My Audio Books" management panel.
+ */
+export async function deleteOwnedAudiobook(book: Pick<AudioBook, "id" | "audio_url" | "cover_url">): Promise<void> {
+  await bookshopSupabase.storage.from(BUCKET_AUDIO).remove([book.audio_url]).catch(() => {});
+  const coverPath = coverPathFromPublicUrl(book.cover_url);
+  if (coverPath) {
+    await mainSupabase.storage.from(BUCKET_COVERS).remove([coverPath]).catch(() => {});
+  }
+  const { error } = await bookshopSupabase.from(TABLE_AUDIOBOOKS).delete().eq("id", book.id);
+  if (error) throw new Error(error.message);
 }
 
 /**
