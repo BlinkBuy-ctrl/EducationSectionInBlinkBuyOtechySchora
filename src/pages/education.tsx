@@ -522,7 +522,7 @@ export default function EducationPage() {
                   key={label}
                   type="button"
                   onClick={onClick}
-                  className="flex items-center gap-1 bg-transparent border-0 p-0 m-0 cursor-pointer"
+                  className="flex items-center gap-1 bg-transparent border-0 p-0 m-0 cursor-pointer active:scale-90 active:opacity-60 transition-transform duration-100"
                 >
                   <Icon className="w-3 h-3 text-purple-400" />
                   <span className="text-[10px] text-white/55 font-medium">{label}</span>
