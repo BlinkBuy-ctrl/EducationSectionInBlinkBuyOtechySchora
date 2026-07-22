@@ -123,6 +123,7 @@ export default function EducationPage() {
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [tab,          setTab]          = useState<Tab>("resources");
   const [showOnboard,  setShowOnboard]  = useState(false);
+  const [activeShortcutIndex, setActiveShortcutIndex] = useState(0);
 
   const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
   const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
@@ -484,6 +485,13 @@ export default function EducationPage() {
     { icon: Award,         label: "Scholarships",      onClick: () => setTab("scholarships") },
   ];
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveShortcutIndex(i => (i + 1) % rotatingShortcuts.length);
+    }, 50000);
+    return () => clearInterval(id);
+  }, []);
+
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length + audiobooks.length },
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
@@ -555,32 +563,27 @@ export default function EducationPage() {
       <p className="text-sm font-black text-foreground mb-3">Did You Know SchoraHub Consist?</p>
 
       <style>{`
-        @keyframes shortcutMarqueeRight {
-          0% { transform: translateX(-50%); }
-          100% { transform: translateX(0%); }
+        @keyframes shortcutFadeIn {
+          0% { opacity: 0; transform: translateY(4px); }
+          100% { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
-      <div className="mb-5 overflow-hidden">
-        <div
-          className="flex items-center gap-2 w-max"
-          style={{ animation: "shortcutMarqueeRight 14s linear infinite" }}
-        >
-          {[...rotatingShortcuts, ...rotatingShortcuts].map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={`${item.label}-${i}`}
-                onClick={item.onClick}
-                className="flex items-center gap-1.5 rounded-full px-3 py-2 active:scale-95 transition-transform border bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30 shrink-0"
-              >
-                <Icon className="w-4 h-4 shrink-0 text-white" />
-                <span className="text-xs font-black whitespace-nowrap text-white">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {(() => {
+        const item = rotatingShortcuts[activeShortcutIndex];
+        const Icon = item.icon;
+        return (
+          <button
+            key={activeShortcutIndex}
+            onClick={item.onClick}
+            style={{ animation: "shortcutFadeIn 0.5s ease-out" }}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 mb-5 active:scale-[0.98] transition-transform border border-border bg-card shadow-sm"
+          >
+            <Icon className="w-5 h-5 text-purple-500 shrink-0" />
+            <span className="text-sm font-black text-foreground">{item.label}</span>
+          </button>
+        );
+      })()}
 
       <div
         data-tour="tabs"
