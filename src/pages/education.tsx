@@ -123,6 +123,7 @@ export default function EducationPage() {
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [tab,          setTab]          = useState<Tab>("resources");
   const [showOnboard,  setShowOnboard]  = useState(false);
+  const [shortcutRotIndex, setShortcutRotIndex] = useState(0);
 
   const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
   const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
@@ -476,6 +477,21 @@ export default function EducationPage() {
   };
   handleUploadClickRef.current = handleUploadClick;
 
+  const rotatingShortcuts = [
+    { icon: GraduationCap, label: "Higher Education", onClick: () => setTab("universities") },
+    { icon: BookOpen,      label: "E-BookStore",       onClick: () => setTab("bookshops") },
+    { icon: Users,         label: "Tutors",            onClick: () => setTab("tutors") },
+    { icon: Headphones,    label: "Audio Books",       onClick: () => { setTab("resources"); setContentType("audio"); } },
+    { icon: Award,         label: "Scholarships",      onClick: () => setTab("scholarships") },
+  ];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setShortcutRotIndex(i => (i + 1) % rotatingShortcuts.length);
+    }, 3500);
+    return () => clearInterval(id);
+  }, []);
+
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length + audiobooks.length },
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
@@ -544,39 +560,39 @@ export default function EducationPage() {
         </div>
       </div>
 
-      <button
-        onClick={() => setTab("universities")}
-        className={`w-full flex items-center gap-3 rounded-2xl p-3.5 mb-5 active:scale-[0.98] transition-all border ${
-          tab === "universities"
-            ? "bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
-            : "bg-card border-border"
-        }`}
-      >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tab === "universities" ? "bg-white/15" : "bg-purple-500/15"}`}>
-          <GraduationCap className={`w-5 h-5 ${tab === "universities" ? "text-white" : "text-purple-400"}`} />
-        </div>
-        <div className="flex-1 min-w-0 text-left">
-          <p className={`text-sm font-bold ${tab === "universities" ? "text-white" : "text-foreground"}`}>Higher Education</p>
-          <p className={`text-[11px] ${tab === "universities" ? "text-white/70" : "text-muted-foreground"}`}>Find your university's official links & groups</p>
-        </div>
-      </button>
+      <p className="text-sm font-black text-foreground mb-3">Did You Know SchoraHub Consist?</p>
 
-      <button
-        onClick={() => setTab("bookshops")}
-        className={`w-full flex items-center gap-3 rounded-2xl p-3.5 mb-5 active:scale-[0.98] transition-all border ${
-          tab === "bookshops"
-            ? "bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
-            : "bg-card border-border"
-        }`}
-      >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tab === "bookshops" ? "bg-white/15" : "bg-purple-500/15"}`}>
-          <BookOpen className={`w-5 h-5 ${tab === "bookshops" ? "text-white" : "text-purple-400"}`} />
-        </div>
-        <div className="flex-1 min-w-0 text-left">
-          <p className={`text-sm font-bold ${tab === "bookshops" ? "text-white" : "text-foreground"}`}>E-BookStore</p>
-          <p className={`text-[11px] ${tab === "bookshops" ? "text-white/70" : "text-muted-foreground"}`}>Malawi's verified bookshop marketplace</p>
-        </div>
-      </button>
+      <style>{`
+        @keyframes shortcutFromCenter {
+          0% { transform: translateX(var(--shortcut-from, 0px)) scale(0.5); opacity: 0; }
+          100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+      `}</style>
+
+      <div className="flex items-center justify-center gap-2.5 mb-5">
+        {[-1, 0, 1].map((offset) => {
+          const idx = (shortcutRotIndex + offset + rotatingShortcuts.length) % rotatingShortcuts.length;
+          const item = rotatingShortcuts[idx];
+          const Icon = item.icon;
+          const isCenter = offset === 0;
+          const fromTx = offset === -1 ? "60px" : offset === 1 ? "-60px" : "0px";
+          return (
+            <button
+              key={`${shortcutRotIndex}-${offset}`}
+              onClick={item.onClick}
+              style={{ ["--shortcut-from" as any]: fromTx, animation: "shortcutFromCenter 0.6s ease-out" }}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-2 active:scale-95 transition-transform border ${
+                isCenter
+                  ? "bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
+                  : "bg-card border-border opacity-70"
+              }`}
+            >
+              <Icon className={`w-4 h-4 shrink-0 ${isCenter ? "text-white" : "text-purple-400"}`} />
+              <span className={`text-xs font-black whitespace-nowrap ${isCenter ? "text-white" : "text-foreground"}`}>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
       <div
         data-tour="tabs"
