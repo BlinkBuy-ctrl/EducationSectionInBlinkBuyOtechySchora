@@ -513,15 +513,20 @@ export default function EducationPage() {
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {[
-                { icon: FileText, label: `${resources.length} Resources` },
-                { icon: Headphones, label: `${audiobooks.length} Audio Books` },
-                { icon: Award, label: `${scholarships.length} Scholarships` },
-                { icon: Users, label: `${tutors.length} Tutors` },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-1">
+                { icon: FileText, label: `${resources.length} Resources`, onClick: () => { setTab("resources"); setContentType("documents"); } },
+                { icon: Headphones, label: `${audiobooks.length} Audio Books`, onClick: () => { setTab("resources"); setContentType("audio"); } },
+                { icon: Award, label: `${scholarships.length} Scholarships`, onClick: () => setTab("scholarships") },
+                { icon: Users, label: `${tutors.length} Tutors`, onClick: () => setTab("tutors") },
+              ].map(({ icon: Icon, label, onClick }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={onClick}
+                  className="flex items-center gap-1 bg-transparent border-0 p-0 m-0 cursor-pointer"
+                >
                   <Icon className="w-3 h-3 text-purple-400" />
                   <span className="text-[10px] text-white/55 font-medium">{label}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
