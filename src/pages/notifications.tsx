@@ -47,10 +47,18 @@ async function subscribeToPush(userId: string | null): Promise<boolean> {
       });
     }
     const json = sub.toJSON() as any;
-    await bookshopSupabase.from("otechy_push_subscriptions").upsert(
+    const { error } = await bookshopSupabase.from("otechy_push_subscriptions").upsert(
       { user_id: userId, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth },
       { onConflict: "endpoint" }
     );
+    if (error) {
+      // This is the important part: the browser-side subscribe can succeed
+      // while the DB save fails (e.g. RLS blocking the anon key) — without
+      // this check that failure was invisible and the toggle would show
+      // "ON" even though no row was ever saved.
+      console.error("Push subscription DB save failed:", error);
+      return false;
+    }
     return true;
   } catch (e) {
     console.warn("Push subscription failed:", e);
