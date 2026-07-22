@@ -332,9 +332,9 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
       {/* My content — tabs */}
       <div>
-        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl mb-3">
+        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-xl mb-3 overflow-x-auto scrollbar-hide scroll-smooth">
           <button onClick={() => setActiveTab("resources")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
               activeTab === "resources"
                 ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm"
                 : "text-muted-foreground"
@@ -345,7 +345,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
             </span>
           </button>
           <button onClick={() => setActiveTab("tutors")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
               activeTab === "tutors"
                 ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm"
                 : "text-muted-foreground"
@@ -356,7 +356,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
             </span>
           </button>
           <button onClick={() => setActiveTab("audiobooks")}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
               activeTab === "audiobooks"
                 ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-sm"
                 : "text-muted-foreground"
