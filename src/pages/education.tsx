@@ -569,26 +569,21 @@ export default function EducationPage() {
         }
       `}</style>
 
-      <div className="flex items-center justify-center gap-2.5 mb-5">
-        {[-1, 0, 1].map((offset) => {
-          const idx = (shortcutRotIndex + offset + rotatingShortcuts.length) % rotatingShortcuts.length;
-          const item = rotatingShortcuts[idx];
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-5">
+        {rotatingShortcuts.map((item, i) => {
           const Icon = item.icon;
-          const isCenter = offset === 0;
-          const fromTx = offset === -1 ? "60px" : offset === 1 ? "-60px" : "0px";
+          const centerIdx = (rotatingShortcuts.length - 1) / 2;
+          const offsetFromCenter = i - centerIdx;
+          const fromTx = `${-offsetFromCenter * 90}px`;
           return (
             <button
-              key={`${shortcutRotIndex}-${offset}`}
+              key={`${shortcutRotIndex}-${item.label}`}
               onClick={item.onClick}
               style={{ ["--shortcut-from" as any]: fromTx, animation: "shortcutFromCenter 0.6s ease-out" }}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-2 active:scale-95 transition-transform border ${
-                isCenter
-                  ? "bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
-                  : "bg-card border-border opacity-70"
-              }`}
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 active:scale-95 transition-transform border bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
             >
-              <Icon className={`w-4 h-4 shrink-0 ${isCenter ? "text-white" : "text-purple-400"}`} />
-              <span className={`text-xs font-black whitespace-nowrap ${isCenter ? "text-white" : "text-foreground"}`}>{item.label}</span>
+              <Icon className="w-4 h-4 shrink-0 text-white" />
+              <span className="text-xs font-black whitespace-nowrap text-white">{item.label}</span>
             </button>
           );
         })}
