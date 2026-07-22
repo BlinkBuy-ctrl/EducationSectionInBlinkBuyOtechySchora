@@ -145,8 +145,11 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       toast({ title: "✅ Published!", description: "Your resource is now live." });
 
       // Fire a real phone push notification to every subscribed user —
-      // fire-and-forget, never blocks or breaks the upload flow if it fails
-      fetch("/api/send-app-notification", {
+      // fire-and-forget, never blocks or breaks the upload flow if it fails.
+      // Uses notify-new-upload (unauthenticated broadcast) — NOT
+      // send-app-notification, which requires a server-only secret the
+      // browser can never safely send.
+      fetch("/api/notify-new-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -154,7 +157,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
           body: `"${form.title.trim()}" just got uploaded — grab it now.`,
           url: "/",
         }),
-      }).catch(() => {}); // notification failure should never block the upload
+      }).catch((e) => console.warn("Push notification failed:", e)); // notification failure should never block the upload
 
       setTimeout(() => { onSuccess(); onClose(); }, 800);
 
