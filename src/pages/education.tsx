@@ -123,7 +123,6 @@ export default function EducationPage() {
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [tab,          setTab]          = useState<Tab>("resources");
   const [showOnboard,  setShowOnboard]  = useState(false);
-  const [shortcutRotIndex, setShortcutRotIndex] = useState(0);
 
   const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
   const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
@@ -485,13 +484,6 @@ export default function EducationPage() {
     { icon: Award,         label: "Scholarships",      onClick: () => setTab("scholarships") },
   ];
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setShortcutRotIndex(i => (i + 1) % rotatingShortcuts.length);
-    }, 3500);
-    return () => clearInterval(id);
-  }, []);
-
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length + audiobooks.length },
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
@@ -563,30 +555,31 @@ export default function EducationPage() {
       <p className="text-sm font-black text-foreground mb-3">Did You Know SchoraHub Consist?</p>
 
       <style>{`
-        @keyframes shortcutFromCenter {
-          0% { transform: translateX(var(--shortcut-from, 0px)) scale(0.5); opacity: 0; }
-          100% { transform: translateX(0) scale(1); opacity: 1; }
+        @keyframes shortcutMarqueeRight {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0%); }
         }
       `}</style>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 mb-5">
-        {rotatingShortcuts.map((item, i) => {
-          const Icon = item.icon;
-          const centerIdx = (rotatingShortcuts.length - 1) / 2;
-          const offsetFromCenter = i - centerIdx;
-          const fromTx = `${-offsetFromCenter * 90}px`;
-          return (
-            <button
-              key={`${shortcutRotIndex}-${item.label}`}
-              onClick={item.onClick}
-              style={{ ["--shortcut-from" as any]: fromTx, animation: "shortcutFromCenter 0.6s ease-out" }}
-              className="flex items-center gap-1.5 rounded-full px-3 py-2 active:scale-95 transition-transform border bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30"
-            >
-              <Icon className="w-4 h-4 shrink-0 text-white" />
-              <span className="text-xs font-black whitespace-nowrap text-white">{item.label}</span>
-            </button>
-          );
-        })}
+      <div className="mb-5 overflow-hidden">
+        <div
+          className="flex items-center gap-2 w-max"
+          style={{ animation: "shortcutMarqueeRight 14s linear infinite" }}
+        >
+          {[...rotatingShortcuts, ...rotatingShortcuts].map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={`${item.label}-${i}`}
+                onClick={item.onClick}
+                className="flex items-center gap-1.5 rounded-full px-3 py-2 active:scale-95 transition-transform border bg-gradient-to-r from-purple-600 to-blue-600 border-transparent shadow-lg shadow-purple-500/30 shrink-0"
+              >
+                <Icon className="w-4 h-4 shrink-0 text-white" />
+                <span className="text-xs font-black whitespace-nowrap text-white">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div
