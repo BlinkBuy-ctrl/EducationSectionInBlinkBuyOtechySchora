@@ -1,7 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { Bell, BellOff, Check, CheckCheck, Trash2, Download, ShoppingBag, GraduationCap, Info, Loader2, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,8 +34,10 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-async function subscribeToPush(userId: string | null): Promise<boolean> {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+async function subscribeToPush(userId: string | null): Promise<{ ok: boolean; error?: string }> {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return { ok: false, error: "Push not supported on this browser." };
+  }
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -47,22 +48,29 @@ async function subscribeToPush(userId: string | null): Promise<boolean> {
       });
     }
     const json = sub.toJSON() as any;
-    const { error } = await bookshopSupabase.from("otechy_push_subscriptions").upsert(
-      { user_id: userId, endpoint: json.endpoint, p256dh: json.keys.p256dh, auth: json.keys.auth },
-      { onConflict: "endpoint" }
-    );
-    if (error) {
+    const resp = await fetch("/api/push-subscription", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: userId,
+        endpoint: json.endpoint,
+        p256dh: json.keys.p256dh,
+        auth: json.keys.auth,
+      }),
+    });
+    if (!resp.ok) {
       // This is the important part: the browser-side subscribe can succeed
-      // while the DB save fails (e.g. RLS blocking the anon key) — without
-      // this check that failure was invisible and the toggle would show
-      // "ON" even though no row was ever saved.
-      console.error("Push subscription DB save failed:", error);
-      return false;
+      // while the DB save fails — without this check that failure was
+      // invisible and the toggle would show "ON" even though no row was
+      // ever saved server-side.
+      const body = await resp.json().catch(() => ({}));
+      console.error("Push subscription DB save failed:", body);
+      return { ok: false, error: body.error ?? `Server returned ${resp.status}` };
     }
-    return true;
-  } catch (e) {
+    return { ok: true };
+  } catch (e: any) {
     console.warn("Push subscription failed:", e);
-    return false;
+    return { ok: false, error: e?.message ?? String(e) };
   }
 }
 
@@ -74,7 +82,11 @@ async function unsubscribeFromPush(): Promise<boolean> {
     if (sub) {
       const endpoint = sub.endpoint;
       await sub.unsubscribe();
-      await bookshopSupabase.from("otechy_push_subscriptions").delete().eq("endpoint", endpoint);
+      await fetch("/api/push-subscription", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint }),
+      }).catch(() => {});
     }
     return true;
   } catch (e) {
@@ -118,7 +130,7 @@ export default function NotificationsPage() {
   // Auto-subscribe if already granted (re-subscribe on new installs)
   useEffect(() => {
     if (pushPermission === "granted" && !pushSubscribed) {
-      subscribeToPush(user?.id ?? null).then((ok) => { if (ok) setPushSubscribed(true); });
+      subscribeToPush(user?.id ?? null).then(({ ok }) => { if (ok) setPushSubscribed(true); });
     }
   }, [pushPermission, pushSubscribed, user?.id]);
 
@@ -128,10 +140,10 @@ export default function NotificationsPage() {
       const permission = await Notification.requestPermission();
       setPushPermission(permission);
       if (permission === "granted") {
-        const ok = await subscribeToPush(user?.id ?? null);
+        const { ok, error } = await subscribeToPush(user?.id ?? null);
         setPushSubscribed(ok);
         if (ok) toast({ title: "✅ Notifications enabled", description: "You'll get updates even when the app is closed." });
-        else toast({ title: "Failed to subscribe", variant: "destructive" });
+        else toast({ title: "Failed to subscribe", description: error ?? "Unknown error", variant: "destructive" });
       } else {
         toast({ title: "Permission denied", description: "Enable notifications in your browser settings.", variant: "destructive" });
       }
