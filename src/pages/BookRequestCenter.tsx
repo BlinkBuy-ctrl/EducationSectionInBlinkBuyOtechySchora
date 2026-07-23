@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import {
   ArrowLeft, BookOpen, Send, Paperclip, FileText, X,
-  Loader2, Download, Crown,
+  Loader2, Download, Copy, Trash2,
 } from "lucide-react";
 
 type Msg = {
@@ -55,6 +55,8 @@ export default function BookRequestCenter() {
     file: File; url?: string; uploading: boolean;
   } | null>(null);
 
+  const [actionSheetMsg, setActionSheetMsg] = useState<Msg | null>(null);
+
   const listEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,20 +66,20 @@ export default function BookRequestCenter() {
     });
   }, []);
 
-  /* ── Load history ── */
+  /* ── Load history (latest first, then reversed to chronological order) ── */
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const { data, error } = await bookshopSupabase
         .from("book_request_messages")
         .select("*")
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
         .limit(200);
       if (cancelled) return;
       if (error) {
         toast({ title: "Couldn't load the group", description: error.message, variant: "destructive" });
       } else {
-        setMessages((data as Msg[]) ?? []);
+        setMessages(((data as Msg[]) ?? []).slice().reverse());
       }
       setLoading(false);
       scrollToBottom(false);
@@ -99,6 +101,14 @@ export default function BookRequestCenter() {
             return [...prev, row];
           });
           scrollToBottom();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "book_request_messages" },
+        (payload) => {
+          const oldRow = payload.old as Partial<Msg>;
+          setMessages((prev) => prev.filter((m) => m.id !== oldRow.id));
         }
       )
       .subscribe();
@@ -192,39 +202,52 @@ export default function BookRequestCenter() {
     }
   };
 
+  /* ── Copy / delete a message ── */
+  const handleCopy = async (m: Msg) => {
+    setActionSheetMsg(null);
+    try {
+      await navigator.clipboard.writeText(m.message || m.attachment_url || "");
+      toast({ title: "Copied" });
+    } catch {
+      toast({ title: "Couldn't copy", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (m: Msg) => {
+    setActionSheetMsg(null);
+    setMessages((prev) => prev.filter((x) => x.id !== m.id));
+    const { error } = await bookshopSupabase.from("book_request_messages").delete().eq("id", m.id);
+    if (error) {
+      toast({ title: "Couldn't delete", description: error.message, variant: "destructive" });
+      setMessages((prev) => [...prev, m].sort((a, b) => a.created_at.localeCompare(b.created_at)));
+    }
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col bg-background text-foreground">
-      {/* ── Premium header ── */}
-      <div className="shrink-0 relative overflow-hidden bg-gradient-to-br from-purple-700 via-indigo-700 to-blue-700"
+      {/* ── Header ── */}
+      <div className="shrink-0 bg-sidebar border-b border-sidebar-border"
            style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
-        <div className="absolute inset-0 opacity-20 [background:radial-gradient(circle_at_20%_-10%,white,transparent_45%)]" />
-        <div className="relative px-3 py-3 flex items-center gap-3">
+        <div className="px-3 py-3 flex items-center gap-3">
           <button
             onClick={() => navigate("/")}
             aria-label="Back"
-            className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-white/90 active:bg-white/10 transition-colors"
+            className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-white/80 active:bg-white/5 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-10 h-10 shrink-0 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-inner">
-            <BookOpen className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow shadow-purple-500/20">
+            <BookOpen className="w-4 h-4 text-white" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <h1 className="font-black text-white text-[15px] truncate">SchoraHub Book Request Center</h1>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-white/75 font-medium">
-              <Crown className="w-3 h-3 text-yellow-300" />
-              <span>Premium Community</span>
-              <span className="w-1 h-1 rounded-full bg-white/40" />
-              <span className="relative flex items-center gap-1">
-                <span className="relative flex w-1.5 h-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
-                </span>
-                Live
+              <span className="relative flex w-1.5 h-1.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
               </span>
             </div>
+            <p className="text-[11px] text-white/50">Anyone here can help you find a book</p>
           </div>
         </div>
       </div>
@@ -257,10 +280,11 @@ export default function BookRequestCenter() {
                       <span className="text-[11px] font-bold text-purple-300 mb-0.5 px-1">{m.sender_name}</span>
                     )}
                     <div
+                      onClick={() => setActionSheetMsg(m)}
                       className={
                         mine
-                          ? "rounded-2xl rounded-br-md bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-md shadow-purple-500/20 px-3.5 py-2.5"
-                          : "rounded-2xl rounded-bl-md bg-sidebar/80 backdrop-blur-sm border border-sidebar-border text-foreground px-3.5 py-2.5"
+                          ? "rounded-2xl rounded-br-md bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-md shadow-purple-500/20 px-3.5 py-2.5 active:opacity-90 transition-opacity"
+                          : "rounded-2xl rounded-bl-md bg-sidebar/80 backdrop-blur-sm border border-sidebar-border text-foreground px-3.5 py-2.5 active:opacity-90 transition-opacity"
                       }
                     >
                       {m.message && (
@@ -271,6 +295,7 @@ export default function BookRequestCenter() {
                           href={m.attachment_url}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className={`mt-1.5 flex items-center gap-2 rounded-xl px-2.5 py-2 transition-colors ${
                             mine ? "bg-white/15 active:bg-white/20" : "bg-white/5 border border-white/10 active:bg-white/10"
                           }`}
@@ -344,6 +369,46 @@ export default function BookRequestCenter() {
           {sending ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Send className="w-4 h-4 text-white" />}
         </button>
       </div>
+
+      {/* ── Copy / delete action sheet ── */}
+      {actionSheetMsg && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+          onClick={() => setActionSheetMsg(null)}
+        >
+          <div
+            className="w-full sm:max-w-md bg-card border border-border rounded-t-2xl overflow-hidden"
+            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30 mx-auto mt-2.5 mb-1" />
+            {actionSheetMsg.message && (
+              <button
+                onClick={() => handleCopy(actionSheetMsg)}
+                className="w-full flex items-center gap-3 px-5 py-3.5 text-left active:bg-muted/40 transition-colors"
+              >
+                <Copy className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">Copy message</span>
+              </button>
+            )}
+            {actionSheetMsg.sender_id === user.id && (
+              <button
+                onClick={() => handleDelete(actionSheetMsg)}
+                className="w-full flex items-center gap-3 px-5 py-3.5 text-left active:bg-red-500/10 transition-colors border-t border-border"
+              >
+                <Trash2 className="w-4 h-4 text-red-400" />
+                <span className="text-sm font-semibold text-red-400">Delete message</span>
+              </button>
+            )}
+            <button
+              onClick={() => setActionSheetMsg(null)}
+              className="w-full px-5 py-3.5 text-center text-sm font-semibold text-muted-foreground border-t border-border active:bg-muted/40 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
