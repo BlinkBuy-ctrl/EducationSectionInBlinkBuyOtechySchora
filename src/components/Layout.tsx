@@ -178,20 +178,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             onClick={() => setMenuOpen(false)}
           />
           <div
-            className="fixed z-[60] w-64 rounded-2xl border border-sidebar-border bg-sidebar shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            className="fixed z-[60] w-60 rounded-xl border border-sidebar-border bg-sidebar shadow-xl shadow-black/30 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             <button
               onClick={goBookRequestCenter}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-white/5 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left active:bg-white/5 transition-colors"
             >
-              <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow shadow-purple-500/30">
-                <BookOpen className="w-4 h-4 text-white" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-white">Request For A Book</div>
-                <div className="text-[11px] text-white/50 truncate">Ask the community to help you find it</div>
-              </div>
+              <BookOpen className="w-4 h-4 text-purple-400 shrink-0" />
+              <span className="text-sm font-semibold text-white">Book Request Center</span>
             </button>
           </div>
         </>,
