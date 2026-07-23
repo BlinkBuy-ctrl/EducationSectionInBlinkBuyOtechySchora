@@ -31,21 +31,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setMenuOpen(true);
   };
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(false);
-    // Close on outside tap/scroll/resize so it never gets stuck open
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    const t = setTimeout(() => document.addEventListener("click", close), 0);
-    return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-      document.removeEventListener("click", close);
-      clearTimeout(t);
-    };
-  }, [menuOpen]);
-
   const goBookRequestCenter = () => {
     setMenuOpen(false);
     navigate("/book-request-center");
@@ -174,7 +159,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
             <button
               ref={menuBtnRef}
-              onClick={(e) => { e.stopPropagation(); menuOpen ? setMenuOpen(false) : openMenu(); }}
+              onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors"
               aria-label="More options"
             >
@@ -186,24 +171,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* ── Header overflow menu ── */}
       {menuOpen && createPortal(
-        <div
-          className="fixed z-[60] w-64 rounded-2xl border border-sidebar-border bg-sidebar shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
-          style={{ top: menuPos.top, right: menuPos.right }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={goBookRequestCenter}
-            className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-white/5 transition-colors"
+        <>
+          {/* Invisible backdrop — tap anywhere outside the menu to close it */}
+          <div
+            className="fixed inset-0 z-[59]"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div
+            className="fixed z-[60] w-64 rounded-2xl border border-sidebar-border bg-sidebar shadow-2xl shadow-black/40 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            style={{ top: menuPos.top, right: menuPos.right }}
           >
-            <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow shadow-purple-500/30">
-              <BookOpen className="w-4 h-4 text-white" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-white">Request For A Book</div>
-              <div className="text-[11px] text-white/50 truncate">Ask the community to help you find it</div>
-            </div>
-          </button>
-        </div>,
+            <button
+              onClick={goBookRequestCenter}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-white/5 transition-colors"
+            >
+              <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow shadow-purple-500/30">
+                <BookOpen className="w-4 h-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-white">Request For A Book</div>
+                <div className="text-[11px] text-white/50 truncate">Ask the community to help you find it</div>
+              </div>
+            </button>
+          </div>
+        </>,
         document.body
       )}
 
