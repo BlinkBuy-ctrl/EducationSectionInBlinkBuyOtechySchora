@@ -12,9 +12,10 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { supabase } from "@/lib/supabase";
 
-const EducationPage     = lazy(() => import("@/pages/education"));
-const NotificationsPage = lazy(() => import("@/pages/notifications"));
-const NotFound          = lazy(() => import("@/pages/not-found"));
+const EducationPage         = lazy(() => import("@/pages/education"));
+const NotificationsPage     = lazy(() => import("@/pages/notifications"));
+const BookRequestCenterPage = lazy(() => import("@/pages/BookRequestCenter"));
+const NotFound              = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,9 @@ function AppInner() {
         </Route>
         <Route path="/notifications">
           <Layout><Suspense fallback={<PageLoader />}><NotificationsPage /></Suspense></Layout>
+        </Route>
+        <Route path="/book-request-center">
+          <Layout><Suspense fallback={<PageLoader />}><BookRequestCenterPage /></Suspense></Layout>
         </Route>
         <Route>
           <Layout><Suspense fallback={<PageLoader />}><NotFound /></Suspense></Layout>
