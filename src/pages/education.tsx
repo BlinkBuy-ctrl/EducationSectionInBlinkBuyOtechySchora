@@ -1,11 +1,12 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { AiModeChat } from "@/components/education/AiModeChat";
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
 import { UploadModal } from "@/components/education/UploadModal";
@@ -122,6 +123,7 @@ export default function EducationPage() {
   const [cat,          setCat]          = useState<typeof CATS[number]>("All");
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [tab,          setTab]          = useState<Tab>("resources");
+  const [aiModeOpen,   setAiModeOpen]   = useState(false);
   const [showOnboard,  setShowOnboard]  = useState(false);
   const [activeShortcutIndex, setActiveShortcutIndex] = useState(0);
 
@@ -603,7 +605,7 @@ export default function EducationPage() {
 
       {tab === "resources" && (
         <>
-          <div className="mb-3">
+          <div className="mb-3 flex items-center gap-2">
             <AnimatedSearchInput
               value={search}
               onChange={setSearch}
@@ -611,7 +613,15 @@ export default function EducationPage() {
               ringColorClass={contentType === "audio" ? "focus:ring-pink-500/50" : "focus:ring-purple-500/50"}
               ariaLabel={contentType === "audio" ? "Search audio books" : "Search resources"}
               suggestionPool={searchSuggestions}
+              className="flex-1"
             />
+            <button
+              onClick={() => setAiModeOpen(true)}
+              aria-label="Open AI Mode"
+              className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white flex items-center justify-center active:scale-95 transition-transform"
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
           </div>
 
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
@@ -746,6 +756,7 @@ export default function EducationPage() {
 
       {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />}
       {showAudioUpload && <AudioBookUploadModal userId={user.id} onClose={() => setShowAudioUpload(false)} onSuccess={fetchAll} />}
+      {aiModeOpen && <AiModeChat onClose={() => setAiModeOpen(false)} />}
 
       {detailRes  && (
         <ResourceDetailModal
