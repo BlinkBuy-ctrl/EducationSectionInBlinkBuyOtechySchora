@@ -39,7 +39,8 @@ export function AiModeChat({ onClose }: Props) {
       setConversationId(data.conversationId);
       setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I ran into an issue answering that — try again in a moment." }]);
+      const detail = e?.message ? ` (${e.message})` : "";
+      setMessages(prev => [...prev, { role: "assistant", content: `Sorry, I ran into an issue answering that — try again in a moment.${detail}` }]);
     } finally {
       setLoading(false);
     }
