@@ -5,12 +5,13 @@ import pdfParse from 'pdf-parse';
 const AI_MODE_SUPABASE_URL = 'https://jxsvepqrlmxddimkhwls.supabase.co';
 // Service-role key — bypasses RLS, server-only, never expose to the client.
 const AI_MODE_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4c3ZlcHFybG14ZGRpbWtod2xzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTMxNDQ1NywiZXhwIjoyMTAwODkwNDU3fQ.oTXlRfkxN8NaQ8E4WDnah6Fp0jA5hM1aPJaQHDyk0g0';
-// Gemini API key — server-only, used to generate embeddings for each chunk.
-const GEMINI_API_KEY = 'AQ.Ab8RN6LEHhlB2GHteddy3B92wgfPksZuZvw81FCvvnz9fdgUiw';
+// Mistral API key — server-only, used to generate embeddings for each chunk.
+// Get one free at https://console.mistral.ai
+const MISTRAL_API_KEY = 'MkEsiAES0gH8WlUBvAWMLR6VoMkIfG2B';
 
 const db = createClient(AI_MODE_SUPABASE_URL, AI_MODE_SUPABASE_SERVICE_ROLE_KEY);
 
-const EMBED_MODEL = 'gemini-embedding-001';
+const EMBED_MODEL = 'mistral-embed';
 const CHUNK_SIZE = 1200;     // characters per chunk, roughly a few paragraphs
 const CHUNK_OVERLAP = 150;   // slight overlap so ideas that span chunks aren't lost
 
@@ -28,23 +29,22 @@ function chunkText(text: string): string[] {
   return chunks.filter(c => c.length > 30); // drop tiny fragments
 }
 
-// Calls Gemini's embedding endpoint for one chunk of text, returns a 768-length vector.
+// Calls Mistral's embedding endpoint for one chunk of text, returns a 1024-length vector.
 async function embed(text: string): Promise<number[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${GEMINI_API_KEY}`;
-  const res = await fetch(url, {
+  const res = await fetch('https://api.mistral.ai/v1/embeddings', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      content: { parts: [{ text }] },
-      outputDimensionality: 768,
-    }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${MISTRAL_API_KEY}`,
+    },
+    body: JSON.stringify({ model: EMBED_MODEL, input: [text] }),
   });
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`Gemini embedding failed: ${res.status} ${errBody}`);
+    throw new Error(`Mistral embedding failed: ${res.status} ${errBody}`);
   }
   const data = await res.json();
-  return data.embedding.values as number[];
+  return data.data[0].embedding as number[];
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -97,6 +97,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       if (chunkError) throw new Error(`Chunk insert failed: ${chunkError.message}`);
       savedChunks++;
+      // Free-tier Mistral is rate-limited to ~1 req/sec — pace the loop so
+      // uploads with many chunks don't get throttled.
+      await new Promise(r => setTimeout(r, 1100));
     }
 
     return res.status(200).json({ ok: true, bookId: book.id, chunksSaved: savedChunks });
