@@ -31,12 +31,18 @@ function showFatalStartupError(message: string) {
     '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
     'padding:24px;background:#060818;color:#fff;flex-direction:column;text-align:center;' +
     'font-family:system-ui,-apple-system,sans-serif;">' +
-    '<h2 style="font-size:18px;font-weight:800;margin-bottom:8px;">SchoraHub couldn\u2019t start</h2>' +
-    '<p style="font-size:13px;color:rgba(255,255,255,0.6);max-width:300px;margin-bottom:16px;">' +
-    'Your browser may be out of date. Please update Chrome (or your Android System WebView ' +
-    'from the Play Store) and reopen the app.</p>' +
-    '<button onclick="window.location.reload()" style="background:#2563eb;color:#fff;border:none;' +
-    'border-radius:12px;padding:12px 28px;font-weight:700;font-size:14px;">Try Again</button>' +
+    '<div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#9333ea,#2563eb);' +
+    'display:flex;align-items:center;justify-content:center;margin-bottom:20px;' +
+    'box-shadow:0 8px 24px rgba(147,51,234,0.35);font-size:26px;">🎓</div>' +
+    '<h2 style="font-size:18px;font-weight:800;margin-bottom:10px;letter-spacing:-0.01em;">' +
+    'SchoraHub couldn\u2019t start</h2>' +
+    '<p style="font-size:13px;color:rgba(255,255,255,0.6);max-width:300px;margin-bottom:20px;line-height:1.6;">' +
+    'Please update your browser or use a different browser, then reopen the app.</p>' +
+    '<button onclick="window.location.reload()" style="background:linear-gradient(135deg,#9333ea,#2563eb);' +
+    'color:#fff;border:none;border-radius:12px;padding:12px 28px;font-weight:700;font-size:14px;' +
+    'box-shadow:0 8px 20px rgba(147,51,234,0.3);margin-bottom:24px;">Try Again</button>' +
+    '<div style="width:32px;height:1px;background:rgba(255,255,255,0.12);margin-bottom:14px;"></div>' +
+    '<p style="font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.02em;">SchoraHub Managing Team</p>' +
     '</div>';
 }
 
@@ -53,12 +59,22 @@ window.addEventListener("error", (e) => {
 // ── Mount React ────────────────────────────────────────────────────────────────
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("[SchoraHub] #root element not found — check index.html");
-try {
-  createRoot(rootEl).render(<App />);
-  reactMounted = true;
-} catch (err: any) {
-  console.error("[Mount failed]", err);
-  showFatalStartupError(err?.message || "Unknown error");
+
+if ((window as any).__schorahub_style_unsupported) {
+  // Set by the inline check in index.html — this browser can't render our
+  // styling correctly (missing color-mix()). Don't mount React into broken
+  // CSS; show the same clear upgrade message instead.
+  showFatalStartupError(
+    "Your browser doesn't support some styling features SchoraHub needs. Please update your browser."
+  );
+} else {
+  try {
+    createRoot(rootEl).render(<App />);
+    reactMounted = true;
+  } catch (err: any) {
+    console.error("[Mount failed]", err);
+    showFatalStartupError(err?.message || "Unknown error");
+  }
 }
 
 // ── Service Worker ─────────────────────────────────────────────────────────────
