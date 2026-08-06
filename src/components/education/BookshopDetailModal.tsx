@@ -4,6 +4,7 @@ import { X, Loader2, Store, Star, MapPin, Phone, BookOpen, Menu, Share2, Flag, I
 import { FaWhatsapp, FaFacebook, FaInstagram } from "react-icons/fa";
 import { getBooks, getTestimonials, addTestimonial, type Bookshop, type Book, type Testimonial } from "@/lib/bookshops";
 import { useToast } from "@/hooks/use-toast";
+import { generateUUID } from "@/lib/utils";
 
 interface Props { bookshop: Bookshop; onClose: () => void; }
 
@@ -54,7 +55,7 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
     setSaving(true);
     try {
       await addTestimonial({ bookshop_id: bookshop.id, author_name: tName.trim(), message: tMsg.trim(), rating: tRating });
-      setTestimonials(prev => [{ id: crypto.randomUUID(), bookshop_id: bookshop.id, author_name: tName, message: tMsg, rating: tRating, created_at: new Date().toISOString() }, ...prev]);
+      setTestimonials(prev => [{ id: generateUUID(), bookshop_id: bookshop.id, author_name: tName, message: tMsg, rating: tRating, created_at: new Date().toISOString() }, ...prev]);
       setTName(""); setTMsg(""); setTRating(5); setShowTestimonialForm(false);
       toast({ title: "✅ Thanks for the review!" });
     } catch (e: any) { toast({ title: "Failed to submit", description: e.message, variant: "destructive" }); }
