@@ -64,5 +64,25 @@
         'Your browser is too old to run SchoraHub. Please update Chrome / your ' +
         'Android System WebView from the Play Store, then reopen the app.</p></div>';
     </script>
+
+    <!--
+      Styling compatibility check — runs before React mounts.
+      Our styling system (Tailwind CSS v4) requires color-mix(), which only
+      exists on Chrome 111+ (2023), Firefox 128+, Safari 16.4+. On older
+      browsers that DO support ES modules (so the nomodule check above
+      doesn't catch them), the JS would run fine but every semi-transparent
+      color/border in the app would silently render as invisible — the exact
+      "black screen, no error" symptom. This flags that case so main.tsx can
+      show a clear upgrade message instead of leaving the screen blank.
+    -->
+    <script>
+      try {
+        if (!(window.CSS && CSS.supports && CSS.supports('color: color-mix(in oklab, red, blue)'))) {
+          window.__schorahub_style_unsupported = true;
+        }
+      } catch (e) {
+        window.__schorahub_style_unsupported = true;
+      }
+    </script>
   </body>
 </html>
