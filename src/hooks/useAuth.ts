@@ -1,24 +1,9 @@
 import { useState, useEffect, createContext, useContext, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { safeGetItem, safeSetItem } from '@/lib/storage'
+import { generateUUID } from '@/lib/utils'
 
 const ANON_ID_KEY = 'otechyschora_anon_id'
-
-/**
- * crypto.randomUUID() requires Chrome 92+ (Aug 2021).
- * Older Android WebViews (very common in Malawi on budget devices) don't have it.
- * Calling it during React render throws TypeError → app crashes before ErrorBoundary can catch it.
- */
-function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
-    return (crypto as any).randomUUID() as string
-  }
-  // RFC 4122 v4 fallback — cryptographically good enough for an anon session ID
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
-  })
-}
 
 function getOrCreateAnonId(): string {
   let id = safeGetItem(ANON_ID_KEY)
