@@ -49,6 +49,30 @@ export async function triggerInstallPrompt(): Promise<InstallOutcome> {
   return outcome === "accepted" ? "accepted" : "dismissed";
 }
 
+/**
+ * beforeinstallprompt only fires on Chromium browsers (Chrome, Edge, Samsung
+ * Internet, Opera, Brave). Firefox and Safari never fire it, so this app
+ * previously fell back to either the iOS "Share > Add to Home Screen" copy,
+ * or — for anyone else, including Firefox — silence (no button ever appears,
+ * since `prompt` stays null and the buttons only render for !isIOS assuming
+ * a captured prompt will eventually exist). This detects each browser family
+ * and shows the correct manual steps instead of assuming Chromium.
+ */
+type BrowserKind = "chromium" | "ios-safari" | "firefox-android" | "firefox-desktop" | "other";
+
+function detectBrowser(): BrowserKind {
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isFirefox = /firefox|fxios/.test(ua);
+  const isAndroid = /android/.test(ua);
+
+  if (isIOS) return "ios-safari";
+  if (isFirefox && isAndroid) return "firefox-android";
+  if (isFirefox) return "firefox-desktop";
+  if (_deferredPrompt || /chrome|chromium|crios|edg|samsungbrowser|opr\//.test(ua)) return "chromium";
+  return "other";
+}
+
 export function InstallPrompt() {
   const [prompt, setPrompt]     = useState<any>(() => _deferredPrompt);
   const [visible, setVisible]   = useState(false);
@@ -69,6 +93,8 @@ export function InstallPrompt() {
       timerRef.current = setTimeout(() => setVisible(true), 2500);
     };
 
+    const browser = detectBrowser();
+
     if (_deferredPrompt) {
       setPrompt(_deferredPrompt);
       show();
@@ -80,8 +106,10 @@ export function InstallPrompt() {
     };
     window.addEventListener("schorahub:installready", onReady);
 
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (isIOS) show();
+    // Chromium browsers wait for the real beforeinstallprompt event (handled
+    // above / by onReady). Every other browser family has no such event, so
+    // show our own manual-instructions card instead of waiting forever.
+    if (browser !== "chromium") show();
 
     const onInstalled = () => setVisible(false);
     window.addEventListener("schorahub:installed", onInstalled);
@@ -96,7 +124,11 @@ export function InstallPrompt() {
   if (isStandalone) return null;
   if (!visible) return null;
 
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const browser = detectBrowser();
+  // Chromium counts as "has a real one-tap install button" only once the
+  // native prompt has actually been captured — otherwise fall back to
+  // generic manual instructions rather than showing a button that does nothing.
+  const hasNativePrompt = browser === "chromium" && !!prompt;
 
   const dismiss = () => {
     setHiding(true);
@@ -115,6 +147,14 @@ export function InstallPrompt() {
       }
     }
     dismiss();
+  };
+
+  const instructions: Record<BrowserKind, string> = {
+    "ios-safari": 'Tap the Share button then "Add to Home Screen" for the full app experience.',
+    "firefox-android": 'Tap the menu (⋮) in Firefox, then choose "Install" or "Add to Home screen".',
+    "firefox-desktop": 'Desktop Firefox doesn\u2019t support one-tap install yet — bookmark this page (Ctrl/Cmd+D) for quick access, or open it in Chrome/Edge to install it as an app.',
+    "chromium": "Add to your home screen for fast access — works offline too!",
+    "other": 'Look for "Add to Home Screen" or "Install App" in your browser\u2019s menu.',
   };
 
   return (
@@ -138,9 +178,7 @@ export function InstallPrompt() {
           <div className="flex-1 min-w-0">
             <p className="text-white font-black text-sm leading-tight">Install SchoraHub</p>
             <p className="text-white/55 text-xs mt-0.5 leading-relaxed">
-              {isIOS
-                ? 'Tap the Share button then "Add to Home Screen" for the full app experience.'
-                : "Add to your home screen for fast access — works offline too!"}
+              {instructions[browser]}
             </p>
           </div>
 
@@ -152,7 +190,7 @@ export function InstallPrompt() {
           </button>
         </div>
 
-        {!isIOS && (
+        {hasNativePrompt && (
           <div className="px-4 pb-4 flex gap-2">
             <button
               onClick={dismiss}
