@@ -11,6 +11,7 @@ import { AdOverlay } from "@/components/AdOverlay";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { supabase } from "@/lib/supabase";
+import { generateUUID } from "@/lib/utils";
 
 const EducationPage         = lazy(() => import("@/pages/education"));
 const NotificationsPage     = lazy(() => import("@/pages/notifications"));
@@ -41,12 +42,12 @@ function getVisitorId(): string {
   try {
     let id = localStorage.getItem(KEY);
     if (!id) {
-      id = crypto.randomUUID();
+      id = generateUUID();
       localStorage.setItem(KEY, id);
     }
     return id;
   } catch {
-    return crypto.randomUUID();
+    return generateUUID();
   }
 }
 

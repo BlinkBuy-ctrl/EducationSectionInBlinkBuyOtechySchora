@@ -16,18 +16,50 @@ window.addEventListener("resize", setVhVar);
 window.addEventListener("orientationchange", () => setTimeout(setVhVar, 200));
 
 // ── Global safety nets ─────────────────────────────────────────────────────────
+// If something throws before React ever mounts (an unsupported API on an old
+// browser, a syntax/runtime error, etc.), the user was previously left staring
+// at the plain dark splash background forever — indistinguishable from the app
+// being broken, with zero feedback. This flag + fallback turns that into a
+// visible, actionable message instead of a silent black screen.
+let reactMounted = false;
+
+function showFatalStartupError(message: string) {
+  if (reactMounted) return; // React is up and its own ErrorBoundary can handle it
+  const rootEl = document.getElementById("root");
+  if (!rootEl) return;
+  rootEl.innerHTML =
+    '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+    'padding:24px;background:#060818;color:#fff;flex-direction:column;text-align:center;' +
+    'font-family:system-ui,-apple-system,sans-serif;">' +
+    '<h2 style="font-size:18px;font-weight:800;margin-bottom:8px;">SchoraHub couldn\u2019t start</h2>' +
+    '<p style="font-size:13px;color:rgba(255,255,255,0.6);max-width:300px;margin-bottom:16px;">' +
+    'Your browser may be out of date. Please update Chrome (or your Android System WebView ' +
+    'from the Play Store) and reopen the app.</p>' +
+    '<button onclick="window.location.reload()" style="background:#2563eb;color:#fff;border:none;' +
+    'border-radius:12px;padding:12px 28px;font-weight:700;font-size:14px;">Try Again</button>' +
+    '</div>';
+}
+
 window.addEventListener("unhandledrejection", (e) => {
   console.error("[Unhandled]", e.reason);
+  showFatalStartupError(String(e.reason));
   e.preventDefault();
 });
 window.addEventListener("error", (e) => {
   console.error("[GlobalError]", e.message, e.filename, e.lineno);
+  showFatalStartupError(e.message);
 });
 
 // ── Mount React ────────────────────────────────────────────────────────────────
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("[SchoraHub] #root element not found — check index.html");
-createRoot(rootEl).render(<App />);
+try {
+  createRoot(rootEl).render(<App />);
+  reactMounted = true;
+} catch (err: any) {
+  console.error("[Mount failed]", err);
+  showFatalStartupError(err?.message || "Unknown error");
+}
 
 // ── Service Worker ─────────────────────────────────────────────────────────────
 if ("serviceWorker" in navigator) {
