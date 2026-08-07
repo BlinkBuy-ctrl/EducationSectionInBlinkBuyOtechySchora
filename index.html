@@ -110,14 +110,15 @@
             '</div>';
         }
 
-        // Layer 1: catch runtime errors and rejections immediately.
-        window.addEventListener('error', showStartupFallback);
-        window.addEventListener('unhandledrejection', showStartupFallback);
-
-        // Layer 2: watchdog — catches silent parse failures / hangs that
-        // never fire an error event at all. main.tsx sets
-        // window.__schorahub_react_mounted = true right after it starts
-        // rendering; if that never happens, something is wrong.
+        // A single stray JS error (a browser extension, a blocked tracker, an
+        // unrelated third-party script) does NOT mean the app failed — those
+        // fire on plenty of perfectly normal page loads. Reacting to them
+        // instantly caused a false "couldn't start" flash on working browsers
+        // before the real app finished mounting a moment later. So this no
+        // longer reacts to individual error events at all — the watchdog
+        // below is the only thing that decides, because it actually checks
+        // whether the app is confirmed running, rather than guessing from a
+        // single event that may be completely unrelated.
         setTimeout(showStartupFallback, 6000);
       })();
     </script>
