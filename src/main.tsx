@@ -15,16 +15,17 @@ setVhVar();
 window.addEventListener("resize", setVhVar);
 window.addEventListener("orientationchange", () => setTimeout(setVhVar, 200));
 
-// ── Global safety nets ─────────────────────────────────────────────────────────
-// If something throws before React ever mounts (an unsupported API on an old
-// browser, a syntax/runtime error, etc.), the user was previously left staring
-// at the plain dark splash background forever — indistinguishable from the app
-// being broken, with zero feedback. This flag + fallback turns that into a
-// visible, actionable message instead of a silent black screen.
-let reactMounted = false;
-
+// ── Startup reporting ──────────────────────────────────────────────────────────
+// The real safety net now lives in index.html as a plain classic script,
+// independent of this module — that's what actually catches a Chrome-66-style
+// failure, because a classic script keeps running even if THIS file fails to
+// parse or throws before reaching this point. This module's only remaining job
+// is to tell that outer script "I made it" once React actually starts, and to
+// fall back to its own copy of the same message for the handful of cases that
+// occur *after* this module is confirmed running (e.g. a later runtime crash
+// React's own ErrorBoundary doesn't catch).
 function showFatalStartupError(message: string) {
-  if (reactMounted) return; // React is up and its own ErrorBoundary can handle it
+  if ((window as any).__schorahub_react_mounted) return; // React is up; its own ErrorBoundary handles this
   const rootEl = document.getElementById("root");
   if (!rootEl) return;
   rootEl.innerHTML =
@@ -62,15 +63,18 @@ if (!rootEl) throw new Error("[SchoraHub] #root element not found — check inde
 
 if ((window as any).__schorahub_style_unsupported) {
   // Set by the inline check in index.html — this browser can't render our
-  // styling correctly (missing color-mix()). Don't mount React into broken
-  // CSS; show the same clear upgrade message instead.
+  // styling correctly (missing color-mix()/oklch()). Don't mount React into
+  // broken CSS; show the same clear upgrade message instead.
   showFatalStartupError(
     "Your browser doesn't support some styling features SchoraHub needs. Please update your browser."
   );
 } else {
   try {
     createRoot(rootEl).render(<App />);
-    reactMounted = true;
+    // Tell the outer watchdog script (in index.html) that we made it — this
+    // stops both its 6-second timer and its error listener from firing a
+    // fallback message on top of a perfectly working app.
+    (window as any).__schorahub_react_mounted = true;
   } catch (err: any) {
     console.error("[Mount failed]", err);
     showFatalStartupError(err?.message || "Unknown error");
