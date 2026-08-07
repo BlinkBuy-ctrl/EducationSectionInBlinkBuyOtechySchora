@@ -201,7 +201,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         letterSpacing: 0.2,
         fontFamily: "system-ui,-apple-system,sans-serif",
       }}>
-        Powered By OTECHY
+        Powered By Otechy
       </p>
 
       {/* Keyframes injected once — works on all browsers including old WebKit */}
