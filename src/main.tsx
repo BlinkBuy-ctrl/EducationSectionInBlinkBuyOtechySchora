@@ -47,14 +47,19 @@ function showFatalStartupError(message: string) {
     '</div>';
 }
 
+// A single stray JS error while the page is loading (browser extension,
+// blocked tracker, unrelated third-party script) does NOT mean the app
+// failed to start — those happen on plenty of working page loads. Reacting
+// to them instantly caused a false "couldn't start" flash right before the
+// real app finished mounting. So these only log for debugging now; the
+// index.html watchdog (which checks whether the app actually confirmed it
+// mounted, rather than guessing from one possibly-unrelated event) is the
+// only thing that decides whether to show the fallback message.
 window.addEventListener("unhandledrejection", (e) => {
   console.error("[Unhandled]", e.reason);
-  showFatalStartupError(String(e.reason));
-  e.preventDefault();
 });
 window.addEventListener("error", (e) => {
   console.error("[GlobalError]", e.message, e.filename, e.lineno);
-  showFatalStartupError(e.message);
 });
 
 // ── Mount React ────────────────────────────────────────────────────────────────
