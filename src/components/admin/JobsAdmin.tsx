@@ -70,10 +70,10 @@ function JobPostForm({ editingJob, onSaved, onClose }: {
     setCheckingLink(true);
     setLinkResult(null);
     try {
-      const res = await fetch("/api/verify-job-link", {
+      const res = await fetch("/api/manage-jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ url: draft.external_link.trim() }),
+        body: JSON.stringify({ action: "verify_link", url: draft.external_link.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Check failed");
@@ -135,19 +135,6 @@ function JobPostForm({ editingJob, onSaved, onClose }: {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to save");
-
-      // Same friendly, real-push notification pattern as new book uploads.
-      if (!editingJob) {
-        fetch("/api/notify-new-job", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: "💼 New job posted on SchoraHub!",
-            body: `"${draft.title.trim()}" at ${draft.company.trim()} just went live — take a look.`,
-            url: "/",
-          }),
-        }).catch(() => {});
-      }
 
       toast({ title: editingJob ? "✅ Job updated!" : "🎉 Job posted! People will love this one." });
       onSaved(); onClose();
