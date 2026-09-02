@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   X, Loader2, BadgeCheck, AlertTriangle, Trash2,
-  Megaphone, LayoutGrid, LogOut, Video, School, Eye, Store,
+  Megaphone, LayoutGrid, LogOut, Video, School, Eye, Store, Briefcase,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AdvertsAdmin } from "@/components/admin/AdvertsAdminForm";
 import { UniversitiesAdmin } from "@/components/admin/UniversitiesAdmin";
 import { BookshopApplicationsAdmin } from "@/components/admin/BookshopApplicationsAdmin";
+import { JobsAdmin } from "@/components/admin/JobsAdmin";
 import { getApplications } from "@/lib/bookshops";
 
 interface AdminPanelProps {
@@ -50,7 +51,7 @@ const EMPTY_AD_CONFIG: AdConfig = {
 };
 
 export function AdminPanel({ profile, onClose }: AdminPanelProps) {
-  const [tab, setTab] = useState<"content" | "ads" | "adverts" | "universities" | "bookshops" | "stats">("content");
+  const [tab, setTab] = useState<"content" | "ads" | "adverts" | "universities" | "bookshops" | "jobs" | "stats">("content");
   const [pendingBookshops, setPendingBookshops] = useState(0);
 
   useEffect(() => {
@@ -82,6 +83,7 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
         <TabButton active={tab === "adverts"} onClick={() => setTab("adverts")} icon={<Video className="w-3.5 h-3.5" />} label="Adverts" />
         <TabButton active={tab === "universities"} onClick={() => setTab("universities")} icon={<School className="w-3.5 h-3.5" />} label="Universities" />
         <TabButton active={tab === "bookshops"} onClick={() => setTab("bookshops")} icon={<Store className="w-3.5 h-3.5" />} label="Bookshops" badge={pendingBookshops || undefined} />
+        <TabButton active={tab === "jobs"} onClick={() => setTab("jobs")} icon={<Briefcase className="w-3.5 h-3.5" />} label="Jobs" />
         <TabButton active={tab === "stats"} onClick={() => setTab("stats")} icon={<Eye className="w-3.5 h-3.5" />} label="Stats" />
       </div>
 
@@ -91,6 +93,7 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
           : tab === "adverts" ? <AdvertsAdmin />
           : tab === "universities" ? <UniversitiesAdmin />
           : tab === "bookshops" ? <BookshopApplicationsAdmin />
+          : tab === "jobs" ? <JobsAdmin />
           : <ViewStats />}
       </div>
 
