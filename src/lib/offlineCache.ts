@@ -4,7 +4,7 @@
 // ============================================================
 
 const DB_NAME = "schorahub_offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export const STORES = [
   "resources",
@@ -19,6 +19,7 @@ export const STORES = [
   "bookshops",
   "bookshop_stats",
   "adverts",
+  "jobs",
   "session",
 ] as const;
 
