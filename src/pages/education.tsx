@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { AuthContext } from "@/hooks/useAuth";
@@ -19,10 +19,12 @@ import { TutorsTab } from "@/components/education/TutorsTab";
 import { AdvertsTab } from "@/components/education/AdvertsTab";
 import { UniversitiesTab } from "@/components/education/UniversitiesTab";
 import { BookshopsTab } from "@/components/education/BookshopsTab";
+import { JobsTab } from "@/components/education/JobsTab";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
 import { getCache, setCache } from "@/lib/offlineCache";
+import { jobsSupabase, type Job } from "@/lib/jobsSupabase";
 import {
   AudioBook, AUDIOBOOK_CATEGORIES, TABLE_AUDIOBOOKS,
   TABLE_AUDIOBOOK_PURCHASES, TABLE_AUDIOBOOK_BOOKMARKS,
@@ -40,7 +42,7 @@ const AUDIO_SEARCH_PHRASES = [
 ];
 type PriceFilter = "all" | "free" | "paid";
 type ContentType = "documents" | "audio";
-type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
+type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "jobs" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
@@ -114,6 +116,7 @@ export default function EducationPage() {
   const [resources,    setResources]    = useState<any[]>([]);
   const [scholarships, setScholarships] = useState<any[]>([]);
   const [tutors,       setTutors]       = useState<any[]>([]);
+  const [jobs,         setJobs]         = useState<Job[]>([]);
   const [purchases,    setPurchases]    = useState<Set<string>>(new Set());
   const [bookmarks,    setBookmarks]    = useState<Set<string>>(new Set());
   const [loading,      setLoading]      = useState(false);
@@ -211,6 +214,7 @@ export default function EducationPage() {
       cachedResources, cachedScholarships, cachedTutors,
       cachedPurchases, cachedBookmarks,
       cachedAudiobooks, cachedAudiobookPurchases, cachedAudiobookBookmarks,
+      cachedJobs,
     ] = await Promise.all([
       getCache<any>("resources"),
       getCache<any>("scholarships"),
@@ -220,12 +224,14 @@ export default function EducationPage() {
       getCache<AudioBook>("audiobooks"),
       getCache<{ id: string; audiobook_id: string }>("audiobook_purchases"),
       getCache<{ id: string; audiobook_id: string }>("audiobook_bookmarks"),
+      getCache<Job>("jobs"),
     ]);
 
     if (cachedResources.length)    setResources(cachedResources);
     if (cachedScholarships.length) setScholarships(cachedScholarships);
     if (cachedTutors.length)       setTutors(cachedTutors);
     if (cachedAudiobooks.length)   setAudiobooks(cachedAudiobooks);
+    if (cachedJobs.length)         setJobs(cachedJobs);
     if (cachedPurchases.length)    setPurchases(new Set(cachedPurchases.map(p => p.resource_id)));
     if (cachedBookmarks.length)    setBookmarks(new Set(cachedBookmarks.map(b => b.resource_id)));
     if (cachedAudiobookPurchases.length) setAudiobookPurchases(new Set(cachedAudiobookPurchases.map(p => p.audiobook_id)));
@@ -315,6 +321,17 @@ export default function EducationPage() {
         variant: "destructive",
       });
     }
+
+    // Jobs — isolated Supabase project, fetched independently so a hiccup
+    // here never blocks the rest of the page from loading.
+    try {
+      const { data, error } = await jobsSupabase.from("jobs").select("*").order("created_at", { ascending: false });
+      if (!error) {
+        setJobs(data ?? []);
+        setCache("jobs", data ?? []);
+      }
+    } catch { /* offline or project unreachable — cached jobs (if any) stay on screen */ }
+
     setLoading(false);
   };
 
@@ -498,6 +515,7 @@ export default function EducationPage() {
     { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length + audiobooks.length },
     { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
     { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
+    { key: "jobs",         emoji: "💼", label: "Jobs",          count: jobs.length         },
     { key: "universities", emoji: "🎓", label: "Higher Education", count: null            },
     { key: "bookshops",    emoji: "📖", label: "E-BookStore",     count: null            },
     { key: "adverts",      emoji: "📢", label: "Adverts",      count: null                },
@@ -535,6 +553,7 @@ export default function EducationPage() {
                 { icon: Headphones, label: `${audiobooks.length} Audio Books`, onClick: () => { setTab("resources"); setContentType("audio"); } },
                 { icon: Award, label: `${scholarships.length} Scholarships`, onClick: () => setTab("scholarships") },
                 { icon: Users, label: `${tutors.length} Tutors`, onClick: () => setTab("tutors") },
+                { icon: Briefcase, label: `${jobs.length} Jobs`, onClick: () => setTab("jobs") },
               ].map(({ icon: Icon, label, onClick }) => (
                 <button
                   key={label}
@@ -708,6 +727,7 @@ export default function EducationPage() {
 
       {tab === "scholarships" && <ScholarshipsTab scholarships={scholarships} loading={loading} user={user} onRefresh={fetchAll} />}
       {tab === "tutors"       && <TutorsTab tutors={tutors} loading={loading} user={user} onRefresh={fetchAll} />}
+      {tab === "jobs"         && <JobsTab jobs={jobs} loading={loading} user={user} onRefresh={fetchAll} isOnline={navigator.onLine} />}
       {tab === "universities" && <UniversitiesTab />}
       {tab === "bookshops"    && <BookshopsTab />}
       {tab === "adverts"      && <AdvertsTab userId={user.id} />}
