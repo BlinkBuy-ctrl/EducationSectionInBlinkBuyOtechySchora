@@ -51,7 +51,7 @@ export function BookshopApplicationsAdmin() {
             key={s}
             onClick={() => setStatusTab(s)}
             className={`flex-1 text-xs font-semibold py-2 rounded-lg capitalize transition-colors ${
-              statusTab === s ? "bg-purple-600 text-white" : "bg-card border border-border text-muted-foreground"
+              statusTab === s ? "bg-sky-600 text-white" : "bg-card border border-border text-muted-foreground"
             }`}
           >
             {s}
@@ -68,7 +68,7 @@ export function BookshopApplicationsAdmin() {
           <div key={app.id} className="bg-card border border-border rounded-xl p-3 space-y-2">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-muted/40 flex items-center justify-center shrink-0 overflow-hidden">
-                {app.logo_url ? <img src={app.logo_url} className="w-full h-full object-cover" /> : <Store className="w-4 h-4 text-purple-400" />}
+                {app.logo_url ? <img src={app.logo_url} className="w-full h-full object-cover" /> : <Store className="w-4 h-4 text-sky-400" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{app.name}</p>
@@ -77,7 +77,7 @@ export function BookshopApplicationsAdmin() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">{app.about}</p>
-            <a href={app.cert_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-purple-500">
+            <a href={app.cert_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs font-bold text-sky-500">
               <ExternalLink className="w-3.5 h-3.5" /> View certificate/registration proof
             </a>
 

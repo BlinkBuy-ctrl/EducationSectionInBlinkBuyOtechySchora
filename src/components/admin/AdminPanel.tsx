@@ -251,13 +251,13 @@ function ContentModeration() {
       <div className="flex gap-1 mb-3">
         <button
           onClick={() => setSection("otechy_tutors")}
-          className={`flex-1 py-2 rounded-xl text-xs font-semibold ${section === "otechy_tutors" ? "bg-purple-600 text-white" : "bg-card border border-border text-muted-foreground"}`}
+          className={`flex-1 py-2 rounded-xl text-xs font-semibold ${section === "otechy_tutors" ? "bg-sky-600 text-white" : "bg-card border border-border text-muted-foreground"}`}
         >
           Tutors
         </button>
         <button
           onClick={() => setSection("otechy_scholarships")}
-          className={`flex-1 py-2 rounded-xl text-xs font-semibold ${section === "otechy_scholarships" ? "bg-purple-600 text-white" : "bg-card border border-border text-muted-foreground"}`}
+          className={`flex-1 py-2 rounded-xl text-xs font-semibold ${section === "otechy_scholarships" ? "bg-sky-600 text-white" : "bg-card border border-border text-muted-foreground"}`}
         >
           Scholarships
         </button>

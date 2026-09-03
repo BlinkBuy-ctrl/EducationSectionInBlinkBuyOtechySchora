@@ -79,24 +79,24 @@ function UniversityLinksManager({ university }: { university: University }) {
           value={draft.platform_type}
           onChange={e => setDraft(p => ({ ...p, platform_type: e.target.value }))}
           placeholder="Platform (e.g. WhatsApp, Facebook, Transport)"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
         />
         <input
           value={draft.url}
           onChange={e => setDraft(p => ({ ...p, url: e.target.value }))}
           placeholder="Link URL (https://…)"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
         />
         <input
           value={draft.description}
           onChange={e => setDraft(p => ({ ...p, description: e.target.value }))}
           placeholder="Short description (optional)"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
         />
         <button
           onClick={handleAddLink}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-purple-600 text-white text-xs active:scale-[0.98] disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-sky-600 text-white text-xs active:scale-[0.98] disabled:opacity-60"
         >
           {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><PlusCircle className="w-3.5 h-3.5" /> Add link</>}
         </button>
@@ -111,7 +111,7 @@ function UniversityLinksManager({ university }: { university: University }) {
         <div className="space-y-1.5">
           {links.map(link => (
             <div key={link.id} className="flex items-center gap-2 bg-background border border-border rounded-lg px-2.5 py-2">
-              <Link2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <Link2 className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold truncate">{link.platform_type}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{link.url}</p>
@@ -200,7 +200,7 @@ export function UniversitiesAdmin() {
 
         <div
           onClick={() => logoRef.current?.click()}
-          className="relative h-24 rounded-xl border-2 border-dashed border-border hover:border-purple-500/50 cursor-pointer overflow-hidden transition-colors flex items-center justify-center"
+          className="relative h-24 rounded-xl border-2 border-dashed border-border hover:border-sky-500/50 cursor-pointer overflow-hidden transition-colors flex items-center justify-center"
         >
           {logoPreview ? (
             <img src={logoPreview} alt="" className="w-full h-full object-contain" />
@@ -217,13 +217,13 @@ export function UniversitiesAdmin() {
           value={draft.name}
           onChange={e => setDraft({ name: e.target.value })}
           placeholder="University name (e.g. LUANAR)"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
         />
 
         <button
           onClick={handleAdd}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl bg-purple-600 text-white active:scale-[0.98] disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl bg-sky-600 text-white active:scale-[0.98] disabled:opacity-60"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><PlusCircle className="w-4 h-4" /> Create university</>}
         </button>
@@ -244,7 +244,7 @@ export function UniversitiesAdmin() {
                 <div key={uni.id} className="bg-card border border-border rounded-xl p-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-lg bg-muted/40 border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
-                      {uni.logo_url ? <img src={uni.logo_url} alt={uni.name} className="w-full h-full object-cover" /> : <School className="w-4 h-4 text-purple-400" />}
+                      {uni.logo_url ? <img src={uni.logo_url} alt={uni.name} className="w-full h-full object-cover" /> : <School className="w-4 h-4 text-sky-400" />}
                     </div>
                     <p className="flex-1 min-w-0 text-sm font-semibold truncate">{uni.name}</p>
                     <button onClick={() => handleDelete(uni)} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
@@ -252,9 +252,9 @@ export function UniversitiesAdmin() {
                     </button>
                     <button
                       onClick={() => setExpandedId(expanded ? null : uni.id)}
-                      className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0"
+                      className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0"
                     >
-                      {expanded ? <ChevronUp className="w-3.5 h-3.5 text-purple-400" /> : <ChevronDown className="w-3.5 h-3.5 text-purple-400" />}
+                      {expanded ? <ChevronUp className="w-3.5 h-3.5 text-sky-400" /> : <ChevronDown className="w-3.5 h-3.5 text-sky-400" />}
                     </button>
                   </div>
 
