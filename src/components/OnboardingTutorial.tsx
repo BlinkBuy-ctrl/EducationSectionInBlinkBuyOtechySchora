@@ -173,14 +173,14 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
       <div style={tooltipStyle()} className="z-[9999]">
         {showArrowUp && (
           <div className="flex justify-center mb-2">
-            <ArrowUp className="w-5 h-5 text-purple-400 animate-bounce" />
+            <ArrowUp className="w-5 h-5 text-sky-400 animate-bounce" />
           </div>
         )}
 
-        <div className="bg-[#0f1428] border border-purple-500/50 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-[#0f1428] border border-sky-500/50 rounded-2xl shadow-2xl overflow-hidden">
           {/* Progress bar */}
           <div className="h-1 bg-white/10">
-            <div className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300"
+            <div className="h-full bg-gradient-to-r from-sky-500 to-blue-500 transition-all duration-300"
               style={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
           </div>
 
@@ -190,7 +190,7 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
               <div className="flex gap-1">
                 {STEPS.map((_, i) => (
                   <div key={i} className={`h-1.5 rounded-full transition-all duration-200 ${
-                    i === step ? "w-5 bg-purple-400" : i < step ? "w-2 bg-purple-400/50" : "w-2 bg-white/15"
+                    i === step ? "w-5 bg-sky-400" : i < step ? "w-2 bg-sky-400/50" : "w-2 bg-white/15"
                   }`} />
                 ))}
               </div>
@@ -218,7 +218,7 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
               {isLast ? (
                 <div className="flex-1 flex flex-col gap-2">
                   <button onClick={onUpload}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold active:scale-95 transition-all">
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-sm font-bold active:scale-95 transition-all">
                     ⬆️ Upload First Resource
                   </button>
                   <button onClick={onDone}
@@ -228,7 +228,7 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
                 </div>
               ) : (
                 <button onClick={() => setStep(s => s + 1)}
-                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold active:scale-95 transition-all">
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-sm font-bold active:scale-95 transition-all">
                   Next →
                 </button>
               )}
@@ -238,7 +238,7 @@ export function OnboardingTutorial({ onDone, onUpload }: Props) {
 
         {showArrowDown && (
           <div className="flex justify-center mt-2">
-            <ArrowDown className="w-5 h-5 text-purple-400 animate-bounce" />
+            <ArrowDown className="w-5 h-5 text-sky-400 animate-bounce" />
           </div>
         )}
       </div>

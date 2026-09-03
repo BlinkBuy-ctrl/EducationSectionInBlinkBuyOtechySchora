@@ -201,11 +201,11 @@ export function InstallPrompt() {
           transition: "opacity 0.35s ease, transform 0.35s ease",
         }}
       >
-        <div className="bg-[#0f1428] border border-purple-500/40 rounded-2xl shadow-2xl shadow-purple-900/40 overflow-hidden">
-          <div className="h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
+        <div className="bg-[#0f1428] border border-sky-500/40 rounded-2xl shadow-2xl shadow-sky-900/40 overflow-hidden">
+          <div className="h-0.5 bg-gradient-to-r from-sky-500 to-blue-500" />
 
           <div className="p-4 flex gap-3 items-start">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center shrink-0 shadow-lg shadow-sky-500/30">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
 
@@ -233,7 +233,7 @@ export function InstallPrompt() {
             </button>
             <button
               onClick={install}
-              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-lg shadow-purple-500/30"
+              className="flex-1 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-lg shadow-sky-500/30"
             >
               <Download className="w-3.5 h-3.5" /> Install App
             </button>
@@ -247,16 +247,16 @@ export function InstallPrompt() {
           onClick={() => setShowSteps(false)}
         >
           <div
-            className="bg-[#0f1428] border border-purple-500/40 rounded-2xl shadow-2xl shadow-purple-900/40 overflow-hidden w-full max-w-xs"
+            className="bg-[#0f1428] border border-sky-500/40 rounded-2xl shadow-2xl shadow-sky-900/40 overflow-hidden w-full max-w-xs"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
+            <div className="h-0.5 bg-gradient-to-r from-sky-500 to-blue-500" />
             <div className="p-5">
               <p className="text-white font-black text-sm mb-3">Install SchoraHub</p>
               <ol className="space-y-2 mb-4">
                 {steps[browser].map((step, i) => (
                   <li key={i} className="flex gap-2.5 text-white/70 text-xs leading-relaxed">
-                    <span className="w-5 h-5 rounded-full bg-purple-600/30 text-white flex items-center justify-center shrink-0 text-[10px] font-bold">
+                    <span className="w-5 h-5 rounded-full bg-sky-600/30 text-white flex items-center justify-center shrink-0 text-[10px] font-bold">
                       {i + 1}
                     </span>
                     <span className="pt-0.5">{step}</span>
@@ -265,7 +265,7 @@ export function InstallPrompt() {
               </ol>
               <button
                 onClick={() => { setShowSteps(false); dismiss(); }}
-                className="w-full py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold active:scale-95 transition-all shadow-lg shadow-purple-500/30"
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-bold active:scale-95 transition-all shadow-lg shadow-sky-500/30"
               >
                 Got it
               </button>

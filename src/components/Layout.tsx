@@ -183,7 +183,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="shrink-0 bg-sidebar border-b border-sidebar-border z-40">
         <div className="px-4 h-14 flex items-center justify-between">
           <button onClick={goHome} className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow">
               <GraduationCap className="w-4 h-4 text-white" />
             </div>
             <span className="font-black text-white text-sm">SchoraHub</span>
@@ -245,10 +245,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                           key={item.label}
                           onClick={() => goMenuItem(item)}
                           className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors active:scale-[0.97] ${
-                            active ? "bg-purple-500/15" : "active:bg-white/5"
+                            active ? "bg-sky-500/15" : "active:bg-white/5"
                           } ${!group.label ? "w-full" : ""}`}
                         >
-                          <Icon className={`w-4 h-4 shrink-0 ${active ? "text-purple-400" : "text-purple-400/80"}`} />
+                          <Icon className={`w-4 h-4 shrink-0 ${active ? "text-sky-400" : "text-sky-400/80"}`} />
                           <span className={`text-[12.5px] font-semibold truncate ${active ? "text-white" : "text-white/85"}`}>
                             {item.label}
                           </span>
@@ -306,29 +306,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         style={{ height: "calc(64px + env(safe-area-inset-bottom,0px))", paddingBottom: "env(safe-area-inset-bottom,0px)" }}
       >
         <button onClick={goHome}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isHome ? "text-purple-400" : "text-white/50"}`}>
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isHome ? "text-sky-400" : "text-white/50"}`}>
           <Home className="w-5 h-5" />Home
         </button>
 
         <button onClick={goStats}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isStats ? "text-purple-400" : "text-white/50"}`}>
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isStats ? "text-sky-400" : "text-white/50"}`}>
           <BarChart2 className="w-5 h-5" />My Stats
         </button>
 
         <div className="flex-1 flex items-center justify-center">
           <button onClick={goPost}
-            className="w-12 h-12 -mt-5 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/40 active:scale-95 transition-transform">
+            className="w-12 h-12 -mt-5 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shadow-sky-500/40 active:scale-95 transition-transform">
             <Upload className="w-5 h-5 text-white" />
           </button>
         </div>
 
         <button onClick={goSearch}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isSearch ? "text-purple-400" : "text-white/50"}`}>
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isSearch ? "text-sky-400" : "text-white/50"}`}>
           <Search className="w-5 h-5" />Search
         </button>
 
         <button onClick={goAdverts}
-          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isAdverts ? "text-purple-400" : "text-white/50"}`}>
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isAdverts ? "text-sky-400" : "text-white/50"}`}>
           <Megaphone className="w-5 h-5" />Adverts
         </button>
       </nav>

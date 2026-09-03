@@ -75,7 +75,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         width: 84,
         height: 84,
         borderRadius: 24,
-        background: "linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)",
+        background: "linear-gradient(135deg, #0284c7 0%, #2563eb 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -104,7 +104,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         SchoraHub
       </h1>
       <p style={{
-        color: "#a78bfa",
+        color: "#38bdf8",
         fontSize: 12,
         fontWeight: 600,
         margin: "5px 0 26px",
@@ -131,7 +131,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
               style={{
                 background: "rgba(124,58,237,0.18)",
                 border: "1px solid rgba(124,58,237,0.35)",
-                color: "#c4b5fd",
+                color: "#7dd3fc",
                 fontSize: 10,
                 fontWeight: 700,
                 padding: "4px 11px",
@@ -160,10 +160,10 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
           alignItems: "center",
           marginBottom: 7,
         }}>
-          <span style={{ color: "#c4b5fd", fontSize: 10, fontWeight: 700, fontFamily: "system-ui,-apple-system,sans-serif" }}>
+          <span style={{ color: "#7dd3fc", fontSize: 10, fontWeight: 700, fontFamily: "system-ui,-apple-system,sans-serif" }}>
             Loading resources…
           </span>
-          <span style={{ color: "#a78bfa", fontSize: 11, fontWeight: 800, fontFamily: "system-ui,-apple-system,sans-serif" }}>
+          <span style={{ color: "#38bdf8", fontSize: 11, fontWeight: 800, fontFamily: "system-ui,-apple-system,sans-serif" }}>
             {progress}%
           </span>
         </div>
@@ -180,7 +180,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
           <div style={{
             height: "100%",
             width: `${progress}%`,
-            background: "linear-gradient(90deg,#7c3aed,#2563eb)",
+            background: "linear-gradient(90deg,#0284c7,#2563eb)",
             borderRadius: 99,
             // transition instead of canvas — GPU composited on all browsers
             WebkitTransition: "width 80ms linear",
