@@ -534,34 +534,6 @@ export default function EducationPage() {
         />
       )}
 
-      <div className="relative rounded-2xl overflow-hidden bg-[hsl(215,55%,12%)] p-4 mb-5">
-        <div className="absolute inset-0 bg-gradient-to-br from-sky-600/25 via-blue-600/15 to-transparent pointer-events-none" />
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 mb-1.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow-lg shrink-0">
-                <GraduationCap className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-base font-black text-white leading-tight">SchoraHub</h1>
-                <p className="text-[10px] text-sky-300 font-medium">Education Hub · Malawi</p>
-              </div>
-            </div>
-          </div>
-          <button
-            data-tour="upload-btn"
-            onClick={handleUploadClick}
-            className={`shrink-0 flex items-center gap-1.5 text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-all shadow-lg ${
-              contentType === "audio"
-                ? "bg-gradient-to-r from-pink-500 to-sky-600 shadow-pink-500/30"
-                : "bg-gradient-to-r from-sky-500 to-blue-600 shadow-sky-500/30"
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5" /> Upload
-          </button>
-        </div>
-      </div>
-
       <p className="text-sm font-black text-foreground mb-3">Did You Know SchoraHub Consist?</p>
 
       <style>{`
