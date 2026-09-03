@@ -4,7 +4,7 @@ import { GraduationCap } from "lucide-react";
 export default function NotFound() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 text-center px-6">
-      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-lg">
+      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center shadow-lg">
         <GraduationCap className="w-8 h-8 text-white" />
       </div>
       <div>
@@ -13,7 +13,7 @@ export default function NotFound() {
       </div>
       <Link
         href="/"
-        className="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-all"
+        className="bg-gradient-to-r from-sky-600 to-blue-600 text-white font-semibold px-6 py-3 rounded-xl hover:opacity-90 transition-all"
       >
         Back to Education Hub
       </Link>

@@ -14,7 +14,7 @@ type Notification = {
 };
 
 const TYPE_ICON: Record<string, { icon: any; color: string; bg: string }> = {
-  welcome:     { icon: GraduationCap, color: "text-purple-400", bg: "bg-purple-500/15" },
+  welcome:     { icon: GraduationCap, color: "text-sky-400", bg: "bg-sky-500/15" },
   purchase:    { icon: ShoppingBag,   color: "text-green-400",  bg: "bg-green-500/15"  },
   download:    { icon: Download,      color: "text-blue-400",   bg: "bg-blue-500/15"   },
   scholarship: { icon: GraduationCap, color: "text-yellow-400", bg: "bg-yellow-500/15" },
@@ -215,8 +215,8 @@ export default function NotificationsPage() {
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4 px-4">
-        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center">
-          <Bell className="w-7 h-7 text-purple-400" />
+        <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+          <Bell className="w-7 h-7 text-sky-400" />
         </div>
         <p className="font-semibold text-foreground">Sign in to see notifications</p>
       </div>
@@ -229,7 +229,7 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
               <Bell className="w-5 h-5 text-white" />
             </div>
             {unread > 0 && (
@@ -245,7 +245,7 @@ export default function NotificationsPage() {
         </div>
         {unread > 0 && (
           <button onClick={markAllRead}
-            className="flex items-center gap-1.5 text-xs font-semibold text-purple-400 hover:text-purple-300 px-3 py-1.5 rounded-xl border border-purple-500/30 hover:border-purple-500/60 transition-colors">
+            className="flex items-center gap-1.5 text-xs font-semibold text-sky-400 hover:text-sky-300 px-3 py-1.5 rounded-xl border border-sky-500/30 hover:border-sky-500/60 transition-colors">
             <CheckCheck className="w-3.5 h-3.5" /> Mark all read
           </button>
         )}
@@ -256,11 +256,11 @@ export default function NotificationsPage() {
         <div className={`flex items-center justify-between gap-3 p-3.5 rounded-2xl border mb-4 ${
           pushSubscribed
             ? "bg-green-500/5 border-green-500/20"
-            : "bg-purple-500/5 border-purple-500/20"
+            : "bg-sky-500/5 border-sky-500/20"
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${pushSubscribed ? "bg-green-500/15" : "bg-purple-500/15"}`}>
-              {pushSubscribed ? <Bell className="w-4.5 h-4.5 text-green-400" /> : <BellOff className="w-4.5 h-4.5 text-purple-400" />}
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${pushSubscribed ? "bg-green-500/15" : "bg-sky-500/15"}`}>
+              {pushSubscribed ? <Bell className="w-4.5 h-4.5 text-green-400" /> : <BellOff className="w-4.5 h-4.5 text-sky-400" />}
             </div>
             <div>
               <p className="text-xs font-bold text-foreground">
@@ -282,7 +282,7 @@ export default function NotificationsPage() {
               className={`shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all active:scale-95 disabled:opacity-60 ${
                 pushSubscribed
                   ? "bg-muted text-muted-foreground"
-                  : "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md shadow-purple-500/20"
+                  : "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-500/20"
               }`}>
               {pushLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : pushSubscribed ? "Disable" : "Enable"}
             </button>
@@ -293,7 +293,7 @@ export default function NotificationsPage() {
       {/* Notification list */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-7 h-7 animate-spin text-purple-500" />
+          <Loader2 className="w-7 h-7 animate-spin text-sky-500" />
         </div>
       ) : notifications.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-20 text-center">
@@ -315,10 +315,10 @@ export default function NotificationsPage() {
                 className={`relative flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer group ${
                   n.read
                     ? "bg-card border-border opacity-70 hover:opacity-100"
-                    : "bg-card border-purple-500/30 shadow-sm shadow-purple-500/10 hover:border-purple-500/50"
+                    : "bg-card border-sky-500/30 shadow-sm shadow-sky-500/10 hover:border-sky-500/50"
                 }`}
               >
-                {!n.read && <div className="absolute top-3.5 right-3.5 w-2 h-2 bg-purple-500 rounded-full" />}
+                {!n.read && <div className="absolute top-3.5 right-3.5 w-2 h-2 bg-sky-500 rounded-full" />}
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${meta.bg}`}>
                   <Icon className={`w-4.5 h-4.5 ${meta.color}`} />
                 </div>

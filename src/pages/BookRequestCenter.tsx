@@ -29,11 +29,11 @@ const WALLPAPER_KEY = "book_request_wallpaper_on";
 const BUBBLE_COLOR_KEY = "book_request_bubble_color";
 
 const BUBBLE_PRESETS: { id: string; label: string; swatch: string; classes: string }[] = [
-  { id: "purple-blue", label: "Default",  swatch: "bg-gradient-to-br from-purple-500 to-blue-600",   classes: "from-purple-500 to-blue-600" },
+  { id: "sky-blue", label: "Default",  swatch: "bg-gradient-to-br from-sky-500 to-blue-600",   classes: "from-sky-500 to-blue-600" },
   { id: "green",       label: "Green",    swatch: "bg-gradient-to-br from-emerald-500 to-teal-600",  classes: "from-emerald-500 to-teal-600" },
   { id: "sunset",      label: "Sunset",   swatch: "bg-gradient-to-br from-orange-500 to-pink-600",   classes: "from-orange-500 to-pink-600" },
   { id: "ocean",       label: "Ocean",    swatch: "bg-gradient-to-br from-sky-500 to-blue-700",      classes: "from-sky-500 to-blue-700" },
-  { id: "berry",       label: "Berry",    swatch: "bg-gradient-to-br from-fuchsia-500 to-purple-700", classes: "from-fuchsia-500 to-purple-700" },
+  { id: "berry",       label: "Berry",    swatch: "bg-gradient-to-br from-fuchsia-500 to-sky-700", classes: "from-fuchsia-500 to-sky-700" },
 ];
 
 function formatTime(iso: string): string {
@@ -71,7 +71,7 @@ export default function BookRequestCenter() {
 
   /* ── Personal chat settings: wallpaper + bubble colour (device-local, not synced) ── */
   const [wallpaperOn, setWallpaperOn] = useState(() => safeGetItem(WALLPAPER_KEY) !== "off");
-  const [bubbleColorId, setBubbleColorId] = useState(() => safeGetItem(BUBBLE_COLOR_KEY) || "purple-blue");
+  const [bubbleColorId, setBubbleColorId] = useState(() => safeGetItem(BUBBLE_COLOR_KEY) || "sky-blue");
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const bubbleClasses = BUBBLE_PRESETS.find((p) => p.id === bubbleColorId)?.classes || BUBBLE_PRESETS[0].classes;
@@ -266,7 +266,7 @@ export default function BookRequestCenter() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow shadow-purple-500/20">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shadow shadow-sky-500/20">
             <BookOpen className="w-4 h-4 text-white" />
           </div>
           <div className="min-w-0 flex-1">
@@ -301,12 +301,12 @@ export default function BookRequestCenter() {
              style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}>
           {loading ? (
             <div className="flex items-center justify-center h-full">
-              <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+              <Loader2 className="w-6 h-6 text-sky-400 animate-spin" />
             </div>
           ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-8 gap-3">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-blue-600/20 border border-purple-500/30 flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-purple-400" />
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500/20 to-blue-600/20 border border-sky-500/30 flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-sky-400" />
               </div>
               <p className="text-sm font-bold text-foreground">No requests yet</p>
               <p className="text-xs text-muted-foreground max-w-[240px]">
@@ -321,7 +321,7 @@ export default function BookRequestCenter() {
                   <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[78%] flex flex-col ${mine ? "items-end" : "items-start"}`}>
                       {!mine && (
-                        <span className="text-[11px] font-bold text-purple-300 mb-0.5 px-1">{m.sender_name}</span>
+                        <span className="text-[11px] font-bold text-sky-300 mb-0.5 px-1">{m.sender_name}</span>
                       )}
                       <div
                         onClick={() => setActionSheetMsg(m)}
@@ -368,9 +368,9 @@ export default function BookRequestCenter() {
         <div className="shrink-0 px-3 pt-2 bg-sidebar">
           <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
             {pendingFile.uploading ? (
-              <Loader2 className="w-4 h-4 text-purple-400 animate-spin shrink-0" />
+              <Loader2 className="w-4 h-4 text-sky-400 animate-spin shrink-0" />
             ) : (
-              <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+              <FileText className="w-4 h-4 text-sky-400 shrink-0" />
             )}
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-white truncate">{pendingFile.file.name}</p>
@@ -401,7 +401,7 @@ export default function BookRequestCenter() {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask for a book, or help someone find one…"
-          className="flex-1 min-w-0 bg-white/10 border border-white/15 rounded-full px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all"
+          className="flex-1 min-w-0 bg-white/10 border border-white/15 rounded-full px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all"
         />
         <button
           onClick={handleSend}
@@ -479,7 +479,7 @@ export default function BookRequestCenter() {
                 <div className="text-sm font-semibold text-white">Chat wallpaper</div>
                 <div className="text-[11px] text-white/50">SchoraHub mark, faded behind messages</div>
               </div>
-              <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-colors ${wallpaperOn ? "bg-purple-500 justify-end" : "bg-white/15 justify-start"}`}>
+              <div className={`w-10 h-6 rounded-full flex items-center px-0.5 transition-colors ${wallpaperOn ? "bg-sky-500 justify-end" : "bg-white/15 justify-start"}`}>
                 <div className="w-5 h-5 rounded-full bg-white shadow" />
               </div>
             </button>
