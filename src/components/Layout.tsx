@@ -7,8 +7,51 @@ import { supabase } from "@/lib/supabase";
 import {
   GraduationCap, Sun, Moon, Bell, RefreshCw,
   Home, BarChart2, Search, Upload, Megaphone,
-  ChevronUp, ChevronDown, MoreVertical, BookOpen,
+  ChevronUp, ChevronDown, Headphones, Award, Users,
+  Briefcase, Building2, BookText, Bookmark, BookOpen, Info,
 } from "lucide-react";
+
+/** Hand-drawn to match the exact dot + bar icon supplied for this menu —
+ *  no icon set ships this glyph, so it's custom rather than approximated. */
+function CategoryMenuIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 16" fill="currentColor" className={className} aria-hidden="true">
+      <circle cx="1.4" cy="2" r="1.4" />
+      <rect x="5.5" y="0.8" width="14.5" height="2.4" rx="1.2" />
+      <circle cx="1.4" cy="8" r="1.4" />
+      <rect x="5.5" y="6.8" width="14.5" height="2.4" rx="1.2" />
+      <circle cx="1.4" cy="14" r="1.4" />
+      <rect x="5.5" y="12.8" width="14.5" height="2.4" rx="1.2" />
+    </svg>
+  );
+}
+
+interface MenuItem { icon: React.ElementType; label: string; tab?: string; route?: string }
+interface MenuGroup { label: string; items: MenuItem[] }
+
+const MENU_GROUPS: MenuGroup[] = [
+  { label: "", items: [
+    { icon: Home, label: "Home", tab: "" },
+  ]},
+  { label: "Sections", items: [
+    { icon: Search,     label: "Browse",       tab: "resources" },
+    { icon: Headphones, label: "Audio Books",  tab: "resources" },
+    { icon: Award,      label: "Scholarships", tab: "scholarships" },
+    { icon: Users,      label: "Tutors",       tab: "tutors" },
+    { icon: Briefcase,  label: "Jobs",         tab: "jobs" },
+    { icon: Building2,  label: "Universities", tab: "universities" },
+    { icon: BookText,   label: "E-BookStore",  tab: "bookshops" },
+    { icon: Megaphone,  label: "Adverts",      tab: "adverts" },
+  ]},
+  { label: "Personal", items: [
+    { icon: Bookmark,  label: "Saved",    tab: "bookmarks" },
+    { icon: BarChart2, label: "My Stats", tab: "dashboard" },
+  ]},
+  { label: "Utility", items: [
+    { icon: BookOpen, label: "Book Request Center", route: "/book-request-center" },
+    { icon: Info,     label: "About Us",            tab: "aboutus" },
+  ]},
+];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -18,7 +61,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   // Track active tab via state so nav buttons never go stale
   const [activeTab, setActiveTab] = useState<string>("");
 
-  /* ── Header overflow menu (three dots) ── */
+  /* ── Header category menu (replaces the old three-dot menu) ── */
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<HTMLButtonElement>(null);
@@ -31,9 +74,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     setMenuOpen(true);
   };
 
-  const goBookRequestCenter = () => {
+  const goMenuItem = (item: MenuItem) => {
     setMenuOpen(false);
-    navigate("/book-request-center");
+    if (item.route) { navigate(item.route); setActiveTab(""); return; }
+    navigate("/");
+    setActiveTab(item.tab ?? "");
+    window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: item.tab ?? "" }));
   };
 
   /* ── Scroll-sense up/down buttons ── */
@@ -160,16 +206,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <button
               ref={menuBtnRef}
               onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors"
-              aria-label="More options"
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${menuOpen ? "bg-white/10 text-white" : "text-white/70"}`}
+              aria-label="Browse all sections"
+              aria-expanded={menuOpen}
             >
-              <MoreVertical className="w-4 h-4" />
+              <CategoryMenuIcon className="w-[18px] h-[15px]" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* ── Header overflow menu ── */}
+      {/* ── Header category menu ── */}
       {menuOpen && createPortal(
         <>
           {/* Invisible backdrop — tap anywhere outside the menu to close it */}
@@ -178,16 +225,40 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             onClick={() => setMenuOpen(false)}
           />
           <div
-            className="fixed z-[60] w-60 rounded-xl border border-sidebar-border bg-sidebar shadow-xl shadow-black/30 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            className="fixed z-[60] w-72 max-h-[75vh] overflow-y-auto rounded-2xl border border-sidebar-border bg-sidebar shadow-xl shadow-black/40 animate-in fade-in zoom-in-95 duration-150 origin-top-right"
             style={{ top: menuPos.top, right: menuPos.right }}
           >
-            <button
-              onClick={goBookRequestCenter}
-              className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left active:bg-white/5 transition-colors"
-            >
-              <BookOpen className="w-4 h-4 text-purple-400 shrink-0" />
-              <span className="text-sm font-semibold text-white">Book Request Center</span>
-            </button>
+            <div className="p-2.5">
+              {MENU_GROUPS.map((group, gi) => (
+                <div key={gi} className={gi > 0 ? "mt-3 pt-3 border-t border-white/[0.06]" : ""}>
+                  {group.label && (
+                    <p className="px-1.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">
+                      {group.label}
+                    </p>
+                  )}
+                  <div className={group.label ? "grid grid-cols-2 gap-1.5" : ""}>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = item.route ? loc === item.route : (loc === "/" && activeTab === (item.tab ?? ""));
+                      return (
+                        <button
+                          key={item.label}
+                          onClick={() => goMenuItem(item)}
+                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors active:scale-[0.97] ${
+                            active ? "bg-purple-500/15" : "active:bg-white/5"
+                          } ${!group.label ? "w-full" : ""}`}
+                        >
+                          <Icon className={`w-4 h-4 shrink-0 ${active ? "text-purple-400" : "text-purple-400/80"}`} />
+                          <span className={`text-[12.5px] font-semibold truncate ${active ? "text-white" : "text-white/85"}`}>
+                            {item.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </>,
         document.body
