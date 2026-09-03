@@ -30,7 +30,7 @@ function statsRowsToRecord(rows: CachedStatRow[]): Record<string, ShopStats> {
 }
 
 function StorefrontCard({ shop, stats, onOpen }: { shop: Bookshop; stats?: ShopStats; onOpen: (s: Bookshop) => void }) {
-  const accent = shop.brand_color || "#7c3aed";
+  const accent = shop.brand_color || "#0284c7";
 
   return (
     <div
@@ -144,27 +144,27 @@ export function BookshopsTab() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{shops.length} bookshop{shops.length !== 1 ? "s" : ""}</p>
-        <button onClick={() => setShowOwnerPanel(true)} className="flex items-center gap-1 text-xs font-bold text-purple-500">
+        <button onClick={() => setShowOwnerPanel(true)} className="flex items-center gap-1 text-xs font-bold text-sky-500">
           <UserCircle2 className="w-3.5 h-3.5" /> My Bookshop
         </button>
       </div>
 
       <AnimatedSearchInput
         value={search} onChange={setSearch} phrases={SHOP_SEARCH_PHRASES}
-        ringColorClass="focus:ring-purple-500/50" ariaLabel="Search bookshops" suggestionPool={suggestionPool}
+        ringColorClass="focus:ring-sky-500/50" ariaLabel="Search bookshops" suggestionPool={suggestionPool}
       />
 
       {loading && shops.length === 0 ? (
         <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
       ) : shops.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-purple-400" /></div>
+          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-sky-400" /></div>
           <p className="font-semibold text-foreground">No bookshops yet</p>
           <p className="text-sm text-muted-foreground">Own a real bookshop? Apply below.</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-purple-400" /></div>
+          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-sky-400" /></div>
           <p className="font-semibold text-foreground">No bookshops match</p>
           <p className="text-sm text-muted-foreground">Try a different search.</p>
         </div>
@@ -176,7 +176,7 @@ export function BookshopsTab() {
 
       <button
         onClick={() => setShowApply(true)}
-        className="flex items-center justify-center gap-1.5 text-xs font-bold text-purple-500 active:scale-[0.98] transition-all py-2"
+        className="flex items-center justify-center gap-1.5 text-xs font-bold text-sky-500 active:scale-[0.98] transition-all py-2"
       >
         <Store className="w-3.5 h-3.5" /> Own a bookshop? Apply to join
       </button>

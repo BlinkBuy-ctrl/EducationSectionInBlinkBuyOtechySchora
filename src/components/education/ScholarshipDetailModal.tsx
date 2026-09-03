@@ -184,7 +184,7 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
           {(s.tags ?? []).length > 0 && (
             <div className="flex flex-wrap gap-2">
               {s.tags.map((tag: string) => (
-                <span key={tag} className="flex items-center gap-1 text-xs bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full">
+                <span key={tag} className="flex items-center gap-1 text-xs bg-sky-500/10 text-sky-400 px-3 py-1 rounded-full">
                   <Tag className="w-3 h-3" /> {tag}
                 </span>
               ))}
@@ -237,7 +237,7 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
               <div className="flex flex-col gap-2 mb-3">
                 {comments.map(c => (
                   <div key={c.id} className="flex gap-2">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0 text-[11px] text-white font-bold">
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center shrink-0 text-[11px] text-white font-bold">
                       {(c.user_id ?? "????").slice(-2).toUpperCase()}
                     </div>
                     <div className="bg-muted/50 rounded-xl px-3 py-2 flex-1">
@@ -254,9 +254,9 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
               <input value={body} onChange={e => setBody(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && send()}
                 placeholder="Write a comment…"
-                className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+                className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
               <button onClick={send} disabled={sending || !body.trim()}
-                className="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center text-white disabled:opacity-40 active:scale-95 transition-all">
+                className="w-10 h-10 rounded-xl bg-sky-600 flex items-center justify-center text-white disabled:opacity-40 active:scale-95 transition-all">
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </div>

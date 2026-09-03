@@ -208,7 +208,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
   };
 
   if (!loaded) return (
-    <button onClick={load} className="text-xs text-purple-400 hover:text-purple-300 font-medium">
+    <button onClick={load} className="text-xs text-sky-400 hover:text-sky-300 font-medium">
       Load comments
     </button>
   );
@@ -217,7 +217,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
     <div className="mt-3 flex flex-col gap-2">
       {comments.map(c => (
         <div key={c.id} className="flex gap-2">
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shrink-0 text-[10px] text-white font-bold">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center shrink-0 text-[10px] text-white font-bold">
             {(c.user_id ?? "????").slice(-2).toUpperCase()}
           </div>
           <div className="bg-muted/50 rounded-xl px-3 py-1.5 flex-1">
@@ -228,9 +228,9 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
       ))}
       <div className="flex gap-2 mt-1">
           <input value={body} onChange={e => setBody(e.target.value)} placeholder="Write a comment…" onKeyDown={e => e.key === "Enter" && send()}
-            className="flex-1 bg-background border border-border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+            className="flex-1 bg-background border border-border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
           <button onClick={send} disabled={sending || !body.trim()}
-            className="p-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl disabled:opacity-40 transition-colors">
+            className="p-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl disabled:opacity-40 transition-colors">
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -325,7 +325,7 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
             </span>
           )}
           {(s.tags ?? []).slice(0, 3).map((tag: string) => (
-            <span key={tag} className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-400 px-2 py-1 rounded-full">
+            <span key={tag} className="flex items-center gap-1 text-[10px] bg-sky-500/10 text-sky-400 px-2 py-1 rounded-full">
               <Tag className="w-3 h-3" /> {tag}
             </span>
           ))}
@@ -336,7 +336,7 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
           <div className="mb-3">
             <p className={`text-xs text-muted-foreground leading-relaxed ${!expanded ? "line-clamp-3" : ""}`}>{s.description}</p>
             {s.description.length > 120 && (
-              <button onClick={() => setExpanded(p => !p)} className="text-xs text-purple-400 mt-1 flex items-center gap-0.5">
+              <button onClick={() => setExpanded(p => !p)} className="text-xs text-sky-400 mt-1 flex items-center gap-0.5">
                 {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> Read more</>}
               </button>
             )}

@@ -174,9 +174,9 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       onClick={e => { if (e.target === e.currentTarget && !isLoading) onClose(); }}>
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto">
 
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-purple-600/10 to-blue-600/10 sticky top-0 bg-card z-10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-sky-600/10 to-blue-600/10 sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center">
               <Upload className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -203,7 +203,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0] ?? null); }}
             className={`border-2 border-dashed rounded-xl overflow-hidden transition-colors ${
               isLoading ? "opacity-60 cursor-not-allowed border-border"
-                        : "border-purple-500/30 hover:border-purple-500/70 cursor-pointer"
+                        : "border-sky-500/30 hover:border-sky-500/70 cursor-pointer"
             }`}>
             {coverPreview ? (
               <div className="relative">
@@ -213,18 +213,18 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
                   <p className="text-white text-xs font-semibold line-clamp-1">{file?.name}</p>
                   <p className="text-white/60 text-[10px]">Tap to change file</p>
                 </div>
-                <div className="absolute top-2 right-2 bg-purple-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <div className="absolute top-2 right-2 bg-sky-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                   <Image className="w-3 h-3" /> Cover extracted
                 </div>
               </div>
             ) : (
               <div className="p-6 flex flex-col items-center gap-2">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-sky-500/10 flex items-center justify-center">
                   {status === "extracting"
-                    ? <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                    ? <Loader2 className="w-6 h-6 text-sky-400 animate-spin" />
                     : file
-                    ? <FileText className="w-6 h-6 text-purple-500" />
-                    : <Upload className="w-6 h-6 text-purple-400" />}
+                    ? <FileText className="w-6 h-6 text-sky-500" />
+                    : <Upload className="w-6 h-6 text-sky-400" />}
                 </div>
                 <p className="text-sm font-medium">
                   {status === "extracting" ? "Reading PDF cover…"
@@ -244,10 +244,10 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{statusLabel[status]}</span>
-                <span className="font-bold text-purple-400">{progress}%</span>
+                <span className="font-bold text-sky-400">{progress}%</span>
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-200"
+                <div className="h-full bg-gradient-to-r from-sky-500 to-blue-500 rounded-full transition-all duration-200"
                   style={{ width: `${progress}%` }} />
               </div>
             </div>
@@ -257,21 +257,21 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             <label className="text-xs font-semibold text-muted-foreground mb-1 block">Title <span className="text-red-500">*</span></label>
             <input value={form.title} onChange={e => set("title", e.target.value)} disabled={isLoading}
               placeholder="e.g. MSCE Biology Past Papers 2023"
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60" />
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60" />
           </div>
 
           <div>
             <label className="text-xs font-semibold text-muted-foreground mb-1 block">Description <span className="text-muted-foreground/50">(optional)</span></label>
             <textarea value={form.description} onChange={e => set("description", e.target.value)}
               rows={2} disabled={isLoading} placeholder="What's inside?"
-              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none disabled:opacity-60" />
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-none disabled:opacity-60" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
               <select value={form.category} onChange={e => set("category", e.target.value)} disabled={isLoading}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60">
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60">
                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
@@ -279,7 +279,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">Price (MK) — 0 = Free</label>
               <input type="number" min="0" step="50" value={form.price}
                 onChange={e => set("price", e.target.value)} disabled={isLoading}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60" />
+                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60" />
             </div>
           </div>
 
@@ -287,7 +287,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed ${
               status === "done"  ? "bg-green-500 text-white"
               : status === "error" ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
-              : "bg-gradient-to-r from-purple-600 to-blue-600 disabled:opacity-60 text-white"
+              : "bg-gradient-to-r from-sky-600 to-blue-600 disabled:opacity-60 text-white"
             }`}>
             {isLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" />{statusLabel[status]}</>

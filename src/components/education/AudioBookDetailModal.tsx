@@ -84,7 +84,7 @@ function WaveformSeekBar({
         <defs>
           <linearGradient id="shWaveGradient" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#db2777" />
-            <stop offset="100%" stopColor="#7c3aed" />
+            <stop offset="100%" stopColor="#0284c7" />
           </linearGradient>
         </defs>
       </svg>
@@ -120,7 +120,7 @@ function WaveformSeekBar({
         style={{
           left: `${clampedPct}%`,
           transform: "translate(-50%, -50%)",
-          background: "linear-gradient(135deg,#db2777,#7c3aed)",
+          background: "linear-gradient(135deg,#db2777,#0284c7)",
           boxShadow: "0 0 0 3px rgba(219,39,119,0.15)",
         }}
       />
@@ -296,7 +296,7 @@ export function AudioBookDetailModal({
               onError={() => setCoverFailed(true)} />
           </>
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-pink-600 via-purple-700 to-indigo-800 flex items-center justify-center">
+          <div className="w-full h-full bg-gradient-to-br from-pink-600 via-sky-700 to-sky-800 flex items-center justify-center">
             <div className="w-24 h-28 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-xl">
               <Music className="w-12 h-12 text-white" />
             </div>
@@ -372,7 +372,7 @@ export function AudioBookDetailModal({
           <span className="text-muted-foreground/30">·</span>
           <span className="text-[11px] text-muted-foreground">{audiobook.play_count} plays</span>
           <span className="ml-auto text-sm font-black px-2.5 py-1 rounded-full text-white"
-            style={{ background: isFree ? "#10b981" : isPurchased ? "#3b82f6" : "linear-gradient(135deg,#db2777,#7c3aed)" }}>
+            style={{ background: isFree ? "#10b981" : isPurchased ? "#3b82f6" : "linear-gradient(135deg,#db2777,#0284c7)" }}>
             {isFree ? "FREE" : isPurchased ? "OWNED" : `MK ${Number(audiobook.price).toLocaleString()}`}
           </span>
         </div>
@@ -414,7 +414,7 @@ export function AudioBookDetailModal({
 
                 <button onClick={togglePlay} disabled={urlLoading}
                   className="w-16 h-16 rounded-full flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform disabled:opacity-60"
-                  style={{ background: "linear-gradient(135deg,#db2777,#7c3aed)" }}>
+                  style={{ background: "linear-gradient(135deg,#db2777,#0284c7)" }}>
                   {urlLoading ? <Loader2 className="w-6 h-6 animate-spin" />
                     : playing ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
                 </button>
@@ -432,7 +432,7 @@ export function AudioBookDetailModal({
                   <Gauge className="w-3.5 h-3.5" /> {SPEEDS[speedIdx]}×
                 </button>
                 <button onClick={() => onDownload(audiobook)}
-                  className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold py-2 rounded-xl active:scale-[0.98] transition-all shadow-sm">
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-sky-600 text-white text-xs font-bold py-2 rounded-xl active:scale-[0.98] transition-all shadow-sm">
                   <Download className="w-3.5 h-3.5" /> Download
                 </button>
               </div>
@@ -468,7 +468,7 @@ export function AudioBookDetailModal({
             className="w-full bg-muted/40 border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-pink-500/40 resize-none mb-2"
           />
           <button onClick={submitRating} disabled={ratingBusy || myRating === 0}
-            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-xs font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
+            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-pink-600 to-sky-600 text-white text-xs font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm disabled:opacity-50">
             {ratingBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : ratingSent ? "✅ Submitted" : "Submit Rating"}
           </button>
         </div>

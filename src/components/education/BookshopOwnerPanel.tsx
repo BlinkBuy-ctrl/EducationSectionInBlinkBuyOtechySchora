@@ -65,7 +65,7 @@ export function BookshopOwnerPanel({ onClose }: Props) {
     <div className="fixed inset-0 z-[70] flex items-end justify-center" style={{ background: "rgba(0,0,0,0.75)" }} onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-lg bg-card rounded-t-3xl flex flex-col overflow-hidden" style={{ height: "90vh", maxHeight: "90vh" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center"><Store className="w-5 h-5 text-purple-400" /></div>
+          <div className="w-10 h-10 rounded-xl bg-sky-500/15 flex items-center justify-center"><Store className="w-5 h-5 text-sky-400" /></div>
           <div className="flex-1"><h2 className="font-black text-base">My Bookshop</h2></div>
           {loggedIn && (
             <button onClick={handleLogout} className="flex items-center gap-1 text-xs font-semibold text-muted-foreground">
@@ -86,14 +86,14 @@ export function BookshopOwnerPanel({ onClose }: Props) {
                   : "No one sends you a password — you create it yourself, right here, using the same email you applied with."}
               </p>
               <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="Email"
-                className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+                className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
               <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="Password"
-                className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+                className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
               <button onClick={handleAuth} disabled={authBusy}
-                className="w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl bg-purple-600 text-white active:scale-[0.98] disabled:opacity-60">
+                className="w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl bg-sky-600 text-white active:scale-[0.98] disabled:opacity-60">
                 {authBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : mode === "signin" ? "Sign in" : "Sign up"}
               </button>
-              <button onClick={() => setMode(m => m === "signin" ? "signup" : "signin")} className="w-full text-xs font-semibold text-purple-500 py-1">
+              <button onClick={() => setMode(m => m === "signin" ? "signup" : "signin")} className="w-full text-xs font-semibold text-sky-500 py-1">
                 {mode === "signin" ? "First time? Create a login" : "Already have a login? Sign in"}
               </button>
             </div>
@@ -127,7 +127,7 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
   const [about, setAbout] = useState(shop.about ?? "");
   const [location, setLocation] = useState(shop.location ?? "");
   const [contact, setContact] = useState(shop.contact ?? "");
-  const [brandColor, setBrandColor] = useState(shop.brand_color ?? "#7c3aed");
+  const [brandColor, setBrandColor] = useState(shop.brand_color ?? "#0284c7");
   const [categories, setCategories] = useState((shop.categories ?? []).join(", "));
   const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({ lat: shop.lat, lng: shop.lng });
   const [locatingGPS, setLocatingGPS] = useState(false);
@@ -236,15 +236,15 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
       {/* Details */}
       <div className="space-y-2">
         <input value={motto} onChange={e => setMotto(e.target.value)} placeholder="Motto (e.g. Books for developers, students & dreamers)"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
         <textarea value={about} onChange={e => setAbout(e.target.value)} placeholder="About your shop" rows={3}
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
         <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Location"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
         <input value={contact} onChange={e => setContact(e.target.value)} placeholder="Contact"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
         <input value={categories} onChange={e => setCategories(e.target.value)} placeholder="Categories, comma separated (e.g. Fiction, Textbooks, Kids)"
-          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
         <button onClick={useMyLocation} disabled={locatingGPS}
           className="w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-lg border border-border text-muted-foreground">
           {locatingGPS ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
@@ -255,7 +255,7 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
           <input type="color" value={brandColor} onChange={e => setBrandColor(e.target.value)} className="w-9 h-9 rounded-lg border border-border" />
         </div>
         <button onClick={saveDetails} disabled={saving}
-          className="w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl bg-purple-600 text-white active:scale-[0.98] disabled:opacity-60">
+          className="w-full flex items-center justify-center gap-2 font-semibold py-2.5 rounded-xl bg-sky-600 text-white active:scale-[0.98] disabled:opacity-60">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save details"}
         </button>
       </div>
@@ -275,7 +275,7 @@ function OwnerDashboard({ shop, onShopChange, onClose }: { shop: Bookshop; onSho
               className="w-20 bg-card border border-border rounded-lg px-2.5 py-2 text-sm" />
           </div>
           <button onClick={handleAddBook} disabled={addingBook}
-            className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-purple-600 text-white text-xs active:scale-[0.98] disabled:opacity-60">
+            className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-sky-600 text-white text-xs active:scale-[0.98] disabled:opacity-60">
             {addingBook ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><PlusCircle className="w-3.5 h-3.5" /> Add book</>}
           </button>
         </div>

@@ -29,7 +29,7 @@ interface Props { userId: string; onRefresh: () => void; }
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-400",
-  "Textbooks":   "bg-purple-500/15 text-purple-400",
+  "Textbooks":   "bg-sky-500/15 text-sky-400",
   "Notes":       "bg-green-500/15 text-green-400",
   "Research":    "bg-orange-500/15 text-orange-400",
   "Other":       "bg-gray-500/15 text-gray-400",
@@ -66,8 +66,8 @@ function ProfileNameEditor({ userId }: { userId: string }) {
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       {/* Header strip */}
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center">
-          <BadgeCheck className="w-3.5 h-3.5 text-purple-400" />
+        <div className="w-7 h-7 rounded-lg bg-sky-500/15 flex items-center justify-center">
+          <BadgeCheck className="w-3.5 h-3.5 text-sky-400" />
         </div>
         <p className="text-xs font-bold text-foreground">Public Profile</p>
       </div>
@@ -75,7 +75,7 @@ function ProfileNameEditor({ userId }: { userId: string }) {
       <div className="px-4 py-3">
         {/* Avatar initial */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center shadow-md shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center shadow-md shrink-0">
             <span className="text-white font-black text-base">
               {(name || "U")[0].toUpperCase()}
             </span>
@@ -89,7 +89,7 @@ function ProfileNameEditor({ userId }: { userId: string }) {
                 autoFocus
                 maxLength={40}
                 placeholder="Your public name"
-                className="w-full bg-muted/50 border border-purple-500/40 rounded-lg px-2.5 py-1.5 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+                className="w-full bg-muted/50 border border-sky-500/40 rounded-lg px-2.5 py-1.5 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-sky-500/40"
               />
             ) : (
               <p className="text-sm font-bold text-foreground truncate">{name || "Not set"}</p>
@@ -105,7 +105,7 @@ function ProfileNameEditor({ userId }: { userId: string }) {
               <X className="w-3.5 h-3.5" /> Cancel
             </button>
             <button onClick={save} disabled={saving}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-bold active:scale-95 transition-all disabled:opacity-60 shadow-sm">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-bold active:scale-95 transition-all disabled:opacity-60 shadow-sm">
               {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               {saving ? "Saving…" : "Save"}
             </button>
@@ -270,7 +270,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
   if (loading) return (
     <div className="flex items-center justify-center py-20">
-      <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+      <Loader2 className="w-6 h-6 animate-spin text-sky-400" />
     </div>
   );
 
@@ -279,8 +279,8 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
       icon: FileText,
       label: "Resources",
       value: stats?.total_resources ?? resources.length,
-      color: "from-purple-500 to-blue-600",
-      bg: "bg-purple-500/10",
+      color: "from-sky-500 to-blue-600",
+      bg: "bg-sky-500/10",
     },
     {
       icon: Download,
@@ -336,7 +336,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
           <button onClick={() => setActiveTab("resources")}
             className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
               activeTab === "resources"
-                ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm"
+                ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-sm"
                 : "text-muted-foreground"
             }`}>
             <BookOpen className="w-3.5 h-3.5" /> Resources
@@ -347,7 +347,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
           <button onClick={() => setActiveTab("tutors")}
             className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
               activeTab === "tutors"
-                ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm"
+                ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-sm"
                 : "text-muted-foreground"
             }`}>
             <Users className="w-3.5 h-3.5" /> Tutor Profiles
@@ -358,7 +358,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
           <button onClick={() => setActiveTab("audiobooks")}
             className={`shrink-0 flex items-center justify-center gap-1.5 py-2 px-4 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
               activeTab === "audiobooks"
-                ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-sm"
+                ? "bg-gradient-to-r from-pink-600 to-sky-600 text-white shadow-sm"
                 : "text-muted-foreground"
             }`}>
             <Headphones className="w-3.5 h-3.5" /> Audio Books
@@ -372,8 +372,8 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
         {activeTab === "resources" && (
           resources.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-sky-400" />
               </div>
               <p className="text-sm font-semibold text-foreground">No uploads yet</p>
               <p className="text-xs text-muted-foreground">Hit Upload to share your first resource.</p>
@@ -383,8 +383,8 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
               {(showAllResources ? resources : resources.slice(0, RESOURCE_PREVIEW_COUNT)).map(item => (
                 <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden">
                   <div className="flex items-center gap-3 p-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600/20 to-blue-600/20 flex items-center justify-center shrink-0">
-                      <FileText className="w-4 h-4 text-purple-400" />
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-600/20 to-blue-600/20 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4 text-sky-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-foreground line-clamp-1">{item.title}</p>
@@ -443,7 +443,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
               {(showAllTutors ? tutors : tutors.slice(0, TUTOR_PREVIEW_COUNT)).map(item => (
                 <div key={item.id} className="bg-card border border-border rounded-xl overflow-hidden">
                   <div className="flex items-center gap-3 p-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600/20 to-sky-600/20 flex items-center justify-center shrink-0">
                       <Users className="w-4 h-4 text-blue-400" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -505,7 +505,7 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
                     {item.cover_url ? (
                       <img src={item.cover_url} alt={item.title} className="w-8 h-8 rounded-lg object-cover shrink-0" />
                     ) : (
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-600/20 to-purple-600/20 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-600/20 to-sky-600/20 flex items-center justify-center shrink-0">
                         <Headphones className="w-4 h-4 text-pink-400" />
                       </div>
                     )}
@@ -575,14 +575,14 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
             <p className="px-4 pt-3 pb-1 text-[9px] font-black tracking-[0.2em] uppercase text-muted-foreground">Appearance</p>
             <button onClick={toggleTheme}
               className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center shrink-0">
-                {theme === "dark" ? <Moon className="w-4 h-4 text-purple-400" /> : <Sun className="w-4 h-4 text-purple-400" />}
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0">
+                {theme === "dark" ? <Moon className="w-4 h-4 text-sky-400" /> : <Sun className="w-4 h-4 text-sky-400" />}
               </div>
               <div className="flex-1 text-left">
                 <p className="text-xs font-bold text-foreground">Theme</p>
                 <p className="text-[10px] text-muted-foreground">{theme === "dark" ? "Dark mode" : "Light mode"}</p>
               </div>
-              <div className={`w-10 h-6 rounded-full p-0.5 transition-colors ${theme === "dark" ? "bg-purple-600" : "bg-muted"}`}>
+              <div className={`w-10 h-6 rounded-full p-0.5 transition-colors ${theme === "dark" ? "bg-sky-600" : "bg-muted"}`}>
                 <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${theme === "dark" ? "translate-x-4" : "translate-x-0"}`} />
               </div>
             </button>
@@ -631,8 +631,8 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
 
             <button onClick={() => goToTab("aboutus")}
               className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors border-b border-border/60">
-              <div className="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center shrink-0">
-                <Info className="w-4 h-4 text-violet-400" />
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0">
+                <Info className="w-4 h-4 text-sky-400" />
               </div>
               <p className="flex-1 text-left text-xs font-bold text-foreground">About Us</p>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -688,8 +688,8 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
             {/* Gestures */}
             <button onClick={() => setShowGesturesInfo(v => !v)}
               className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors border-b border-border/60">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center shrink-0">
-                <Hand className="w-4 h-4 text-indigo-400" />
+              <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0">
+                <Hand className="w-4 h-4 text-sky-400" />
               </div>
               <div className="flex-1 text-left">
                 <p className="text-xs font-bold text-foreground">Gestures</p>
@@ -711,15 +711,15 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
                   <rect x="10" y="35" width="280" height="40" rx="14" fill="currentColor" className="text-muted opacity-40" />
                   {[70, 150, 230].map((cx, i) => (
                     <g key={cx}>
-                      <circle cx={cx} cy="55" r="16" fill="none" stroke="currentColor" className="text-indigo-400" strokeWidth="2" />
-                      <text x={cx} y="60" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor" className="text-indigo-400">{i + 1}</text>
+                      <circle cx={cx} cy="55" r="16" fill="none" stroke="currentColor" className="text-sky-400" strokeWidth="2" />
+                      <text x={cx} y="60" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor" className="text-sky-400">{i + 1}</text>
                     </g>
                   ))}
-                  <path d="M90 55 L134 55" stroke="currentColor" className="text-indigo-300" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <path d="M170 55 L214 55" stroke="currentColor" className="text-indigo-300" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <path d="M90 55 L134 55" stroke="currentColor" className="text-sky-300" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <path d="M170 55 L214 55" stroke="currentColor" className="text-sky-300" strokeWidth="2" markerEnd="url(#arrow)" />
                   <defs>
                     <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" className="text-indigo-300" />
+                      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" className="text-sky-300" />
                     </marker>
                   </defs>
                   <text x="150" y="98" textAnchor="middle" fontSize="10" fontWeight="600" fill="currentColor" className="text-muted-foreground">Tap · Tap · Tap — fast, same spot</text>

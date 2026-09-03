@@ -129,7 +129,7 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
   if (adverts.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 py-14 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center"><Megaphone className="w-7 h-7 text-purple-400" /></div>
+        <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><Megaphone className="w-7 h-7 text-sky-400" /></div>
         <p className="font-semibold text-foreground">No adverts yet</p>
         <p className="text-sm text-muted-foreground">Check back soon for school adverts.</p>
       </div>

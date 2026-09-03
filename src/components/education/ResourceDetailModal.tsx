@@ -12,7 +12,7 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-400",
-  "Textbooks":   "bg-purple-500/15 text-purple-400",
+  "Textbooks":   "bg-sky-500/15 text-sky-400",
   "Notes":       "bg-green-500/15 text-green-400",
   "Research":    "bg-orange-500/15 text-orange-400",
   "Other":       "bg-gray-500/15 text-gray-400",
@@ -212,9 +212,9 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-4">
             <div className="relative">
               <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <FileText className="w-7 h-7 text-purple-400" />
+                <FileText className="w-7 h-7 text-sky-400" />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-sky-600 flex items-center justify-center">
                 <Loader2 className="w-3 h-3 animate-spin text-white" />
               </div>
             </div>
@@ -229,7 +229,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
         {rendering && !initLoad && (
           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
             <div className="bg-black/40 backdrop-blur-sm rounded-2xl px-5 py-3 flex items-center gap-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
               <span className="text-xs text-white/60">Page {page}</span>
             </div>
           </div>
@@ -298,7 +298,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
               <div className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${progress}%`,
-                  background: "linear-gradient(to right, #7c3aed, #3b82f6)",
+                  background: "linear-gradient(to right, #0284c7, #3b82f6)",
                 }} />
             </div>
             <span className="text-[9px] text-white/30 font-mono shrink-0">{total}</span>
@@ -312,7 +312,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
                   onClick={e => { e.stopPropagation(); goTo(p); }}
                   className={`rounded-full transition-all duration-200 active:scale-90 ${
                     p === page
-                      ? "w-5 h-2.5 bg-purple-400 shadow-sm shadow-purple-500/50"
+                      ? "w-5 h-2.5 bg-sky-400 shadow-sm shadow-sky-500/50"
                       : "w-2 h-2 bg-white/20 hover:bg-white/35"
                   }`} />
               ))}
@@ -335,7 +335,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
                 onClick={e => { e.stopPropagation(); goTo(page + 1, "left"); }}
                 disabled={page >= total}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold disabled:opacity-25 active:scale-95 transition-all shadow-md"
-                style={{ background: "linear-gradient(135deg, #7c3aed, #3b82f6)" }}>
+                style={{ background: "linear-gradient(135deg, #0284c7, #3b82f6)" }}>
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -383,7 +383,7 @@ function PdfPreview({ signedUrl, canAccess }: { signedUrl: string; canAccess: bo
     <div className="relative rounded-xl overflow-hidden border border-border bg-white dark:bg-gray-900">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/30 z-10">
-          <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+          <Loader2 className="w-5 h-5 animate-spin text-sky-400" />
         </div>
       )}
       <canvas ref={canvasRef} className="w-full block" style={{ opacity: loading ? 0 : 1 }} />
@@ -573,7 +573,7 @@ export function ResourceDetailModal({
               </button>
               <button onClick={() => onBookmarkToggle(resource)}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
-                {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-purple-400" /> : <Bookmark className="w-3.5 h-3.5" />}
+                {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5 text-sky-400" /> : <Bookmark className="w-3.5 h-3.5" />}
               </button>
               <button onClick={onClose}
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
@@ -588,7 +588,7 @@ export function ResourceDetailModal({
 
               {uploader && (
                 <div className="flex items-center gap-2.5 bg-muted/30 rounded-xl p-2.5">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white font-black text-xs shrink-0">
                     {uploader.name?.[0]?.toUpperCase() ?? "U"}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -652,10 +652,10 @@ export function ResourceDetailModal({
                   <StarRating value={myRating} onChange={v => { setMyRating(v); setSubmitted(false); }} />
                   <textarea value={myReview} onChange={e => { setMyReview(e.target.value); setSubmitted(false); }}
                     rows={2} placeholder="Write a short review… (optional)"
-                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500/50 resize-none" />
+                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-sky-500/50 resize-none" />
                   {!submitted && (
                     <button onClick={submitRating} disabled={submitting || !myRating}
-                      className="self-end flex items-center gap-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                      className="self-end flex items-center gap-1 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">
                       {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />}
                       {submitting ? "Saving…" : "Submit"}
                     </button>
@@ -668,7 +668,7 @@ export function ResourceDetailModal({
                   <div className="flex flex-col gap-2.5">
                     {ratings.map((r: any) => (
                       <div key={r.id} className="flex gap-2.5">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500/40 to-blue-500/40 flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500/40 to-blue-500/40 flex items-center justify-center text-white text-[10px] font-black shrink-0">
                           {(r.user_id ?? "??").slice(-2).toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -708,7 +708,7 @@ export function ResourceDetailModal({
                   </button>
                 )}
                 <button onClick={() => { onDownload(resource); onClose(); }}
-                  className={`flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-semibold py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-md shadow-purple-500/20 ${isPDF ? "flex-1" : "w-full"}`}>
+                  className={`flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-semibold py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-md shadow-sky-500/20 ${isPDF ? "flex-1" : "w-full"}`}>
                   <Download className="w-3.5 h-3.5" /> Download
                 </button>
               </div>

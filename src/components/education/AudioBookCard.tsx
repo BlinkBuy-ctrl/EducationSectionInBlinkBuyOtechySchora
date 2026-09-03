@@ -5,15 +5,15 @@ import { AudioBook, formatDuration, getSignedAudioUrl } from "@/lib/audiobooks";
 const CAT_COLORS: Record<string, string> = {
   "Fiction":      "bg-pink-500/15 text-pink-500 dark:text-pink-400",
   "Non-Fiction":  "bg-blue-500/15 text-blue-500 dark:text-blue-400",
-  "Educational":  "bg-purple-500/15 text-purple-500 dark:text-purple-400",
+  "Educational":  "bg-sky-500/15 text-sky-500 dark:text-sky-400",
   "Religious":    "bg-amber-500/15 text-amber-600 dark:text-amber-400",
   "Other":        "bg-gray-500/15 text-gray-500 dark:text-gray-400",
 };
 
 const CAT_GRADIENTS: Record<string, string> = {
   "Fiction":      "from-pink-600 to-rose-600",
-  "Non-Fiction":  "from-blue-600 to-indigo-600",
-  "Educational":  "from-purple-600 to-violet-600",
+  "Non-Fiction":  "from-blue-600 to-sky-600",
+  "Educational":  "from-sky-600 to-sky-600",
   "Religious":    "from-amber-500 to-orange-600",
   "Other":        "from-gray-500 to-slate-600",
 };
@@ -124,7 +124,7 @@ export function AudioBookCard({ audiobook, isPurchased, onBuy, onDownload, onOpe
         <button
           onClick={togglePlay}
           className="absolute bottom-2 right-2 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full text-white active:scale-90 transition-transform shadow-md"
-          style={{ background: "linear-gradient(135deg,#db2777,#7c3aed)" }}
+          style={{ background: "linear-gradient(135deg,#db2777,#0284c7)" }}
         >
           {loadingUrl ? <Loader2 className="w-3 h-3 animate-spin" />
             : playing ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
@@ -178,7 +178,7 @@ export function AudioBookCard({ audiobook, isPurchased, onBuy, onDownload, onOpe
           {canAccess ? (
             <button
               onClick={e => { e.stopPropagation(); onDownload(audiobook); }}
-              className="w-full flex items-center justify-center gap-1 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-[10px] font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm shadow-pink-500/20"
+              className="w-full flex items-center justify-center gap-1 bg-gradient-to-r from-pink-600 to-sky-600 text-white text-[10px] font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm shadow-pink-500/20"
             >
               <Download className="w-3 h-3" /> Download
             </button>

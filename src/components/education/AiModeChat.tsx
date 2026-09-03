@@ -50,7 +50,7 @@ export function AiModeChat({ onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full sm:max-w-md h-[85vh] sm:h-[70vh] bg-card border border-border rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col overflow-hidden">
 
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-purple-600 to-blue-600">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-gradient-to-r from-sky-600 to-blue-600">
           <div className="flex items-center gap-2 text-white">
             <Sparkles className="w-4 h-4" />
             <span className="text-sm font-black">AI Mode</span>
@@ -66,7 +66,7 @@ export function AiModeChat({ onClose }: Props) {
               <div
                 className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   m.role === "user"
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                    ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white"
                     : "bg-muted text-foreground"
                 }`}
               >
@@ -92,13 +92,13 @@ export function AiModeChat({ onClose }: Props) {
             onKeyDown={e => { if (e.key === "Enter") send(); }}
             placeholder="Ask about a book…"
             disabled={loading}
-            className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-60"
+            className="flex-1 bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60"
           />
           <button
             onClick={send}
             disabled={loading || !input.trim()}
             aria-label="Send"
-            className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform"
+            className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white flex items-center justify-center disabled:opacity-50 active:scale-95 transition-transform"
           >
             <Send className="w-4 h-4" />
           </button>

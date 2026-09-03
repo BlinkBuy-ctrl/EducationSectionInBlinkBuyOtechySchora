@@ -21,9 +21,9 @@ function getLinkStyle(platformType: string) {
   if (p.includes("tiktok")) return { icon: FaTiktok, gradient: "linear-gradient(135deg, #25f4ee, #010101, #fe2c55)" };
   if (p.includes("telegram")) return { icon: FaTelegram, gradient: "linear-gradient(135deg, #2aabee, #229ed9)" };
   if (p.includes("transport") || p.includes("bus")) return { icon: FaBus, gradient: "linear-gradient(135deg, #f97316, #ea580c)" };
-  if (p.includes("portal") || p.includes("login")) return { icon: FaSignInAlt, gradient: "linear-gradient(135deg, #6366f1, #4f46e5)" };
+  if (p.includes("portal") || p.includes("login")) return { icon: FaSignInAlt, gradient: "linear-gradient(135deg, #0ea5e9, #4f46e5)" };
   if (p.includes("website") || p.includes("web")) return { icon: FaGlobe, gradient: "linear-gradient(135deg, #3b82f6, #2563eb)" };
-  return { icon: FaLink, gradient: "linear-gradient(135deg, #7c3aed, #3b82f6)" };
+  return { icon: FaLink, gradient: "linear-gradient(135deg, #0284c7, #3b82f6)" };
 }
 
 function LinkRow({ link }: { link: UniversityLink }) {
@@ -77,7 +77,7 @@ export function UniversityDetailModal({ university, onClose }: Props) {
             {university.logo_url && !logoFailed ? (
               <img src={university.logo_url} alt={university.name} className="w-full h-full object-cover" onError={() => setLogoFailed(true)} />
             ) : (
-              <School className="w-6 h-6 text-purple-400" />
+              <School className="w-6 h-6 text-sky-400" />
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -95,8 +95,8 @@ export function UniversityDetailModal({ university, onClose }: Props) {
             <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : links.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-14 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center">
-                <Link2 className="w-7 h-7 text-purple-400" />
+              <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+                <Link2 className="w-7 h-7 text-sky-400" />
               </div>
               <p className="font-semibold text-foreground">No links posted yet</p>
               <p className="text-sm text-muted-foreground">Check back soon for group links.</p>

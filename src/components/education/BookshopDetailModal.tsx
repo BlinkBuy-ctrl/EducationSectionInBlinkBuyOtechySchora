@@ -87,14 +87,14 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
           style={{
             background: bookshop.banner_url
               ? `linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.6)), url(${bookshop.banner_url}) center/cover`
-              : `linear-gradient(135deg, ${bookshop.brand_color || "#7c3aed"}, #1e1b4b)`,
+              : `linear-gradient(135deg, ${bookshop.brand_color || "#0284c7"}, #1e1b4b)`,
           }}
         >
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-full border-2 border-white/80 bg-card flex items-center justify-center overflow-hidden shrink-0">
               {bookshop.logo_url && !logoFailed ? (
                 <img src={bookshop.logo_url} alt={bookshop.name} className="w-full h-full object-cover" onError={() => setLogoFailed(true)} />
-              ) : <Store className="w-7 h-7 text-purple-400" />}
+              ) : <Store className="w-7 h-7 text-sky-400" />}
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="font-black text-base text-white leading-tight truncate drop-shadow-sm">{bookshop.name}</h2>
@@ -144,8 +144,8 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
                       const Icon = SOCIAL_ICONS[platform.toLowerCase()];
                       return (
                         <a key={platform} href={url} target="_blank" rel="noopener noreferrer"
-                           className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center">
-                          {Icon ? <Icon className="w-4 h-4 text-purple-400" /> : <Share2 className="w-3.5 h-3.5 text-purple-400" />}
+                           className="w-8 h-8 rounded-full bg-sky-500/10 flex items-center justify-center">
+                          {Icon ? <Icon className="w-4 h-4 text-sky-400" /> : <Share2 className="w-3.5 h-3.5 text-sky-400" />}
                         </a>
                       );
                     })}
@@ -192,7 +192,7 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
                     {books.map(b => (
                       <div key={b.id} className="bg-background border border-border rounded-xl p-2.5">
                         <div className="w-full h-24 rounded-lg bg-muted/40 flex items-center justify-center overflow-hidden mb-2">
-                          {b.cover_url ? <img src={b.cover_url} className="w-full h-full object-cover" /> : <BookOpen className="w-6 h-6 text-purple-400" />}
+                          {b.cover_url ? <img src={b.cover_url} className="w-full h-full object-cover" /> : <BookOpen className="w-6 h-6 text-sky-400" />}
                         </div>
                         <p className="text-xs font-semibold truncate">{b.title}</p>
                         <p className="text-[11px] text-muted-foreground">MK {Number(b.price).toLocaleString()}</p>
@@ -206,7 +206,7 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-bold text-muted-foreground">Testimonials ({testimonials.length})</p>
-                  <button onClick={() => setShowTestimonialForm(v => !v)} className="text-[11px] font-bold text-purple-500">
+                  <button onClick={() => setShowTestimonialForm(v => !v)} className="text-[11px] font-bold text-sky-500">
                     {showTestimonialForm ? "Cancel" : "Write a review"}
                   </button>
                 </div>
@@ -214,16 +214,16 @@ export function BookshopDetailModal({ bookshop, onClose }: Props) {
                 {showTestimonialForm && (
                   <div className="bg-background border border-border rounded-xl p-3 space-y-2 mb-3">
                     <input value={tName} onChange={e => setTName(e.target.value)} placeholder="Your name"
-                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
                     <textarea value={tMsg} onChange={e => setTMsg(e.target.value)} placeholder="Your experience with this shop…" rows={2}
-                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+                      className="w-full bg-card border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50" />
                     <div className="flex items-center gap-1">
                       {[1,2,3,4,5].map(n => (
                         <Star key={n} onClick={() => setTRating(n)} className={`w-5 h-5 cursor-pointer ${n <= tRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`} />
                       ))}
                     </div>
                     <button onClick={submitTestimonial} disabled={saving}
-                      className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-purple-600 text-white text-xs active:scale-[0.98] disabled:opacity-60">
+                      className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-sky-600 text-white text-xs active:scale-[0.98] disabled:opacity-60">
                       {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Submit review"}
                     </button>
                   </div>

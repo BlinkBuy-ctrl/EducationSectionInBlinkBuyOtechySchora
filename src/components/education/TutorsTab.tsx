@@ -120,7 +120,7 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
                     </div>}
               </div>
               <div onClick={() => pickImg(avatarRef, f => { setAvatarFile(f); setAvatarPrev(URL.createObjectURL(f)); })}
-                className="absolute -bottom-5 left-3 w-12 h-12 rounded-xl border-2 border-card bg-gradient-to-br from-blue-600 to-purple-600 overflow-hidden cursor-pointer shadow-lg">
+                className="absolute -bottom-5 left-3 w-12 h-12 rounded-xl border-2 border-card bg-gradient-to-br from-blue-600 to-sky-600 overflow-hidden cursor-pointer shadow-lg">
                 {avatarPrev
                   ? <img src={avatarPrev} className="w-full h-full object-cover" />
                   : <div className="flex items-center justify-center h-full"><Upload className="w-4 h-4 text-white" /></div>}
@@ -161,7 +161,7 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
         </div>
         <div className="px-4 py-3 border-t border-border shrink-0">
           <button onClick={handleSubmit} disabled={saving}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-bold py-3 rounded-xl disabled:opacity-60 active:scale-[0.98] transition-all shadow-md shadow-blue-500/20">
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-sky-600 text-white text-sm font-bold py-3 rounded-xl disabled:opacity-60 active:scale-[0.98] transition-all shadow-md shadow-blue-500/20">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
             {saving ? "Posting…" : "Post Tutor Profile"}
           </button>
@@ -195,7 +195,7 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
   };
 
   const grads = [
-    "from-violet-600 to-blue-600",
+    "from-sky-600 to-blue-600",
     "from-blue-600 to-cyan-500",
     "from-emerald-500 to-teal-600",
     "from-orange-500 to-red-500",
@@ -313,14 +313,14 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
         {t.contact && (
           <a href={`tel:${t.contact}`} onClick={e => e.stopPropagation()}
             className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg active:scale-95 transition-all text-white"
-            style={{ background: "linear-gradient(135deg,#3b82f6,#6366f1)" }}>
+            style={{ background: "linear-gradient(135deg,#3b82f6,#0ea5e9)" }}>
             <Phone className="w-3 h-3" /> Call
           </a>
         )}
         {t.email && (
           <a href={`mailto:${t.email}`} onClick={e => e.stopPropagation()}
             className="flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg active:scale-95 transition-all text-white"
-            style={{ background: "linear-gradient(135deg,#a855f7,#ec4899)" }}>
+            style={{ background: "linear-gradient(135deg,#0ea5e9,#ec4899)" }}>
             <Mail className="w-3 h-3" /> Email
           </a>
         )}
@@ -377,7 +377,7 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
           suggestionPool={searchSuggestions}
         />
         <button onClick={() => setShowForm(true)}
-          className="shrink-0 flex items-center gap-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-sm shadow-blue-500/20">
+          className="shrink-0 flex items-center gap-1 bg-gradient-to-r from-blue-600 to-sky-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-sm shadow-blue-500/20">
           <Plus className="w-3.5 h-3.5" /> Register
         </button>
       </div>
@@ -420,7 +420,7 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
           <p className="font-semibold text-sm text-foreground">{search ? "No tutors match" : "No tutors yet"}</p>
           <p className="text-xs text-muted-foreground">{search ? "Try a different search." : "Be the first to register!"}</p>
           <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-[0.98] transition-all">
+            className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-sky-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl active:scale-[0.98] transition-all">
             <Plus className="w-3.5 h-3.5" /> Register as Tutor
           </button>
         </div>

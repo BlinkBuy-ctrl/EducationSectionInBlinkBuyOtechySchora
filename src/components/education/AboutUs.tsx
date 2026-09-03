@@ -41,8 +41,8 @@ const teamMembers: TeamMember[] = [
     photo: "/ceo.jpg",
     initials: "PM",
     isFounder: true,
-    accent: "#7C3AED",
-    accentFrom: "#7C3AED",
+    accent: "#0284c7",
+    accentFrom: "#0284c7",
     accentTo: "#3B82F6",
     skills: [
       { icon: <Code2 size={10} />, label: "Full Stack" },
@@ -58,7 +58,7 @@ const teamMembers: TeamMember[] = [
     initials: "TL",
     accent: "#DB2777",
     accentFrom: "#DB2777",
-    accentTo: "#7C3AED",
+    accentTo: "#0284c7",
     skills: [
       { icon: <Megaphone size={10} />, label: "Marketing" },
       { icon: <Palette size={10} />, label: "UI / UX" },
@@ -156,9 +156,9 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-6">
-      <div className="h-px flex-1 bg-violet-200" />
-      <p className="text-[9px] font-black tracking-[0.35em] uppercase text-violet-400">{children}</p>
-      <div className="h-px flex-1 bg-violet-200" />
+      <div className="h-px flex-1 bg-sky-200" />
+      <p className="text-[9px] font-black tracking-[0.35em] uppercase text-sky-400">{children}</p>
+      <div className="h-px flex-1 bg-sky-200" />
     </div>
   );
 }
@@ -173,7 +173,7 @@ function SafeImg({ src, alt, initials, accent, className = "" }: {
       {!err ? (
         <img src={src} alt={alt} onError={() => setErr(true)} className="w-full h-full object-cover object-top" draggable={false} />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-violet-50">
+        <div className="w-full h-full flex items-center justify-center bg-sky-50">
           <span className="text-5xl font-black select-none" style={{ color: accent + "80" }}>{initials}</span>
         </div>
       )}
@@ -271,7 +271,7 @@ function TeamCarousel({ members }: { members: TeamMember[] }) {
               draggable={false}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-violet-50">
+            <div className="w-full h-full flex items-center justify-center bg-sky-50">
               <span className="text-8xl font-black select-none" style={{ color: m.accent + "40" }}>{m.initials}</span>
             </div>
           )}
@@ -379,7 +379,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header
         className="sticky top-0 z-50"
-        style={{ background: "rgba(249,247,255,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid #EDE9FE" }}
+        style={{ background: "rgba(249,247,255,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid #f0f9ff" }}
       >
         <div className="flex items-center gap-3 px-4 py-3 max-w-lg mx-auto">
           {onBack && (
@@ -404,7 +404,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
             }}
           />
           <div className="items-center gap-2" style={{ display: "none" }}>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0284c7, #3B82F6)" }}>
               <GraduationCap size={14} className="text-white" />
             </div>
             <span className="text-[13px] font-black text-slate-800 tracking-tight">OTECHY</span>
@@ -412,7 +412,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
 
           <span
             className="ml-auto text-[10px] font-black tracking-widest uppercase px-2.5 py-1 rounded-full"
-            style={{ background: "#EDE9FE", color: "#7C3AED" }}
+            style={{ background: "#f0f9ff", color: "#0284c7" }}
           >
             Est. 2025
           </span>
@@ -451,19 +451,19 @@ export default function AboutUs({ onBack }: AboutUsProps) {
                 />
                 {/* Text fallback */}
                 <div className="items-center gap-3" style={{ display: "none" }}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-md" style={{ background: "linear-gradient(135deg, #0284c7, #3B82F6)" }}>
                     <GraduationCap size={22} className="text-white" />
                   </div>
                   <div>
                     <p className="text-2xl font-black text-slate-800 tracking-tight leading-none">OTECHY</p>
-                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase mt-0.5 text-violet-400">Technology · Malawi</p>
+                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase mt-0.5 text-sky-400">Technology · Malawi</p>
                   </div>
                 </div>
               </div>
             </Reveal>
 
             <Reveal delay={50}>
-              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-violet-400 mb-3">
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-sky-400 mb-3">
                 Malawi · Technology · 2025
               </p>
             </Reveal>
@@ -471,7 +471,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
             <Reveal delay={90}>
               <h1 className="font-black leading-[0.93] tracking-tight mb-5 text-slate-800" style={{ fontSize: "clamp(36px, 10vw, 50px)" }}>
                 We built{" "}
-                <span style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                <span style={{ background: "linear-gradient(135deg, #0284c7, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                   something
                 </span>
                 <br />
@@ -490,13 +490,13 @@ export default function AboutUs({ onBack }: AboutUsProps) {
             <Reveal delay={170}>
               <div
                 className="relative rounded-2xl overflow-hidden mb-5"
-                style={{ height: 230, border: "1.5px solid #EDE9FE", boxShadow: "0 8px 32px rgba(124,58,237,0.10)" }}
+                style={{ height: 230, border: "1.5px solid #f0f9ff", boxShadow: "0 8px 32px rgba(124,58,237,0.10)" }}
               >
-                <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#7C3AED" className="w-full h-full" />
+                <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#0284c7" className="w-full h-full" />
                 <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(249,247,255,0.92) 0%, rgba(249,247,255,0.25) 45%, transparent 100%)" }} />
                 <div className="absolute bottom-0 left-0 right-0 px-5 pb-4">
                   <p className="font-black text-[15px] tracking-tight text-slate-800">Peter Mlandula</p>
-                  <p className="text-[11px] font-semibold mt-0.5 text-violet-500">Founder of OTECHY · Builder of SchoraHub</p>
+                  <p className="text-[11px] font-semibold mt-0.5 text-sky-500">Founder of OTECHY · Builder of SchoraHub</p>
                 </div>
               </div>
             </Reveal>
@@ -506,7 +506,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
               <div className="grid grid-cols-3 gap-2">
                 {[{ number: "2025", label: "Founded" }, { number: "4", label: "Team members" }, { number: "∞", label: "Curiosity" }].map((s) => (
                   <div key={s.label} className="rounded-xl p-3 text-center bg-white border border-slate-100 shadow-sm">
-                    <p className="text-lg font-black tracking-tight text-violet-600">{s.number}</p>
+                    <p className="text-lg font-black tracking-tight text-sky-600">{s.number}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{s.label}</p>
                   </div>
                 ))}
@@ -524,7 +524,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
           <Reveal delay={40}>
             <h2 className="text-xl font-black tracking-tight text-slate-800 mb-5 leading-tight">
               A holiday that changed{" "}
-              <span style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              <span style={{ background: "linear-gradient(135deg, #0284c7, #3B82F6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 everything.
               </span>
             </h2>
@@ -534,20 +534,20 @@ export default function AboutUs({ onBack }: AboutUsProps) {
             <p className="text-[13.5px] text-slate-500 leading-relaxed font-medium mb-6">
               During a school holiday, a small group of self-taught Malawian students picked up Python, then
               JavaScript, then React — through slow internet, late nights, and projects that failed before
-              they worked. That group became <span className="font-black text-violet-600">OTECHY</span>, and
-              OTECHY built <span className="font-black text-violet-600">SchoraHub</span> — for every Malawian
+              they worked. That group became <span className="font-black text-sky-600">OTECHY</span>, and
+              OTECHY built <span className="font-black text-sky-600">SchoraHub</span> — for every Malawian
               student who needs it.
             </p>
           </Reveal>
 
           <Reveal delay={90}>
-            <div className="rounded-2xl overflow-hidden bg-white border border-violet-100 shadow-sm">
+            <div className="rounded-2xl overflow-hidden bg-white border border-sky-100 shadow-sm">
               {/* Portrait */}
               <div className="relative" style={{ height: 280 }}>
-                <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#7C3AED" className="w-full h-full" />
+                <SafeImg src="/ceo.jpg" alt="Peter Mlandula" initials="PM" accent="#0284c7" className="w-full h-full" />
                 <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(255,255,255,1) 0%, rgba(255,255,255,0.45) 38%, transparent 65%)" }} />
                 <div className="absolute top-4 left-4">
-                  <span className="text-[9px] font-black tracking-[0.25em] uppercase px-3 py-1.5 rounded-full text-white" style={{ background: "#7C3AED" }}>
+                  <span className="text-[9px] font-black tracking-[0.25em] uppercase px-3 py-1.5 rounded-full text-white" style={{ background: "#0284c7" }}>
                     ★ Founder
                   </span>
                 </div>
@@ -558,19 +558,19 @@ export default function AboutUs({ onBack }: AboutUsProps) {
 
               {/* Info */}
               <div className="px-5 pt-3 pb-6">
-                <p className="text-[10px] font-black tracking-[0.2em] uppercase text-violet-500 mb-4">Founder & Lead Developer · OTECHY</p>
+                <p className="text-[10px] font-black tracking-[0.2em] uppercase text-sky-500 mb-4">Founder & Lead Developer · OTECHY</p>
 
                 {/* Quote */}
-                <div className="relative mb-4 pl-4" style={{ borderLeft: "3px solid #7C3AED" }}>
+                <div className="relative mb-4 pl-4" style={{ borderLeft: "3px solid #0284c7" }}>
                   <p className="text-[13px] text-slate-500 leading-relaxed font-medium italic">
                     "I used to struggle to access books due to limited resources — but internet and phones were always around. So I asked: what if all learning resources were online? That question became{" "}
-                    <span className="font-black not-italic text-violet-600">SchoraHub.</span>"
+                    <span className="font-black not-italic text-sky-600">SchoraHub.</span>"
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-1.5">
                   {founder.skills.map((s) => (
-                    <span key={s.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold text-violet-600 bg-violet-50 border border-violet-200">
+                    <span key={s.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-bold text-sky-600 bg-sky-50 border border-sky-200">
                       {s.icon} {s.label}
                     </span>
                   ))}
@@ -587,11 +587,11 @@ export default function AboutUs({ onBack }: AboutUsProps) {
           <Reveal><SectionLabel>Purpose</SectionLabel></Reveal>
 
           <Reveal delay={40}>
-            <div className="rounded-2xl p-5 bg-white border border-violet-100 shadow-sm">
-              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-violet-400 mb-2.5">Mission & Vision</p>
+            <div className="rounded-2xl p-5 bg-white border border-sky-100 shadow-sm">
+              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-sky-400 mb-2.5">Mission & Vision</p>
               <p className="text-[14px] text-slate-700 font-bold leading-snug">
                 Free access to books, tutors, and scholarships — so every Malawian student can{" "}
-                <span className="text-violet-600">unlock their potential</span>, no matter their{" "}
+                <span className="text-sky-600">unlock their potential</span>, no matter their{" "}
                 <span className="text-blue-600">geography or income.</span>
               </p>
             </div>
@@ -621,8 +621,8 @@ export default function AboutUs({ onBack }: AboutUsProps) {
                   key={tech}
                   className="flex-shrink-0 text-[11px] font-black px-4 py-2.5 rounded-full whitespace-nowrap"
                   style={{
-                    background: i % 3 === 0 ? "#EDE9FE" : i % 3 === 1 ? "#DBEAFE" : "#F1F5F9",
-                    color: i % 3 === 0 ? "#7C3AED" : i % 3 === 1 ? "#2563EB" : "#64748B",
+                    background: i % 3 === 0 ? "#f0f9ff" : i % 3 === 1 ? "#DBEAFE" : "#F1F5F9",
+                    color: i % 3 === 0 ? "#0284c7" : i % 3 === 1 ? "#2563EB" : "#64748B",
                     border: i % 3 === 0 ? "1px solid #C4B5FD" : i % 3 === 1 ? "1px solid #BFDBFE" : "1px solid #E2E8F0",
                   }}
                 >
@@ -656,15 +656,15 @@ export default function AboutUs({ onBack }: AboutUsProps) {
         ════════════════════════════════════════════════ */}
         <section className="px-4 pb-12">
           <Reveal>
-            <div className="rounded-2xl p-6 bg-white border border-violet-100 shadow-sm">
-              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-violet-400 mb-3">What's next</p>
+            <div className="rounded-2xl p-6 bg-white border border-sky-100 shadow-sm">
+              <p className="text-[9px] font-black tracking-[0.3em] uppercase text-sky-400 mb-3">What's next</p>
               <h2 className="text-xl font-black text-slate-800 leading-tight mb-3 tracking-tight">We're just getting started.</h2>
               <p className="text-[13px] text-slate-500 leading-relaxed font-medium mb-4">
                 More features. More partnerships. More students reached. OTECHY is growing — and we're looking for mentors, collaborators, and organizations who believe what we believe.
               </p>
               <div className="flex flex-wrap gap-2">
                 {["Partnerships", "Mentorship", "Resources", "Collaboration"].map((item) => (
-                  <span key={item} className="text-[10px] font-bold px-3 py-1 rounded-full text-violet-600 bg-violet-50 border border-violet-200">{item}</span>
+                  <span key={item} className="text-[10px] font-bold px-3 py-1 rounded-full text-sky-600 bg-sky-50 border border-sky-200">{item}</span>
                 ))}
               </div>
             </div>
@@ -680,8 +680,8 @@ export default function AboutUs({ onBack }: AboutUsProps) {
           <Reveal delay={40}>
             <div className="rounded-2xl overflow-hidden bg-white border border-slate-100 shadow-sm">
               <a href="mailto:otechy8@gmail.com" className="flex items-center gap-4 px-5 py-4 active:bg-slate-50 border-b border-slate-50">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-50">
-                  <Mail size={16} className="text-violet-500" />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-sky-50">
+                  <Mail size={16} className="text-sky-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[9px] font-black tracking-[0.2em] uppercase text-slate-400 mb-0.5">Email</p>
@@ -740,7 +740,7 @@ export default function AboutUs({ onBack }: AboutUsProps) {
                 }}
               />
               <div className="items-center gap-1.5" style={{ display: "none" }}>
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #7C3AED, #3B82F6)" }}>
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #0284c7, #3B82F6)" }}>
                   <GraduationCap size={12} className="text-white" />
                 </div>
                 <span className="text-[12px] font-black text-slate-600 tracking-tight">SchoraHub</span>

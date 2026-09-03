@@ -8,15 +8,15 @@ import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-500 dark:text-blue-400",
-  "Textbooks":   "bg-purple-500/15 text-purple-500 dark:text-purple-400",
+  "Textbooks":   "bg-sky-500/15 text-sky-500 dark:text-sky-400",
   "Notes":       "bg-green-500/15 text-green-600 dark:text-green-400",
   "Research":    "bg-orange-500/15 text-orange-500 dark:text-orange-400",
   "Other":       "bg-gray-500/15 text-gray-500 dark:text-gray-400",
 };
 
 const CAT_GRADIENTS: Record<string, string> = {
-  "Past Papers": "from-blue-600 to-indigo-600",
-  "Textbooks":   "from-purple-600 to-violet-600",
+  "Past Papers": "from-blue-600 to-sky-600",
+  "Textbooks":   "from-sky-600 to-sky-600",
   "Notes":       "from-green-500 to-teal-600",
   "Research":    "from-orange-500 to-amber-600",
   "Other":       "from-gray-500 to-slate-600",
@@ -169,9 +169,9 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
           <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-4">
             <div className="relative">
               <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <FileText className="w-7 h-7 text-purple-400" />
+                <FileText className="w-7 h-7 text-sky-400" />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-sky-600 flex items-center justify-center">
                 <Loader2 className="w-3 h-3 animate-spin text-white" />
               </div>
             </div>
@@ -184,7 +184,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
         {rendering && !initLoad && (
           <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
             <div className="bg-black/40 backdrop-blur-sm rounded-2xl px-5 py-3 flex items-center gap-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
               <span className="text-xs text-white/60">Page {page}</span>
             </div>
           </div>
@@ -232,7 +232,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[9px] text-white/30 font-mono w-4 text-right shrink-0">1</span>
             <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: "linear-gradient(to right,#7c3aed,#3b82f6)" }} />
+              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: "linear-gradient(to right,#0284c7,#3b82f6)" }} />
             </div>
             <span className="text-[9px] text-white/30 font-mono shrink-0">{total}</span>
           </div>
@@ -240,7 +240,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
             <div className="flex items-center justify-center gap-2">
               {Array.from({ length: total }, (_, i) => i + 1).map(p => (
                 <button key={p} onClick={e => { e.stopPropagation(); goTo(p); }}
-                  className={`rounded-full transition-all duration-200 active:scale-90 ${p === page ? "w-5 h-2.5 bg-purple-400 shadow-sm shadow-purple-500/50" : "w-2 h-2 bg-white/20"}`} />
+                  className={`rounded-full transition-all duration-200 active:scale-90 ${p === page ? "w-5 h-2.5 bg-sky-400 shadow-sm shadow-sky-500/50" : "w-2 h-2 bg-white/20"}`} />
               ))}
             </div>
           ) : total > 10 ? (
@@ -255,7 +255,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
               </div>
               <button onClick={e => { e.stopPropagation(); goTo(page + 1); }} disabled={page >= total}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold disabled:opacity-25 active:scale-95 transition-all shadow-md"
-                style={{ background: "linear-gradient(135deg,#7c3aed,#3b82f6)" }}>
+                style={{ background: "linear-gradient(135deg,#0284c7,#3b82f6)" }}>
                 Next <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -337,7 +337,7 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen 
             <button
               onClick={e => { e.stopPropagation(); setShowReader(true); }}
               className="absolute bottom-2 right-2 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full text-white active:scale-90 transition-transform shadow-md"
-              style={{ background: "linear-gradient(135deg,#7c3aed,#3b82f6)" }}
+              style={{ background: "linear-gradient(135deg,#0284c7,#3b82f6)" }}
             >
               <Eye className="w-3 h-3" /> Read
             </button>
@@ -385,7 +385,7 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen 
             {canAccess ? (
               <button
                 onClick={e => { e.stopPropagation(); onDownload(resource); }}
-                className="w-full flex items-center justify-center gap-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[10px] font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm shadow-purple-500/20"
+                className="w-full flex items-center justify-center gap-1 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-[10px] font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm shadow-sky-500/20"
               >
                 <Download className="w-3 h-3" /> Download
               </button>

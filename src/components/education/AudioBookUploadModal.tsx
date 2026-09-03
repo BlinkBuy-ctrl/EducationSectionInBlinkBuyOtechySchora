@@ -135,9 +135,9 @@ export function AudioBookUploadModal({ userId, onClose, onSuccess }: Props) {
       onClick={e => { if (e.target === e.currentTarget && !isLoading) onClose(); }}>
       <div className="w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] overflow-y-auto">
 
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-pink-600/10 to-purple-600/10 sticky top-0 bg-card z-10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-gradient-to-r from-pink-600/10 to-sky-600/10 sticky top-0 bg-card z-10">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-600 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-600 to-sky-600 flex items-center justify-center">
               <Music className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -189,7 +189,7 @@ export function AudioBookUploadModal({ userId, onClose, onSuccess }: Props) {
           {/* Cover art picker (optional) */}
           <div onClick={() => !isLoading && coverRef.current?.click()}
             className={`border border-dashed rounded-xl overflow-hidden transition-colors ${
-              isLoading ? "opacity-60 cursor-not-allowed border-border" : "border-border hover:border-purple-500/50 cursor-pointer"
+              isLoading ? "opacity-60 cursor-not-allowed border-border" : "border-border hover:border-sky-500/50 cursor-pointer"
             }`}>
             {coverPreview ? (
               <div className="relative">
@@ -215,7 +215,7 @@ export function AudioBookUploadModal({ userId, onClose, onSuccess }: Props) {
                 <span className="font-bold text-pink-400">{progress}%</span>
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-pink-500 to-purple-500 rounded-full transition-all duration-200"
+                <div className="h-full bg-gradient-to-r from-pink-500 to-sky-500 rounded-full transition-all duration-200"
                   style={{ width: `${progress}%` }} />
               </div>
             </div>
@@ -272,7 +272,7 @@ export function AudioBookUploadModal({ userId, onClose, onSuccess }: Props) {
             className={`w-full flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all active:scale-[0.98] shadow-md disabled:cursor-not-allowed ${
               status === "done"  ? "bg-green-500 text-white"
               : status === "error" ? "bg-gradient-to-r from-red-500 to-orange-500 text-white"
-              : "bg-gradient-to-r from-pink-600 to-purple-600 disabled:opacity-60 text-white"
+              : "bg-gradient-to-r from-pink-600 to-sky-600 disabled:opacity-60 text-white"
             }`}>
             {isLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" />{statusLabel[status]}</>

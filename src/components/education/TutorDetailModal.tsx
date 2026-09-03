@@ -202,14 +202,14 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
             {t.contact && (
               <a href={`tel:${t.contact}`}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold text-white active:scale-[0.97] transition-all"
-                style={{ background: "linear-gradient(135deg, #3b82f6, #6366f1)" }}>
+                style={{ background: "linear-gradient(135deg, #3b82f6, #0ea5e9)" }}>
                 <Phone className="w-3.5 h-3.5" /> Call
               </a>
             )}
             {t.email && (
               <a href={`mailto:${t.email}`}
                 className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-xs font-bold text-white active:scale-[0.97] transition-all"
-                style={{ background: "linear-gradient(135deg, #a855f7, #ec4899)" }}>
+                style={{ background: "linear-gradient(135deg, #0ea5e9, #ec4899)" }}>
                 <Mail className="w-3.5 h-3.5" /> Email
               </a>
             )}

@@ -6,7 +6,7 @@ interface AnimatedSearchInputProps {
   onChange: (v: string) => void;
   /** Rotating hint phrases shown when the field is empty, e.g. "Search Physics…" */
   phrases: string[];
-  /** Tailwind focus ring class, e.g. "focus:ring-purple-500/50" */
+  /** Tailwind focus ring class, e.g. "focus:ring-sky-500/50" */
   ringColorClass?: string;
   /** Extra classes on the outer wrapper (use for flex-1 etc.) */
   className?: string;
@@ -37,7 +37,7 @@ export function AnimatedSearchInput({
   value,
   onChange,
   phrases,
-  ringColorClass = "focus:ring-purple-500/50",
+  ringColorClass = "focus:ring-sky-500/50",
   className = "",
   inputClassName = "",
   showClear = true,
