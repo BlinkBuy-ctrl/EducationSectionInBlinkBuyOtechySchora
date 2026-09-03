@@ -32,14 +32,14 @@ function showFatalStartupError(message: string) {
     '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
     'padding:24px;background:#060818;color:#fff;flex-direction:column;text-align:center;' +
     'font-family:system-ui,-apple-system,sans-serif;">' +
-    '<div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#9333ea,#2563eb);' +
+    '<div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#0284c7,#2563eb);' +
     'display:flex;align-items:center;justify-content:center;margin-bottom:20px;' +
     'box-shadow:0 8px 24px rgba(147,51,234,0.35);font-size:26px;">🎓</div>' +
     '<h2 style="font-size:18px;font-weight:800;margin-bottom:10px;letter-spacing:-0.01em;">' +
     'SchoraHub couldn\u2019t start</h2>' +
     '<p style="font-size:13px;color:rgba(255,255,255,0.6);max-width:300px;margin-bottom:20px;line-height:1.6;">' +
     'Please update your browser or use a different browser, then reopen the app.</p>' +
-    '<button onclick="window.location.reload()" style="background:linear-gradient(135deg,#9333ea,#2563eb);' +
+    '<button onclick="window.location.reload()" style="background:linear-gradient(135deg,#0284c7,#2563eb);' +
     'color:#fff;border:none;border-radius:12px;padding:12px 28px;font-weight:700;font-size:14px;' +
     'box-shadow:0 8px 20px rgba(147,51,234,0.3);margin-bottom:24px;">Try Again</button>' +
     '<div style="width:32px;height:1px;background:rgba(255,255,255,0.12);margin-bottom:14px;"></div>' +
