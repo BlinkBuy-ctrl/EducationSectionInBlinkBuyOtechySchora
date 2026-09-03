@@ -547,25 +547,6 @@ export default function EducationPage() {
                 <p className="text-[10px] text-sky-300 font-medium">Education Hub · Malawi</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {[
-                { icon: FileText, label: `${resources.length} Resources`, onClick: () => { setTab("resources"); setContentType("documents"); } },
-                { icon: Headphones, label: `${audiobooks.length} Audio Books`, onClick: () => { setTab("resources"); setContentType("audio"); } },
-                { icon: Award, label: `${scholarships.length} Scholarships`, onClick: () => setTab("scholarships") },
-                { icon: Users, label: `${tutors.length} Tutors`, onClick: () => setTab("tutors") },
-                { icon: Briefcase, label: `${jobs.length} Jobs`, onClick: () => setTab("jobs") },
-              ].map(({ icon: Icon, label, onClick }) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={onClick}
-                  className="flex items-center gap-1 bg-transparent border-0 p-0 m-0 cursor-pointer active:scale-90 active:opacity-60 transition-transform duration-100"
-                >
-                  <Icon className="w-3 h-3 text-sky-400" />
-                  <span className="text-[10px] text-white/55 font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
           </div>
           <button
             data-tour="upload-btn"
