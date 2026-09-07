@@ -15,6 +15,8 @@ import { AudioBookDetailModal } from "@/components/education/AudioBookDetailModa
 import { AudioBookUploadModal } from "@/components/education/AudioBookUploadModal";
 import { SellerDashboard } from "@/components/education/SellerDashboard";
 import { ScholarshipsTab } from "@/components/education/ScholarshipsTab";
+import { ScholarshipCarousel } from "@/components/education/ScholarshipCarousel";
+import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
 import { TutorsTab } from "@/components/education/TutorsTab";
 import { AdvertsTab } from "@/components/education/AdvertsTab";
 import { UniversitiesTab } from "@/components/education/UniversitiesTab";
@@ -137,6 +139,7 @@ export default function EducationPage() {
   const [audiobookCat,       setAudiobookCat]       = useState<typeof ACATS[number]>("All");
   const [showAudioUpload,    setShowAudioUpload]    = useState(false);
   const [detailAudiobook,    setDetailAudiobook]    = useState<AudioBook | null>(null);
+  const [detailScholarship,  setDetailScholarship]  = useState<any>(null);
 
   const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
 
@@ -685,9 +688,23 @@ export default function EducationPage() {
                 </button>
               </div>
             ) : (
-              <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
-                {filtered.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
-              </div>
+              <>
+                <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
+                  {filtered.slice(0, Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                </div>
+
+                {/* Embedded horizontal scholarships carousel — Facebook "People You May
+                    Know" style — sits mid-feed without breaking the vertical PDF grid. */}
+                <ScholarshipCarousel
+                  scholarships={scholarships}
+                  onOpen={setDetailScholarship}
+                  onSeeAll={() => setTab("scholarships")}
+                />
+
+                <div className="grid grid-cols-2 gap-3">
+                  {filtered.slice(Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                </div>
+              </>
             )
           )}
         </>
@@ -791,6 +808,14 @@ export default function EducationPage() {
               setDetailAudiobook(d => d ? { ...d, ...fresh } : d);
             }
           }}
+        />
+      )}
+
+      {detailScholarship && (
+        <ScholarshipDetailModal
+          s={detailScholarship}
+          user={user}
+          onClose={() => setDetailScholarship(null)}
         />
       )}
     </div>
