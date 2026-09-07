@@ -596,23 +596,38 @@ export default function EducationPage() {
             </button>
           </div>
 
+          {/* Content type switch — Documents vs Audio Books. Made a full-width,
+              impossible-to-miss segmented control (previously a small pill
+              buried at the end of the price filter row). */}
+          <div className="grid grid-cols-2 gap-2 mb-3 p-1 bg-muted/50 rounded-xl">
+            <button
+              onClick={() => setContentType("documents")}
+              className={`flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-lg transition-all ${
+                contentType === "documents"
+                  ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-sm"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" /> Documents
+            </button>
+            <button
+              onClick={() => setContentType("audio")}
+              className={`flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-lg transition-all ${
+                contentType === "audio"
+                  ? "bg-gradient-to-r from-pink-600 to-sky-600 text-white shadow-sm shadow-pink-500/30"
+                  : "text-muted-foreground"
+              }`}
+            >
+              <Headphones className="w-3.5 h-3.5" /> Audio Books
+            </button>
+          </div>
+
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
             {(["all","free","paid"] as PriceFilter[]).map(f => (
               <button key={f} onClick={() => setPrice(f)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${price === f ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
                 {f === "all" ? "All" : f === "free" ? "Free" : "Paid"}
               </button>
             ))}
-            <span className="w-px bg-border shrink-0 my-0.5" />
-            <button
-              onClick={() => setContentType(t => (t === "documents" ? "audio" : "documents"))}
-              className={`shrink-0 flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                contentType === "audio"
-                  ? "bg-gradient-to-r from-pink-600 to-sky-600 border-transparent text-white shadow-sm shadow-pink-500/30"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              <Headphones className="w-3 h-3" /> Audio
-            </button>
           </div>
 
           <div
