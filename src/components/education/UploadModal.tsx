@@ -39,7 +39,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const [status,       setStatus]       = useState<Status>("idle");
   const [progress,     setProgress]     = useState(0);
   const [errMsg,       setErrMsg]       = useState("");
-  const [form,         setForm]         = useState({ title: "", description: "", category: "Notes", price: "0" });
+  const [form,         setForm]         = useState({ title: "", description: "", category: "Notes" });
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const isLoading = ["extracting", "uploading", "saving"].includes(status);
@@ -73,8 +73,6 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const handleSubmit = async () => {
     if (!file)              { setErrMsg("Select a file."); return; }
     if (!form.title.trim()) { setErrMsg("Title required."); return; }
-    const price = parseFloat(form.price);
-    if (isNaN(price) || price < 0) { setErrMsg("Invalid price."); return; }
 
     setErrMsg(""); setProgress(5);
 
@@ -129,7 +127,6 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         title:         form.title.trim(),
         description:   form.description.trim() || null,
         category:      form.category,
-        price,
         file_url:      path,
         file_name:     file.name,
         file_size:     file.size,
@@ -181,7 +178,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             </div>
             <div>
               <p className="font-bold text-sm">Upload Resource</p>
-              <p className="text-[10px] text-muted-foreground">Sell or share for free</p>
+              <p className="text-[10px] text-muted-foreground">100% free — share with everyone</p>
             </div>
           </div>
           <button onClick={() => { if (!isLoading) onClose(); }} disabled={isLoading}
@@ -267,20 +264,12 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
               className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-none disabled:opacity-60" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
-              <select value={form.category} onChange={e => set("category", e.target.value)} disabled={isLoading}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60">
-                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">Price (MK) — 0 = Free</label>
-              <input type="number" min="0" step="50" value={form.price}
-                onChange={e => set("price", e.target.value)} disabled={isLoading}
-                className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60" />
-            </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Category</label>
+            <select value={form.category} onChange={e => set("category", e.target.value)} disabled={isLoading}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60">
+              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            </select>
           </div>
 
           <button onClick={handleSubmit} disabled={isLoading || status === "done"}

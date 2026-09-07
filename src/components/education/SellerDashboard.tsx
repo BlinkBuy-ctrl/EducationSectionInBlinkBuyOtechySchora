@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import {
-  TrendingUp, Download, Star, DollarSign,
-  FileText, Loader2, Trash2, AlertTriangle,
+  TrendingUp, Download, Star,
+  FileText, Loader2, Trash2,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
   Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones
@@ -290,13 +290,6 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
       bg: "bg-blue-500/10",
     },
     {
-      icon: DollarSign,
-      label: "Earnings",
-      value: `MK ${Number(stats?.total_earnings ?? 0).toLocaleString()}`,
-      color: "from-green-500 to-emerald-500",
-      bg: "bg-green-500/10",
-    },
-    {
       icon: Star,
       label: "Avg Rating",
       value: stats?.avg_rating > 0 ? `${Number(stats.avg_rating).toFixed(1)}★` : "—",
@@ -313,10 +306,10 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
       <ProfileNameEditor userId={userId} />
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-3 gap-2.5">
         {statCards.map(s => (
           <div key={s.label}
-            className="bg-card border border-border rounded-2xl p-3.5 flex items-center gap-3 overflow-hidden relative">
+            className="bg-card border border-border rounded-2xl p-3.5 flex flex-col items-center text-center gap-2 overflow-hidden relative">
             {/* subtle gradient bg accent */}
             <div className={`absolute inset-0 opacity-[0.04] bg-gradient-to-br ${s.color} pointer-events-none`} />
             <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center shrink-0 shadow-sm`}>
@@ -551,14 +544,6 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
             </div>
           )
         )}
-      </div>
-
-      {/* Disclaimer */}
-      <div className="flex items-start gap-2 bg-yellow-500/8 border border-yellow-500/20 rounded-xl px-3 py-2.5">
-        <AlertTriangle className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
-        <p className="text-[10px] text-yellow-600 dark:text-yellow-400 leading-relaxed">
-          Earnings shown are recorded purchases. Payouts are processed manually — contact SchoraHub to request a withdrawal.
-        </p>
       </div>
 
       {/* ── Settings & More ──────────────────────────────────────────── */}
