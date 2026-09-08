@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext, useCallback } from "react";
+import { useState, useEffect, useRef, useContext, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Download, Lock, Star, FileText,
@@ -418,11 +418,14 @@ interface Props {
   onDownload: (r: any) => void;
   onBookmarkToggle: (r: any) => void;
   onRatingSubmit?: (resourceId: string) => void;
+  allResources?: any[];
+  onOpenSimilar?: (r: any) => void;
 }
 
 export function ResourceDetailModal({
   resource, isPurchased, isBookmarked,
   onClose, onBuy, onDownload, onBookmarkToggle, onRatingSubmit,
+  allResources, onOpenSimilar,
 }: Props) {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
@@ -443,6 +446,32 @@ export function ResourceDetailModal({
   const canAccess = isFree || isPurchased;
   const size      = formatSize(resource.file_size);
   const isPDF     = resource.file_name?.toLowerCase().endsWith(".pdf");
+
+  // "Similar to this book" — approximated from what's already loaded: same
+  // category, or overlapping keywords in the title (e.g. both mention
+  // "Chemistry"). No subject/tag data is stored in this app yet.
+  const similar = useMemo(() => {
+    if (!allResources?.length) return [];
+    const stop = new Set(["the","and","for","with","form","notes","note","paper","papers","exam","past","of","in","a","an"]);
+    const words = (resource.title ?? "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w: string) => w.length > 2 && !stop.has(w));
+
+    return allResources
+      .filter(r => r.id !== resource.id)
+      .map(r => {
+        const rTitle = (r.title ?? "").toLowerCase();
+        const sharedWords = words.filter((w: string) => rTitle.includes(w)).length;
+        const sameCategory = r.category === resource.category;
+        const score = sharedWords * 2 + (sameCategory ? 1 : 0);
+        return { r, score };
+      })
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10)
+      .map(x => x.r);
+  }, [allResources, resource.id, resource.title, resource.category]);
 
   useEffect(() => {
     const load = async () => {
@@ -685,6 +714,35 @@ export function ResourceDetailModal({
                   </div>
                 )}
               </div>
+
+              {similar.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-foreground mb-2">📚 Similar to this book</p>
+                  <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1">
+                    {similar.map(r => (
+                      <div
+                        key={r.id}
+                        onClick={() => onOpenSimilar?.(r)}
+                        className="snap-start shrink-0 w-[42%] max-w-[150px] bg-muted/30 border border-border rounded-xl overflow-hidden cursor-pointer active:scale-[0.97] transition-transform"
+                      >
+                        <div className="relative w-full bg-muted/50 flex items-center justify-center" style={{ height: 72 }}>
+                          {r.thumbnail_url ? (
+                            <img src={r.thumbnail_url} alt={r.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <FileText className="w-6 h-6 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="p-2">
+                          <span className={`inline-block text-[8px] font-bold px-1.5 py-0.5 rounded-full mb-1 ${CAT_COLORS[r.category] ?? CAT_COLORS["Other"]}`}>
+                            {r.category}
+                          </span>
+                          <p className="text-[10.5px] font-semibold text-foreground leading-snug line-clamp-2">{r.title}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
