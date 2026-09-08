@@ -702,7 +702,22 @@ export default function EducationPage() {
                 />
 
                 <div className="grid grid-cols-2 gap-3">
-                  {filtered.slice(Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                  {filtered.slice(Math.ceil(filtered.length / 2), Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                </div>
+
+                {/* Second carousel — identical component/style — reappears after
+                    roughly 4 more rows (8 cards) of books, same as Facebook
+                    repeating "People You May Know" further down the feed. */}
+                {filtered.length > Math.ceil(filtered.length / 2) + 8 && (
+                  <ScholarshipCarousel
+                    scholarships={[...scholarships].reverse()}
+                    onOpen={setDetailScholarship}
+                    onSeeAll={() => setTab("scholarships")}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  {filtered.slice(Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
                 </div>
               </>
             )
