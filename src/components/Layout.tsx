@@ -9,7 +9,9 @@ import {
   Home, BarChart2, Search, Upload, Megaphone,
   ChevronUp, ChevronDown, Headphones, Award, Users,
   Briefcase, Building2, BookText, Bookmark, BookOpen, Info,
+  Rocket,
 } from "lucide-react";
+import OtechyAcademyModal from "@/components/education/OtechyAcademyModal";
 
 /** Hand-drawn to match the exact dot + bar icon supplied for this menu —
  *  no icon set ships this glyph, so it's custom rather than approximated. */
@@ -26,7 +28,7 @@ function CategoryMenuIcon({ className }: { className?: string }) {
   );
 }
 
-interface MenuItem { icon: React.ElementType; label: string; tab?: string; route?: string }
+interface MenuItem { icon: React.ElementType; label: string; tab?: string; route?: string; action?: "academy" }
 interface MenuGroup { label: string; items: MenuItem[] }
 
 const MENU_GROUPS: MenuGroup[] = [
@@ -50,6 +52,9 @@ const MENU_GROUPS: MenuGroup[] = [
   { label: "Utility", items: [
     { icon: BookOpen, label: "Book Request Center", route: "/book-request-center" },
     { icon: Info,     label: "About Us",            tab: "aboutus" },
+  ]},
+  { label: "Earn", items: [
+    { icon: Rocket, label: "Income Skills", action: "academy" },
   ]},
 ];
 
@@ -76,6 +81,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const goMenuItem = (item: MenuItem) => {
     setMenuOpen(false);
+    if (item.action === "academy") { window.dispatchEvent(new CustomEvent("otechy:open-academy")); return; }
     if (item.route) { navigate(item.route); setActiveTab(""); return; }
     navigate("/");
     setActiveTab(item.tab ?? "");
@@ -239,7 +245,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <div className={group.label ? "grid grid-cols-2 gap-1.5" : ""}>
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const active = item.route ? loc === item.route : (loc === "/" && activeTab === (item.tab ?? ""));
+                      const active = item.action ? false : item.route ? loc === item.route : (loc === "/" && activeTab === (item.tab ?? ""));
                       return (
                         <button
                           key={item.label}
@@ -332,6 +338,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <Megaphone className="w-5 h-5" />Adverts
         </button>
       </nav>
+
+      <OtechyAcademyModal />
     </div>
   );
 }
