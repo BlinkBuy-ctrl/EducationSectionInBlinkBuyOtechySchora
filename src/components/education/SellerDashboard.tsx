@@ -6,7 +6,7 @@ import {
   FileText, Loader2, Trash2,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
-  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones
+  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones, Rocket,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
@@ -606,6 +606,22 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
                 <Bookmark className="w-4 h-4 text-emerald-400" />
               </div>
               <p className="flex-1 text-left text-xs font-bold text-foreground">Saved / Bookmarks</p>
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            </button>
+          </div>
+
+          {/* Earn Hub */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <p className="px-4 pt-3 pb-1 text-[9px] font-black tracking-[0.2em] uppercase text-muted-foreground">Earn</p>
+            <button onClick={() => window.dispatchEvent(new CustomEvent("otechy:open-academy"))}
+              className="w-full flex items-center gap-3 px-4 py-3 active:bg-muted/40 transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                <Rocket className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-xs font-bold text-foreground">Earn Hub</p>
+                <p className="text-[10px] text-muted-foreground">Learn real income-earning skills, coming soon to Otechy Academy</p>
+              </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
             </button>
           </div>
