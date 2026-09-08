@@ -787,6 +787,8 @@ export default function EducationPage() {
           onBuy={handleBuy}
           onDownload={handleDownload}
           onBookmarkToggle={handleBookmark}
+          allResources={resources}
+          onOpenSimilar={setDetailRes}
           onRatingSubmit={async (resourceId: string) => {
             const { data: fresh } = await supabase
               .from("otechy_resources")
