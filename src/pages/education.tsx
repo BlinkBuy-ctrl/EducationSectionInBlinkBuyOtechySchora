@@ -771,7 +771,15 @@ export default function EducationPage() {
         )
       )}
 
-      {tab === "dashboard" && <SellerDashboard userId={user.id} onRefresh={fetchAll} />}
+      {tab === "dashboard" && (
+        <SellerDashboard
+          userId={user.id}
+          onRefresh={fetchAll}
+          onUploadClick={async () => { await ensureProfile(); setShowUpload(true); }}
+          onAudioUploadClick={async () => { await ensureProfile(); setShowAudioUpload(true); }}
+          onGoToTutors={() => setTab("tutors")}
+        />
+      )}
       {tab === "aboutus"   && <AboutUs onBack={() => setTab("resources")} />}
 
       {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />}
