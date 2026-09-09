@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useContext, useRef, useCallback } from "react";
 import {
   Link2, Loader2, Upload, FileText, FileSpreadsheet,
-  Presentation, Image as ImageIcon, File as FileIcon, X, Trash2, ExternalLink,
+  Presentation, Image as ImageIcon, File as FileIcon, X, Trash2,
+  Eye, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { getUniversities, type University } from "@/lib/universities";
 import {
@@ -15,10 +16,13 @@ import {
   type EducationFileType,
 } from "@/lib/educationFiles";
 import { UniversityCarousel } from "@/components/education/UniversityCarousel";
+import { EducationFileDetailModal } from "@/components/education/EducationFileDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { UniversityDetailModal } from "@/components/education/UniversityDetailModal";
 import { useToast } from "@/hooks/use-toast";
+import { AuthContext } from "@/hooks/useAuth";
 import { getCache, setCache } from "@/lib/offlineCache";
+import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const UNI_SEARCH_PHRASES = [
   "Search LUANAR…",
@@ -37,11 +41,251 @@ const FILE_TYPE_ICON: Record<EducationFileType, typeof FileText> = {
   other: FileIcon,
 };
 
-function EducationFileCard({ file, universityName, onDelete }: { file: EducationFile; universityName: string; onDelete: (id: string) => void }) {
+// ── Shared PDF.js singleton (same pattern as ResourceCard/ResourceDetailModal) ──
+let pdfjsLib: any = null;
+async function getPdf() {
+  if (pdfjsLib) return pdfjsLib;
+  const lib = await import("pdfjs-dist");
+  lib.GlobalWorkerOptions.workerSrc = workerUrl;
+  pdfjsLib = lib;
+  return lib;
+}
+
+const docCache = new Map<string, any>();
+async function getDoc(url: string) {
+  if (docCache.has(url)) return docCache.get(url);
+  const lib = await getPdf();
+  const doc = await lib.getDocument({ url, withCredentials: false }).promise;
+  docCache.set(url, doc);
+  return doc;
+}
+
+export async function renderPage(doc: any, pageNum: number, canvas: HTMLCanvasElement) {
+  const page = await doc.getPage(pageNum);
+  const w = canvas.parentElement?.clientWidth || window.innerWidth;
+  const vp = page.getViewport({ scale: 1 });
+  const scale = w / vp.width;
+  const scaled = page.getViewport({ scale });
+  canvas.width = scaled.width;
+  canvas.height = scaled.height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport: scaled }).promise;
+}
+
+// ── Full-screen PDF reader — same visual language as ResourceCard's reader ──
+export function FileReaderModal({ file, onClose }: { file: EducationFile; onClose: () => void }) {
+  const [doc, setDoc] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [rendering, setRendering] = useState(true);
+  const [initLoad, setInitLoad] = useState(true);
+  const [error, setError] = useState(false);
+  const [showNav, setShowNav] = useState(true);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderingRef = useRef(false);
+  const navTimerRef = useRef<any>(null);
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const resetNavTimer = useCallback(() => {
+    setShowNav(true);
+    clearTimeout(navTimerRef.current);
+    navTimerRef.current = setTimeout(() => setShowNav(false), 3500);
+  }, []);
+
+  useEffect(() => {
+    resetNavTimer();
+    return () => clearTimeout(navTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    getDoc(file.file_url)
+      .then(d => { setDoc(d); setTotal(d.numPages); })
+      .catch(() => { setError(true); setRendering(false); setInitLoad(false); });
+  }, [file.file_url]);
+
+  useEffect(() => {
+    if (!doc || !canvasRef.current) return;
+    if (renderingRef.current) return;
+    renderingRef.current = true;
+    setRendering(true);
+    renderPage(doc, page, canvasRef.current)
+      .catch(() => setError(true))
+      .finally(() => { setRendering(false); setInitLoad(false); renderingRef.current = false; });
+  }, [doc, page]);
+
+  const goTo = (p: number) => {
+    if (!total || p < 1 || p > total || renderingRef.current) return;
+    setPage(p); resetNavTimer();
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(dx) < Math.abs(dy) || Math.abs(dx) < 45) return;
+    if (dx < 0) goTo(page + 1); else goTo(page - 1);
+  };
+  const onTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const x = e.clientX; const w = window.innerWidth;
+    resetNavTimer();
+    if (x < w * 0.33) goTo(page - 1);
+    else if (x > w * 0.67) goTo(page + 1);
+    else { setShowNav(v => !v); clearTimeout(navTimerRef.current); }
+  };
+
+  const progress = total ? (page / total) * 100 : 0;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex flex-col select-none"
+      style={{ background: "linear-gradient(160deg,#0d0d1a 0%,#111128 60%,#0a0a14 100%)", touchAction: "pan-y" }}>
+
+      <div className={`absolute top-0 left-0 right-0 z-20 transition-all duration-300 ${showNav ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}`}>
+        <div className="flex items-center gap-2.5 px-3 pt-10 pb-5"
+          style={{ background: "linear-gradient(to bottom,rgba(0,0,0,0.85) 0%,transparent 100%)" }}>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/12 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+            <X className="w-3.5 h-3.5 text-white" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-xs text-white/90 truncate">{file.title}</p>
+            <p className="text-[9px] text-white/35">{file.category}</p>
+          </div>
+          {total > 0 && (
+            <div className="shrink-0 bg-white/10 backdrop-blur-md border border-white/10 rounded-full px-2.5 py-1">
+              <span className="text-[10px] text-white/70 font-mono">{page}<span className="text-white/30">/{total}</span></span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden relative" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onClick={onTap}>
+        {initLoad && !error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                <FileText className="w-7 h-7 text-sky-400" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-sky-600 flex items-center justify-center">
+                <Loader2 className="w-3 h-3 animate-spin text-white" />
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-white/60 font-medium">Opening document</p>
+              <p className="text-[10px] text-white/25 mt-1">{file.title}</p>
+            </div>
+          </div>
+        )}
+        {rendering && !initLoad && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="bg-black/40 backdrop-blur-sm rounded-2xl px-5 py-3 flex items-center gap-2.5">
+              <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+              <span className="text-xs text-white/60">Page {page}</span>
+            </div>
+          </div>
+        )}
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8">
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <FileText className="w-7 h-7 text-red-400/60" />
+            </div>
+            <p className="text-sm text-white/50 font-medium text-center">Could not load document</p>
+            <button onClick={onClose} className="px-5 py-2 rounded-xl bg-white/10 border border-white/10 text-white/70 text-xs font-semibold">Go Back</button>
+          </div>
+        )}
+        {showNav && doc && !rendering && !initLoad && (
+          <>
+            {page > 1 && (
+              <div className="absolute left-0 top-0 bottom-0 w-14 flex items-center justify-start pl-2 pointer-events-none">
+                <div className="w-7 h-14 rounded-r-xl bg-white/5 border-r border-y border-white/8 flex items-center justify-center">
+                  <ChevronLeft className="w-4 h-4 text-white/30" />
+                </div>
+              </div>
+            )}
+            {page < total && (
+              <div className="absolute right-0 top-0 bottom-0 w-14 flex items-center justify-end pr-2 pointer-events-none">
+                <div className="w-7 h-14 rounded-l-xl bg-white/5 border-l border-y border-white/8 flex items-center justify-center">
+                  <ChevronRight className="w-4 h-4 text-white/30" />
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        <div className="w-full h-full overflow-y-auto">
+          <div className="px-1 py-2">
+            <div className="rounded-xl overflow-hidden shadow-2xl"
+              style={{ boxShadow: "0 25px 60px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.04)", opacity: initLoad ? 0 : rendering ? 0.4 : 1, transition: "opacity 0.2s ease" }}>
+              <canvas ref={canvasRef} className="w-full block bg-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className={`absolute bottom-0 left-0 right-0 z-20 transition-all duration-300 ${showNav ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
+        <div className="px-4 pt-6 pb-8" style={{ background: "linear-gradient(to top,rgba(0,0,0,0.90) 0%,transparent 100%)" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[9px] text-white/30 font-mono w-4 text-right shrink-0">1</span>
+            <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: "linear-gradient(to right,#0284c7,#3b82f6)" }} />
+            </div>
+            <span className="text-[9px] text-white/30 font-mono shrink-0">{total}</span>
+          </div>
+          {total > 0 && total <= 10 ? (
+            <div className="flex items-center justify-center gap-2">
+              {Array.from({ length: total }, (_, i) => i + 1).map(p => (
+                <button key={p} onClick={e => { e.stopPropagation(); goTo(p); }}
+                  className={`rounded-full transition-all duration-200 active:scale-90 ${p === page ? "w-5 h-2.5 bg-sky-400 shadow-sm shadow-sky-500/50" : "w-2 h-2 bg-white/20"}`} />
+              ))}
+            </div>
+          ) : total > 10 ? (
+            <div className="flex items-center justify-between">
+              <button onClick={e => { e.stopPropagation(); goTo(page - 1); }} disabled={page <= 1}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 text-white/70 text-xs font-semibold disabled:opacity-25 active:scale-95 transition-all">
+                <ChevronLeft className="w-3.5 h-3.5" /> Prev
+              </button>
+              <div className="flex flex-col items-center">
+                <span className="text-white font-bold text-sm">{page}</span>
+                <span className="text-white/30 text-[9px]">of {total}</span>
+              </div>
+              <button onClick={e => { e.stopPropagation(); goTo(page + 1); }} disabled={page >= total}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold disabled:opacity-25 active:scale-95 transition-all shadow-md"
+                style={{ background: "linear-gradient(135deg,#0284c7,#3b82f6)" }}>
+                Next <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── File card — ResourceCard-style: cover, badges, Read button, tap opens detail modal ──
+function EducationFileCard({
+  file, universityName, currentUserId, onOpen, onDelete,
+}: {
+  file: EducationFile;
+  universityName: string;
+  currentUserId: string | null;
+  onOpen: (file: EducationFile) => void;
+  onDelete: (id: string) => void;
+}) {
   const [deleting, setDeleting] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
+  const [showReader, setShowReader] = useState(false);
   const Icon = FILE_TYPE_ICON[file.file_type] ?? FileIcon;
-  const showCover = !!file.cover_url && !coverFailed;
+  const showCover = !!(file as any).cover_url && !coverFailed;
+  const isPdf = file.file_type === "pdf";
+
+  // NOTE: gating delete to the uploader requires an `uploader_id` (auth user id)
+  // column on education_files, set at upload time. Until that column exists this
+  // reads as undefined and the delete button simply won't show for anyone.
+  const isOwner = !!currentUserId && !!(file as any).uploader_id && (file as any).uploader_id === currentUserId;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,35 +302,70 @@ function EducationFileCard({ file, universityName, onDelete }: { file: Education
   };
 
   return (
-    <a
-      href={file.file_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex flex-col gap-2 bg-card border border-border rounded-2xl p-3 active:scale-[0.97] transition-all"
-      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
-    >
-      <div className="relative w-full aspect-[3/4] rounded-xl bg-sky-500/10 flex items-center justify-center overflow-hidden shrink-0">
-        {showCover ? (
-          <img src={file.cover_url!} alt="" className="w-full h-full object-cover" onError={() => setCoverFailed(true)} />
-        ) : (
-          <Icon className="w-9 h-9 text-sky-500" />
-        )}
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          aria-label="Delete file"
-          className="absolute top-1.5 right-1.5 bg-background/80 backdrop-blur rounded-full p-1.5 text-muted-foreground/70 active:scale-90 transition-transform"
-        >
-          {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-        </button>
+    <>
+      <div
+        onClick={() => onOpen(file)}
+        className="group relative flex flex-col bg-card border border-border rounded-2xl overflow-hidden active:scale-[0.98] transition-all duration-150 cursor-pointer"
+        style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+      >
+        <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: 200 }}>
+          {showCover ? (
+            <img
+              src={(file as any).cover_url}
+              alt={file.title}
+              className="w-full h-full object-cover object-top"
+              onError={() => setCoverFailed(true)}
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-sky-600 to-blue-600 flex flex-col items-center justify-center gap-3 p-4">
+              <div className="w-14 h-16 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
+                <Icon className="w-7 h-7 text-white" />
+              </div>
+              <p className="text-white/80 text-[10px] font-semibold text-center leading-tight line-clamp-3 px-1">
+                {file.title}
+              </p>
+            </div>
+          )}
+
+          <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 text-sky-600 dark:text-sky-400">
+              {file.category}
+            </span>
+            {isOwner && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                aria-label="Delete file"
+                className="bg-black/50 backdrop-blur rounded-full p-1.5 text-white/85 active:scale-90 transition-transform shrink-0"
+              >
+                {deleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+              </button>
+            )}
+          </div>
+
+          {isPdf && (
+            <button
+              onClick={e => { e.stopPropagation(); setShowReader(true); }}
+              className="absolute bottom-2 right-2 flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full text-white active:scale-90 transition-transform shadow-md"
+              style={{ background: "linear-gradient(135deg,#0284c7,#3b82f6)" }}
+            >
+              <Eye className="w-3 h-3" /> Read
+            </button>
+          )}
+
+          <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none"
+            style={{ background: "linear-gradient(to top,rgba(0,0,0,0.3) 0%,transparent 100%)" }} />
+        </div>
+
+        <div className="p-2.5 flex flex-col gap-1.5">
+          <h3 className="font-bold text-xs text-foreground line-clamp-2 leading-snug">{file.title}</h3>
+          <p className="text-[10px] text-sky-500 font-semibold truncate">{universityName}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{file.program}</p>
+        </div>
       </div>
-      <p className="text-xs font-bold text-foreground line-clamp-2 leading-snug">{file.title}</p>
-      <p className="text-[10px] text-sky-500 font-semibold truncate">{universityName}</p>
-      <p className="text-[10px] text-muted-foreground truncate">{file.program} • {file.category}</p>
-      <div className="flex items-center gap-1 text-[10px] font-bold text-sky-500 mt-0.5">
-        Open <ExternalLink className="w-2.5 h-2.5" />
-      </div>
-    </a>
+
+      {showReader && <FileReaderModal file={file} onClose={() => setShowReader(false)} />}
+    </>
   );
 }
 
@@ -185,7 +464,7 @@ function UploadFileModal({
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Intro to Computer Systems — Notes Ch.1"
+              placeholder="e.g. BIO311 Past Paper 2024"
               className="w-full mt-1 bg-card border border-border rounded-xl p-2.5 text-sm text-foreground"
             />
           </div>
@@ -195,7 +474,7 @@ function UploadFileModal({
             <input
               value={uploadedBy}
               onChange={(e) => setUploadedBy(e.target.value)}
-              placeholder="e.g. Chikondi"
+              placeholder="Shown as the uploader"
               className="w-full mt-1 bg-card border border-border rounded-xl p-2.5 text-sm text-foreground"
             />
           </div>
@@ -206,7 +485,7 @@ function UploadFileModal({
               type="file"
               accept={ACCEPTED_FILE_EXTENSIONS}
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="w-full mt-1 text-sm text-foreground"
+              className="w-full mt-1 bg-card border border-border rounded-xl p-2.5 text-sm text-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-sky-500 file:text-white file:text-xs file:font-bold"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
               PDF, Word, Excel, PowerPoint, CSV or images. Max 50MB.
@@ -231,6 +510,9 @@ function UploadFileModal({
 
 export function UniversitiesTab() {
   const { toast } = useToast();
+  const { user } = useContext(AuthContext);
+  const currentUserId = user?.id ?? null;
+
   const [universities, setUniversities] = useState<University[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -240,6 +522,7 @@ export function UniversitiesTab() {
   const [filesLoading, setFilesLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [fileFilterUniId, setFileFilterUniId] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState<EducationFile | null>(null);
 
   const load = async () => {
     const cached = await getCache<University>("universities");
@@ -368,6 +651,8 @@ export function UniversitiesTab() {
               key={f.id}
               file={f}
               universityName={universityNameById.get(f.university_id) ?? "Unknown university"}
+              currentUserId={currentUserId}
+              onOpen={setSelectedFile}
               onDelete={(id) => setFiles(prev => prev.filter(x => x.id !== id))}
             />
           ))}
@@ -385,6 +670,15 @@ export function UniversitiesTab() {
       </a>
 
       {selected && <UniversityDetailModal university={selected} onClose={() => setSelected(null)} />}
+      {selectedFile && (
+        <EducationFileDetailModal
+          file={selectedFile}
+          universityName={universityNameById.get(selectedFile.university_id) ?? "Unknown university"}
+          currentUserId={currentUserId}
+          onClose={() => setSelectedFile(null)}
+          onDelete={(id) => { setFiles(prev => prev.filter(x => x.id !== id)); setSelectedFile(null); }}
+        />
+      )}
       {showUpload && (
         <UploadFileModal
           universities={universities}
