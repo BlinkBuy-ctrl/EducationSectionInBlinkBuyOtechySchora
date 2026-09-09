@@ -340,29 +340,8 @@ export function UniversitiesTab() {
         suggestionPool={suggestionPool}
       />
 
-      {loading && universities.length === 0 ? (
-        <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-      ) : universities.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
-            <Building2 className="w-7 h-7 text-sky-400" />
-          </div>
-          <p className="font-semibold text-foreground">No universities yet</p>
-          <p className="text-sm text-muted-foreground">Our team is adding universities soon — check back!</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
-            <Building2 className="w-7 h-7 text-sky-400" />
-          </div>
-          <p className="font-semibold text-foreground">No universities match</p>
-          <p className="text-sm text-muted-foreground">Try a different search.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3">
-          {filtered.map(u => <UniversityCard key={u.id} u={u} onOpen={setSelected} />)}
-        </div>
-      )}
+      {/* ── Quick browse (compact, auto-scrolling) — always up top so books are one scroll away ── */}
+      <UniversityCarousel universities={universities} onOpen={setSelected} />
 
       {/* ── Files Library ───────────────────────────────────── */}
       <div className="flex items-center justify-between mt-2">
@@ -411,7 +390,34 @@ export function UniversitiesTab() {
         </div>
       )}
 
-      <UniversityCarousel universities={universities} onOpen={setSelected} />
+      {/* ── All Universities (full grid) — secondary, browsable further down ── */}
+      <p className="flex items-center gap-1.5 font-bold text-sm text-foreground mt-2">
+        <Building2 className="w-4 h-4 text-sky-500" /> All Universities
+      </p>
+
+      {loading && universities.length === 0 ? (
+        <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : universities.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+            <Building2 className="w-7 h-7 text-sky-400" />
+          </div>
+          <p className="font-semibold text-foreground">No universities yet</p>
+          <p className="text-sm text-muted-foreground">Our team is adding universities soon — check back!</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
+            <Building2 className="w-7 h-7 text-sky-400" />
+          </div>
+          <p className="font-semibold text-foreground">No universities match</p>
+          <p className="text-sm text-muted-foreground">Try a different search.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {filtered.map(u => <UniversityCard key={u.id} u={u} onOpen={setSelected} />)}
+        </div>
+      )}
 
       <a href="https://wa.me/265999626944" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 text-xs font-bold text-sky-500 active:scale-[0.98] transition-all py-2">
         <Link2 className="w-3.5 h-3.5" /> Want To Help Add Link? Click Here
