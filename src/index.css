@@ -259,6 +259,19 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 }
 .pulse-emergency { animation: pulse-ring 1.5s infinite; }
 
+/* ── Mascot empty-state ── */
+@keyframes mascot-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-4px) scale(1.02); }
+}
+.mascot-bounce { animation: mascot-breathe 3s ease-in-out infinite; }
+
+@keyframes mascot-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.1); }
+}
+.mascot-blink { animation: mascot-blink 4.5s ease-in-out infinite; }
+
 /* ── Misc ── */
 html { scroll-behavior: smooth; }
 .strength-gradient { background: linear-gradient(90deg, #ef4444 0%, #f59e0b 40%, #22c55e 100%); }
