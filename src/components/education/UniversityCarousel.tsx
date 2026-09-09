@@ -5,12 +5,13 @@ import type { University } from "@/lib/universities";
 interface Props {
   universities: University[];
   onOpen: (u: University) => void;
-  title?: string;
+  title?: string; // pass "" to hide the heading entirely
 }
 
 const AUTO_SCROLL_SPEED = 0.45; // px per animation frame
 const RESUME_DELAY_MS = 3000; // idle time before auto-scroll resumes
 
+// Same footprint as the old full-grid UniversityCard: 64px icon, p-4 card.
 function MiniUniversityCard({ u, onOpen }: { u: University; onOpen: (u: University) => void }) {
   const [imgFailed, setImgFailed] = useState(false);
   const showLogo = !!u.logo_url && !imgFailed;
@@ -18,7 +19,7 @@ function MiniUniversityCard({ u, onOpen }: { u: University; onOpen: (u: Universi
   return (
     <div
       onClick={() => onOpen(u)}
-      className="snap-start shrink-0 w-[124px] flex flex-col items-center gap-2 bg-card border border-border rounded-2xl p-3.5 active:scale-[0.97] transition-all cursor-pointer"
+      className="snap-start shrink-0 w-[104px] flex flex-col items-center gap-2 bg-card border border-border rounded-2xl p-3 active:scale-[0.97] transition-all cursor-pointer"
       style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
     >
       <div className="w-16 h-16 rounded-2xl bg-muted/40 border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
@@ -28,12 +29,12 @@ function MiniUniversityCard({ u, onOpen }: { u: University; onOpen: (u: Universi
           <School className="w-7 h-7 text-sky-400" />
         )}
       </div>
-      <p className="text-xs font-bold text-foreground text-center line-clamp-2 leading-snug">{u.name}</p>
+      <p className="text-[11px] font-bold text-foreground text-center line-clamp-2 leading-snug">{u.name}</p>
     </div>
   );
 }
 
-export function UniversityCarousel({ universities, onOpen, title = "Browse Universities" }: Props) {
+export function UniversityCarousel({ universities, onOpen, title = "Reliable University Links" }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,7 +80,7 @@ export function UniversityCarousel({ universities, onOpen, title = "Browse Unive
 
   return (
     <div className="-mx-4 px-4 py-1">
-      <p className="font-bold text-sm text-foreground mb-2">{title}</p>
+      {title && <p className="font-bold text-sm text-foreground mb-2">{title}</p>}
       <div
         ref={scrollRef}
         onPointerDown={pauseNow}

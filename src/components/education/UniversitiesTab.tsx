@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Building2, Link2, Loader2, Upload, FileText, FileSpreadsheet,
+  Link2, Loader2, Upload, FileText, FileSpreadsheet,
   Presentation, Image as ImageIcon, File as FileIcon, X, Trash2, ExternalLink,
 } from "lucide-react";
 import { getUniversities, type University } from "@/lib/universities";
@@ -62,33 +62,29 @@ function EducationFileCard({ file, universityName, onDelete }: { file: Education
       href={file.file_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex flex-col bg-card border border-border rounded-2xl overflow-hidden active:scale-[0.97] transition-all"
+      className="flex flex-col gap-2 bg-card border border-border rounded-2xl p-3 active:scale-[0.97] transition-all"
       style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
     >
-      {/* Book-style cover — tall portrait thumbnail up top */}
-      <div className="relative w-full aspect-[3/4] bg-sky-500/10 flex items-center justify-center overflow-hidden">
+      <div className="relative w-full aspect-[3/4] rounded-xl bg-sky-500/10 flex items-center justify-center overflow-hidden shrink-0">
         {showCover ? (
           <img src={file.cover_url!} alt="" className="w-full h-full object-cover" onError={() => setCoverFailed(true)} />
         ) : (
-          <Icon className="w-10 h-10 text-sky-500" />
+          <Icon className="w-9 h-9 text-sky-500" />
         )}
         <button
           onClick={handleDelete}
           disabled={deleting}
           aria-label="Delete file"
-          className="absolute top-1.5 right-1.5 bg-black/40 backdrop-blur-sm rounded-full text-white active:scale-90 transition-transform p-1.5"
+          className="absolute top-1.5 right-1.5 bg-background/80 backdrop-blur rounded-full p-1.5 text-muted-foreground/70 active:scale-90 transition-transform"
         >
           {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
         </button>
       </div>
-
-      <div className="flex flex-col gap-1 p-3">
-        <p className="text-xs font-bold text-foreground line-clamp-2 leading-snug">{file.title}</p>
-        <p className="text-[10px] text-sky-500 font-semibold truncate">{universityName}</p>
-        <p className="text-[10px] text-muted-foreground truncate">{file.program} • {file.category}</p>
-        <div className="flex items-center gap-1 text-[10px] font-bold text-sky-500 mt-0.5">
-          Open <ExternalLink className="w-2.5 h-2.5" />
-        </div>
+      <p className="text-xs font-bold text-foreground line-clamp-2 leading-snug">{file.title}</p>
+      <p className="text-[10px] text-sky-500 font-semibold truncate">{universityName}</p>
+      <p className="text-[10px] text-muted-foreground truncate">{file.program} • {file.category}</p>
+      <div className="flex items-center gap-1 text-[10px] font-bold text-sky-500 mt-0.5">
+        Open <ExternalLink className="w-2.5 h-2.5" />
       </div>
     </a>
   );
@@ -320,8 +316,16 @@ export function UniversitiesTab() {
         suggestionPool={suggestionPool}
       />
 
-      {/* ── Quick browse (compact, auto-scrolling) — reflects the search box, always up top ── */}
-      <UniversityCarousel universities={filtered} onOpen={setSelected} />
+      {/* ── Quick browse (compact, auto-scrolling, bigger cards) ── */}
+      {loading && universities.length === 0 ? (
+        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : universities.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">Our team is adding universities soon — check back!</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No universities match "{search}".</p>
+      ) : (
+        <UniversityCarousel universities={filtered} onOpen={setSelected} title="Reliable University Links" />
+      )}
 
       {/* ── Files Library ───────────────────────────────────── */}
       <div className="flex items-center justify-between mt-2">
@@ -370,30 +374,11 @@ export function UniversitiesTab() {
         </div>
       )}
 
-      {/* ── Carousel repeats here so it stays within a scroll of the files ── */}
-      <UniversityCarousel universities={universities} onOpen={setSelected} />
+      {/* ── Carousel again, mid-page, so it keeps showing up as the user scrolls ── */}
+      {filtered.length > 0 && <UniversityCarousel universities={filtered} onOpen={setSelected} title="" />}
 
-      {/* ── Reliable University Links — same carousel, relabeled, anchors the bottom ── */}
-      {universities.length > 0 && (
-        <UniversityCarousel
-          universities={universities}
-          onOpen={setSelected}
-          title="Reliable University Links"
-        />
-      )}
-
-      {loading && universities.length === 0 && (
-        <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-      )}
-      {!loading && universities.length === 0 && (
-        <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center">
-            <Building2 className="w-7 h-7 text-sky-400" />
-          </div>
-          <p className="font-semibold text-foreground">No universities yet</p>
-          <p className="text-sm text-muted-foreground">Our team is adding universities soon — check back!</p>
-        </div>
-      )}
+      {/* ── Carousel once more near the bottom (replaces the old full grid) ── */}
+      {filtered.length > 0 && <UniversityCarousel universities={filtered} onOpen={setSelected} title="" />}
 
       <a href="https://wa.me/265999626944" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 text-xs font-bold text-sky-500 active:scale-[0.98] transition-all py-2">
         <Link2 className="w-3.5 h-3.5" /> Want To Help Add Link? Click Here
