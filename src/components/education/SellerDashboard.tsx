@@ -6,7 +6,7 @@ import {
   FileText, Loader2, Trash2,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
-  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones, Rocket,
+  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones, Rocket, Upload,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
@@ -25,7 +25,7 @@ import type { AdminProfile } from "@/lib/adminAuth";
 const APP_VERSION = "1.0.0"; // keep in sync with package.json
 const NOTIF_PREF_KEY = "otechyschora_notifications_enabled";
 
-interface Props { userId: string; onRefresh: () => void; }
+interface Props { userId: string; onRefresh: () => void; onUploadClick?: () => void; onAudioUploadClick?: () => void; onGoToTutors?: () => void; }
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-400",
@@ -34,6 +34,73 @@ const CAT_COLORS: Record<string, string> = {
   "Research":    "bg-orange-500/15 text-orange-400",
   "Other":       "bg-gray-500/15 text-gray-400",
 };
+
+// ── Mascot empty-state ─────────────────────────────────────────────────────
+// A cute pleading character in a speech bubble, replacing the plain
+// "No uploads yet" text. Disappears automatically once the parent list
+// (resources/tutors/audiobooks) has items, since it's only rendered
+// in the `length === 0` branch.
+function MascotEmptyState({
+  message,
+  buttonLabel,
+  onAction,
+  caption,
+  gradientFrom = "#38bdf8",
+  gradientTo = "#2563eb",
+}: {
+  message: string;
+  buttonLabel?: string;
+  onAction?: () => void;
+  caption?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+}) {
+  const gradId = `mascotBody-${gradientFrom.replace("#", "")}`;
+  return (
+    <div className="flex flex-col items-center gap-4 py-10 px-4 text-center bg-muted/20 rounded-2xl border border-border/50">
+      {/* Speech bubble */}
+      <div className="relative max-w-[260px] bg-card border border-border rounded-2xl px-4 py-3 shadow-sm">
+        <p className="text-xs font-medium text-foreground leading-relaxed">{message}</p>
+        <div className="absolute left-1/2 -bottom-[7px] -translate-x-1/2 w-3.5 h-3.5 bg-card border-r border-b border-border rotate-45" />
+      </div>
+
+      {/* Mascot */}
+      <div className="mascot-bounce">
+        <svg width="84" height="84" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="88" y2="88" gradientUnits="userSpaceOnUse">
+              <stop stopColor={gradientFrom} />
+              <stop offset="1" stopColor={gradientTo} />
+            </linearGradient>
+          </defs>
+          <circle cx="44" cy="48" r="32" fill={`url(#${gradId})`} />
+          <rect x="24" y="61" width="40" height="6" rx="3" fill="white" fillOpacity="0.22" />
+          <ellipse cx="32" cy="46" rx="9" ry="11" fill="white" />
+          <ellipse cx="56" cy="46" rx="9" ry="11" fill="white" />
+          <g className="mascot-blink" style={{ transformBox: "fill-box", transformOrigin: "center" }}>
+            <circle cx="33" cy="49" r="5" fill="#0f172a" />
+            <circle cx="57" cy="49" r="5" fill="#0f172a" />
+            <circle cx="35" cy="47" r="1.4" fill="white" />
+            <circle cx="59" cy="47" r="1.4" fill="white" />
+          </g>
+          <path d="M24 34 Q32 30 40 35" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+          <path d="M48 35 Q56 30 64 34" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+          <path d="M38 63 Q44 59 50 63" stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        </svg>
+      </div>
+
+      {buttonLabel ? (
+        <button
+          onClick={onAction}
+          className="flex items-center gap-1.5 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md active:scale-[0.98] transition-transform">
+          <Upload className="w-3.5 h-3.5" /> {buttonLabel}
+        </button>
+      ) : caption ? (
+        <p className="text-xs text-muted-foreground">{caption}</p>
+      ) : null}
+    </div>
+  );
+}
 
 // ── Public name editor ────────────────────────────────────────────────────────
 function ProfileNameEditor({ userId }: { userId: string }) {
@@ -122,7 +189,7 @@ function ProfileNameEditor({ userId }: { userId: string }) {
 }
 
 // ── Main dashboard ────────────────────────────────────────────────────────────
-export function SellerDashboard({ userId, onRefresh }: Props) {
+export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploadClick, onGoToTutors }: Props) {
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const [, navigate] = useLocation();
@@ -364,13 +431,11 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
         {/* Resources list */}
         {activeTab === "resources" && (
           resources.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
-              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-sky-400" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">No uploads yet</p>
-              <p className="text-xs text-muted-foreground">Hit Upload to share your first resource.</p>
-            </div>
+            <MascotEmptyState
+              message={`"Mmm... not fair! Someone is looking for a book you might have. Share please?"`}
+              buttonLabel="Upload a Resource"
+              onAction={onUploadClick}
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {(showAllResources ? resources : resources.slice(0, RESOURCE_PREVIEW_COUNT)).map(item => (
@@ -424,13 +489,13 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
         {/* Tutors list */}
         {activeTab === "tutors" && (
           tutors.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-400" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">No tutor profiles yet</p>
-              <p className="text-xs text-muted-foreground">Register as a tutor from the Tutors tab.</p>
-            </div>
+            <MascotEmptyState
+              message={`"No tutor card here yet — students are searching for help right now. Set one up?"`}
+              buttonLabel="Register as a Tutor"
+              onAction={onGoToTutors}
+              gradientFrom="#60a5fa"
+              gradientTo="#2563eb"
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {(showAllTutors ? tutors : tutors.slice(0, TUTOR_PREVIEW_COUNT)).map(item => (
@@ -483,13 +548,13 @@ export function SellerDashboard({ userId, onRefresh }: Props) {
         {/* Audio Books list */}
         {activeTab === "audiobooks" && (
           audiobooks.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-12 text-center bg-muted/20 rounded-2xl border border-border/50">
-              <div className="w-12 h-12 rounded-2xl bg-pink-500/10 flex items-center justify-center">
-                <Headphones className="w-6 h-6 text-pink-400" />
-              </div>
-              <p className="text-sm font-semibold text-foreground">No audio books yet</p>
-              <p className="text-xs text-muted-foreground">Hit Upload to publish your first audio book.</p>
-            </div>
+            <MascotEmptyState
+              message={`"Shh... it's quiet in here. Your voice could be the next audio book someone needs."`}
+              buttonLabel="Upload an Audio Book"
+              onAction={onAudioUploadClick}
+              gradientFrom="#f472b6"
+              gradientTo="#db2777"
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {(showAllAudiobooks ? audiobooks : audiobooks.slice(0, AUDIOBOOK_PREVIEW_COUNT)).map(item => (
