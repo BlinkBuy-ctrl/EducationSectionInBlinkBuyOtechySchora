@@ -22,6 +22,7 @@ import { AdvertsTab } from "@/components/education/AdvertsTab";
 import { UniversitiesTab } from "@/components/education/UniversitiesTab";
 import { BookshopsTab } from "@/components/education/BookshopsTab";
 import { JobsTab } from "@/components/education/JobsTab";
+import { FetchingState } from "@/components/education/FetchingState";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import AboutUs from "@/components/education/AboutUs";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
@@ -101,16 +102,6 @@ function handleTripleTap(stateRef: MutableRefObject<{ count: number; timer: Retu
   }
 }
 
-function Skeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="h-48 rounded-2xl skeleton" />
-      ))}
-    </div>
-  );
-}
-
 export default function EducationPage() {
   const { user, ensureProfile } = useContext(AuthContext);
   const { toast } = useToast();
@@ -121,7 +112,10 @@ export default function EducationPage() {
   const [jobs,         setJobs]         = useState<Job[]>([]);
   const [purchases,    setPurchases]    = useState<Set<string>>(new Set());
   const [bookmarks,    setBookmarks]    = useState<Set<string>>(new Set());
-  const [loading,      setLoading]      = useState(false);
+  // Starts true (not false) so the very first paint shows the fetching
+  // animation instead of a flash of "No resources found" before fetchAll()
+  // has had a chance to run and flip this to true itself.
+  const [loading,      setLoading]      = useState(true);
   const [showUpload,   setShowUpload]   = useState(false);
   const [detailRes,    setDetailRes]    = useState<any>(null);
   const [search,       setSearch]       = useState("");
@@ -653,7 +647,15 @@ export default function EducationPage() {
           </div>
 
           {contentType === "audio" ? (
-            loading && filteredAudiobooks.length === 0 ? <Skeleton /> : filteredAudiobooks.length === 0 ? (
+            loading && filteredAudiobooks.length === 0 ? (
+              <FetchingState
+                icon={Headphones}
+                label="Fetching audio books"
+                accentBg="bg-pink-500/10"
+                accentText="text-pink-400"
+                ringColor="border-t-pink-500"
+              />
+            ) : filteredAudiobooks.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center"><Headphones className="w-7 h-7 text-pink-400" /></div>
                 <p className="font-semibold text-foreground">No audio books found</p>
@@ -678,7 +680,15 @@ export default function EducationPage() {
               </div>
             )
           ) : (
-            loading && filtered.length === 0 ? <Skeleton /> : filtered.length === 0 ? (
+            loading && filtered.length === 0 ? (
+              <FetchingState
+                icon={BookOpen}
+                label="Fetching resources"
+                accentBg="bg-sky-500/10"
+                accentText="text-sky-400"
+                ringColor="border-t-sky-500"
+              />
+            ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-sky-400" /></div>
                 <p className="font-semibold text-foreground">No resources found</p>
