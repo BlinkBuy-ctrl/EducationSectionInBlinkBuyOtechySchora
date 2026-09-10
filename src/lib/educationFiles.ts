@@ -14,19 +14,21 @@
 // role to write the row — that's what keeps deletes/edits from
 // being wide open even though uploads are.
 //
-// Cover images: extracted client-side for .docx/.xlsx/.pptx (they're
-// zip files — pulling out the first embedded image needs no risky
-// native dependencies) and used directly for image uploads. PDFs,
-// legacy .doc/.xls/.ppt, and CSV/text fall back to a type icon in
-// the UI — real PDF-page rendering needs native canvas libraries
-// that are unreliable on Vercel serverless, so it's skipped on
-// purpose rather than shipped half-working.
+// Cover images: extracted client-side. PDFs (the majority of uploads —
+// "books", past papers, notes) get their first page rendered to a canvas via
+// pdf.js and saved as a JPEG cover, same technique as the paid Resources
+// upload. .docx/.xlsx/.pptx (they're zip files — pulling out the first
+// embedded image needs no risky native dependencies) are extracted the same
+// way, and used directly for image uploads. Legacy .doc/.xls/.ppt and
+// CSV/text fall back to a type icon in the UI — no reliable extraction for
+// those old binary formats.
 //
 // Requires the `jszip` package: npm install jszip
 // ============================================================
 
 import JSZip from "jszip";
 import { jobsSupabase } from "./jobsSupabase";
+import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 // ────────────────────────────────────────────────────────────
 // TYPES
@@ -60,6 +62,10 @@ export interface UploadEducationFilePayload {
   category: string;
   title: string;
   uploaded_by?: string;
+  /** Pre-extracted cover (e.g. already shown as a live preview in the upload UI).
+   *  Pass `null` if extraction was attempted and found nothing. Omit to let
+   *  uploadEducationFile() extract it itself. */
+  coverBlob?: Blob | null;
 }
 
 export const EDUCATION_FILE_CATEGORIES = [
@@ -115,8 +121,32 @@ async function extractCoverFromOfficeZip(file: File): Promise<Blob | null> {
   }
 }
 
+// PDFs ("books", past papers, notes) are the bulk of what's uploaded here, so
+// their cover has to work: render page 1 to a canvas and use that as a JPEG
+// cover, same technique already used for the paid Resources upload.
+export async function extractPdfCoverBlob(file: File): Promise<Blob | null> {
+  try {
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const page = await pdf.getPage(1);
+    const vp = page.getViewport({ scale: 2.0 });
+    const canvas = document.createElement("canvas");
+    canvas.width = vp.width;
+    canvas.height = vp.height;
+    await page.render({ canvasContext: canvas.getContext("2d")!, viewport: vp }).promise;
+    return new Promise((res) => canvas.toBlob((b) => res(b), "image/jpeg", 0.9));
+  } catch (e) {
+    console.warn("PDF cover extraction failed:", e);
+    return null;
+  }
+}
+
 async function buildCoverBlob(file: File, fileType: EducationFileType): Promise<Blob | null> {
   if (fileType === "image") return file;
+
+  if (fileType === "pdf") return extractPdfCoverBlob(file);
 
   const ext = file.name.split(".").pop()?.toLowerCase();
   const isModernOfficeZip = ext === "docx" || ext === "xlsx" || ext === "pptx";
@@ -124,7 +154,7 @@ async function buildCoverBlob(file: File, fileType: EducationFileType): Promise<
     return extractCoverFromOfficeZip(file);
   }
 
-  // pdf, csv, legacy .doc/.xls/.ppt, other → no reliable extraction, icon fallback in UI
+  // csv, legacy .doc/.xls/.ppt, other → no reliable extraction, icon fallback in UI
   return null;
 }
 
@@ -178,16 +208,13 @@ export async function uploadEducationFile(payload: UploadEducationFilePayload): 
   const file_url = await uploadToStorage(payload.file, filePath, payload.file.type || "application/octet-stream");
 
   let cover_url: string | null = null;
-  const coverBlob = await buildCoverBlob(payload.file, fileType);
+  const coverBlob = payload.coverBlob !== undefined ? payload.coverBlob : await buildCoverBlob(payload.file, fileType);
   if (coverBlob) {
     try {
-      const coverExt = fileType === "image" ? ext : "png";
+      const coverExt = fileType === "image" ? ext : fileType === "pdf" ? "jpg" : "png";
+      const coverContentType = fileType === "image" ? (payload.file.type || "image/jpeg") : fileType === "pdf" ? "image/jpeg" : "image/png";
       const coverPath = `covers/${safeTitle}-${timestamp}.${coverExt}`;
-      cover_url = await uploadToStorage(
-        coverBlob,
-        coverPath,
-        fileType === "image" ? payload.file.type || "image/jpeg" : "image/png"
-      );
+      cover_url = await uploadToStorage(coverBlob, coverPath, coverContentType);
     } catch {
       cover_url = null; // cover is best-effort — never fail the whole upload over it
     }
