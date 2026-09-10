@@ -272,14 +272,25 @@ interface Props {
   universityName: string;
   currentUserId: string | null;
   onClose: () => void;
+  onDownload: (file: EducationFile) => void;
   onDelete: (id: string) => void;
 }
 
-export function EducationFileDetailModal({ file, universityName, currentUserId, onClose, onDelete }: Props) {
+export function EducationFileDetailModal({ file, universityName, currentUserId, onClose, onDownload, onDelete }: Props) {
   const [showReader, setShowReader] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const isPdf = file.file_type === "pdf";
   const size = formatSize((file as any).file_size);
+
+  const handleDownloadClick = async () => {
+    setDownloading(true);
+    try {
+      await onDownload(file);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Same assumption as EducationFileCard: needs an `uploader_id` column set to
   // the uploader's auth user id. Falls back to "no one can delete" if absent.
@@ -396,10 +407,11 @@ export function EducationFileDetailModal({ file, universityName, currentUserId, 
                   <Eye className="w-3.5 h-3.5" /> Read
                 </button>
               )}
-              <a href={file.file_url} target="_blank" rel="noopener noreferrer" onClick={onClose}
-                className={`flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-semibold py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-md shadow-sky-500/20 ${isPdf ? "flex-1" : "w-full"}`}>
-                <Download className="w-3.5 h-3.5" /> Open
-              </a>
+              <button onClick={handleDownloadClick} disabled={downloading}
+                className={`flex items-center justify-center gap-1.5 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-xs font-semibold py-2.5 rounded-xl active:scale-[0.97] transition-all shadow-md shadow-sky-500/20 disabled:opacity-70 ${isPdf ? "flex-1" : "w-full"}`}>
+                {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                {downloading ? "Downloading…" : "Download"}
+              </button>
             </div>
           </div>
         </div>

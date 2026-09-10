@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useContext, useRef, useCallback } from "r
 import {
   Link2, Loader2, Upload, FileText, FileSpreadsheet,
   Presentation, Image as ImageIcon, File as FileIcon, X, Trash2,
-  Eye, ChevronLeft, ChevronRight,
+  Eye, ChevronLeft, ChevronRight, Download,
 } from "lucide-react";
 import { getUniversities, type University } from "@/lib/universities";
 import {
@@ -10,6 +10,7 @@ import {
   uploadEducationFile,
   deleteEducationFile,
   detectFileType,
+  extractPdfCoverBlob,
   EDUCATION_FILE_CATEGORIES,
   ACCEPTED_FILE_EXTENSIONS,
   type EducationFile,
@@ -268,20 +269,32 @@ export function FileReaderModal({ file, onClose }: { file: EducationFile; onClos
 
 // ── File card — ResourceCard-style: cover, badges, Read button, tap opens detail modal ──
 function EducationFileCard({
-  file, universityName, currentUserId, onOpen, onDelete,
+  file, universityName, currentUserId, onOpen, onDownload, onDelete,
 }: {
   file: EducationFile;
   universityName: string;
   currentUserId: string | null;
   onOpen: (file: EducationFile) => void;
+  onDownload: (file: EducationFile) => void;
   onDelete: (id: string) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [coverFailed, setCoverFailed] = useState(false);
   const [showReader, setShowReader] = useState(false);
   const Icon = FILE_TYPE_ICON[file.file_type] ?? FileIcon;
   const showCover = !!(file as any).cover_url && !coverFailed;
   const isPdf = file.file_type === "pdf";
+
+  const handleDownloadClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDownloading(true);
+    try {
+      await onDownload(file);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // NOTE: gating delete to the uploader requires an `uploader_id` (auth user id)
   // column on education_files, set at upload time. Until that column exists this
@@ -362,6 +375,15 @@ function EducationFileCard({
           <h3 className="font-bold text-xs text-foreground line-clamp-2 leading-snug">{file.title}</h3>
           <p className="text-[10px] text-sky-500 font-semibold truncate">{universityName}</p>
           <p className="text-[10px] text-muted-foreground truncate">{file.program}</p>
+
+          <button
+            onClick={handleDownloadClick}
+            disabled={downloading}
+            className="mt-1 w-full flex items-center justify-center gap-1 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-[10px] font-bold py-2 rounded-lg active:scale-[0.98] transition-all shadow-sm shadow-sky-500/20 disabled:opacity-70"
+          >
+            {downloading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+            {downloading ? "Downloading…" : "Download"}
+          </button>
         </div>
       </div>
 
@@ -386,9 +408,33 @@ function UploadFileModal({
   const [title, setTitle] = useState("");
   const [uploadedBy, setUploadedBy] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [coverBlob, setCoverBlob] = useState<Blob | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [extractingCover, setExtractingCover] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const canSubmit = universityId && program.trim() && category && title.trim() && file && !submitting;
+  const canSubmit = universityId && program.trim() && category && title.trim() && file && !submitting && !extractingCover;
+
+  const handleFileChange = async (f: File | null) => {
+    setFile(f);
+    setCoverBlob(null);
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    setCoverPreview(null);
+    if (!f) return;
+
+    // Only PDFs get a real extracted cover right now (page 1 rendered to an
+    // image) — same technique as the paid Resources upload, so "book" covers
+    // actually show up here too, live, before the file is even submitted.
+    if (detectFileType(f.name) === "pdf") {
+      setExtractingCover(true);
+      const blob = await extractPdfCoverBlob(f);
+      if (blob) {
+        setCoverBlob(blob);
+        setCoverPreview(URL.createObjectURL(blob));
+      }
+      setExtractingCover(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit || !file) return;
@@ -401,6 +447,11 @@ function UploadFileModal({
         category,
         title: title.trim(),
         uploaded_by: uploadedBy.trim() || undefined,
+        // Only PDFs get a pre-extracted cover here (from the live preview);
+        // for other types, leave this out so uploadEducationFile() still runs
+        // its own extraction (embedded image for docx/xlsx/pptx, or the image
+        // file itself).
+        ...(detectFileType(file.name) === "pdf" ? { coverBlob } : {}),
       });
       toast({ title: "File uploaded", description: title });
       onUploaded(uploaded);
@@ -485,14 +536,35 @@ function UploadFileModal({
             <input
               type="file"
               accept={ACCEPTED_FILE_EXTENSIONS}
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
               className="w-full mt-1 bg-card border border-border rounded-xl p-2.5 text-sm text-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-sky-500 file:text-white file:text-xs file:font-bold"
             />
             <p className="text-[10px] text-muted-foreground mt-1">
               PDF, Word, Excel, PowerPoint, CSV or images. Max 50MB.
-              {file && (["docx", "xlsx", "pptx"].includes(file.name.split(".").pop()?.toLowerCase() ?? "") || detectFileType(file.name) === "image") &&
+              {file && (detectFileType(file.name) === "pdf" || ["docx", "xlsx", "pptx"].includes(file.name.split(".").pop()?.toLowerCase() ?? "") || detectFileType(file.name) === "image") &&
                 " A cover will be generated automatically."}
             </p>
+
+            {/* Live cover preview — same feedback as the paid Resources upload,
+                so it's obvious a cover was (or wasn't) picked up before submitting. */}
+            {extractingCover && (
+              <div className="mt-2 flex items-center gap-2 bg-muted/40 border border-border rounded-xl px-3 py-2.5">
+                <Loader2 className="w-4 h-4 text-sky-400 animate-spin shrink-0" />
+                <span className="text-xs text-muted-foreground">Reading cover from page 1…</span>
+              </div>
+            )}
+            {!extractingCover && coverPreview && (
+              <div className="relative mt-2 rounded-xl overflow-hidden border border-border">
+                <img src={coverPreview} alt="File cover" className="w-full max-h-56 object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute top-2 right-2 bg-sky-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <ImageIcon className="w-3 h-3" /> Cover extracted
+                </div>
+              </div>
+            )}
+            {!extractingCover && file && !coverPreview && detectFileType(file.name) === "pdf" && (
+              <p className="mt-1.5 text-[10px] text-amber-500">Couldn't read a cover from this PDF — it'll show a plain icon instead.</p>
+            )}
           </div>
 
           <button
@@ -524,6 +596,25 @@ export function UniversitiesTab() {
   const [showUpload, setShowUpload] = useState(false);
   const [fileFilterUniId, setFileFilterUniId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<EducationFile | null>(null);
+
+  const handleDownloadFile = async (file: EducationFile) => {
+    try {
+      const res = await fetch(file.file_url);
+      if (!res.ok) throw new Error("Could not reach the file");
+      const blob = await res.blob();
+      const ext = file.file_url.split(".").pop()?.split("?")[0] || "";
+      const filename = `${file.title}${ext ? `.${ext}` : ""}`;
+      const url = URL.createObjectURL(blob);
+      const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast({ title: "✅ Download started!" });
+    } catch (e: any) {
+      toast({ title: "Download failed", description: e.message, variant: "destructive" });
+    }
+  };
 
   const load = async () => {
     const cached = await getCache<University>("universities");
@@ -669,6 +760,7 @@ export function UniversitiesTab() {
               universityName={universityNameById.get(f.university_id) ?? "Unknown university"}
               currentUserId={currentUserId}
               onOpen={setSelectedFile}
+              onDownload={handleDownloadFile}
               onDelete={(id) => setFiles(prev => prev.filter(x => x.id !== id))}
             />
           ))}
@@ -692,6 +784,7 @@ export function UniversitiesTab() {
           universityName={universityNameById.get(selectedFile.university_id) ?? "Unknown university"}
           currentUserId={currentUserId}
           onClose={() => setSelectedFile(null)}
+          onDownload={handleDownloadFile}
           onDelete={(id) => { setFiles(prev => prev.filter(x => x.id !== id)); setSelectedFile(null); }}
         />
       )}
