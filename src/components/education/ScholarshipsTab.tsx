@@ -8,6 +8,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 
 const SCHOLARSHIP_SEARCH_PHRASES = [
@@ -424,7 +425,16 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
       />
 
       {loading ? (
-        Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-48 rounded-2xl bg-muted/50 animate-pulse" />)
+        <FetchingState
+          icon={Award}
+          label="Fetching scholarships"
+          accentBg="bg-yellow-500/10"
+          accentText="text-yellow-500"
+          ringColor="border-t-yellow-500"
+          skeletonCount={3}
+          layout="list"
+          skeletonHeight="h-48"
+        />
       ) : scholarships.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center">

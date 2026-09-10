@@ -3,6 +3,7 @@ import { Loader2, Megaphone, ChevronUp, ChevronDown } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertCard, type Advert } from "@/components/education/AdvertCard";
+import { FetchingState } from "@/components/education/FetchingState";
 import { getCache, setCache } from "@/lib/offlineCache";
 
 interface AdvertsTabProps {
@@ -123,7 +124,16 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
   const goNext = () => { if (canGoNext) scrollToId(adverts[activeIndex + 1].id); };
 
   if (loading && adverts.length === 0) {
-    return <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+    return (
+      <FetchingState
+        icon={Megaphone}
+        label="Fetching announcements"
+        accentBg="bg-amber-500/10"
+        accentText="text-amber-500"
+        ringColor="border-t-amber-500"
+        compact
+      />
+    );
   }
 
   if (adverts.length === 0) {

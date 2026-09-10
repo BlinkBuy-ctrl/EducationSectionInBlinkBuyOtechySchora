@@ -19,6 +19,7 @@ import { UniversityCarousel } from "@/components/education/UniversityCarousel";
 import { EducationFileDetailModal } from "@/components/education/EducationFileDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { UniversityDetailModal } from "@/components/education/UniversityDetailModal";
+import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/hooks/useAuth";
 import { getCache, setCache } from "@/lib/offlineCache";
@@ -601,7 +602,14 @@ export function UniversitiesTab() {
 
       {/* ── Quick browse (compact, auto-scrolling, bigger cards) ── */}
       {loading && universities.length === 0 ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        <FetchingState
+          icon={Link2}
+          label="Fetching universities"
+          accentBg="bg-sky-500/10"
+          accentText="text-sky-400"
+          ringColor="border-t-sky-500"
+          compact
+        />
       ) : universities.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">Our team is adding universities soon — check back!</p>
       ) : filtered.length === 0 ? (
@@ -636,7 +644,15 @@ export function UniversitiesTab() {
       )}
 
       {filesLoading && files.length === 0 ? (
-        <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        <FetchingState
+          icon={FileText}
+          label="Fetching files"
+          accentBg="bg-sky-500/10"
+          accentText="text-sky-400"
+          ringColor="border-t-sky-500"
+          skeletonCount={4}
+          skeletonHeight="h-36"
+        />
       ) : filteredFiles.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
           <div className="w-14 h-14 rounded-2xl bg-sky-500/10 flex items-center justify-center">

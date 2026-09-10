@@ -8,6 +8,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { TutorDetailModal } from "@/components/education/TutorDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 
 const TUTOR_SEARCH_PHRASES = [
@@ -407,11 +408,16 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
 
       {/* List */}
       {loading ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-36 rounded-2xl bg-muted/40 animate-pulse" />
-          ))}
-        </div>
+        <FetchingState
+          icon={Users}
+          label="Fetching tutors"
+          accentBg="bg-blue-500/10"
+          accentText="text-blue-400"
+          ringColor="border-t-blue-500"
+          skeletonCount={3}
+          layout="list"
+          skeletonHeight="h-36"
+        />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-14 text-center">
           <div className="w-14 h-14 rounded-2xl bg-blue-500/10 flex items-center justify-center">

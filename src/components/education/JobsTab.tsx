@@ -6,6 +6,7 @@ import {
 import { jobsSupabase, isJobOpen, type Job } from "@/lib/jobsSupabase";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { JobDetailModal } from "@/components/education/JobDetailModal";
+import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
 
@@ -251,11 +252,16 @@ export function JobsTab({ jobs, loading, user, onRefresh, isOnline = true }: Pro
       </div>
 
       {loading ? (
-        <div className="flex flex-col gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-32 rounded-2xl bg-muted/40 animate-pulse" />
-          ))}
-        </div>
+        <FetchingState
+          icon={Briefcase}
+          label="Fetching jobs"
+          accentBg="bg-emerald-500/10"
+          accentText="text-emerald-500"
+          ringColor="border-t-emerald-500"
+          skeletonCount={3}
+          layout="list"
+          skeletonHeight="h-32"
+        />
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-2.5 py-14 text-center">
           <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">

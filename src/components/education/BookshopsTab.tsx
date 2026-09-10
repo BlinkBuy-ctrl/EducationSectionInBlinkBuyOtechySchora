@@ -5,6 +5,7 @@ import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput"
 import { BookshopDetailModal } from "@/components/education/BookshopDetailModal";
 import { BookshopApplyModal } from "@/components/education/BookshopApplyModal";
 import { BookshopOwnerPanel } from "@/components/education/BookshopOwnerPanel";
+import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { getCache, setCache } from "@/lib/offlineCache";
@@ -155,7 +156,16 @@ export function BookshopsTab() {
       />
 
       {loading && shops.length === 0 ? (
-        <div className="flex justify-center py-14"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+        <FetchingState
+          icon={Store}
+          label="Fetching bookshops"
+          accentBg="bg-sky-500/10"
+          accentText="text-sky-400"
+          ringColor="border-t-sky-500"
+          layout="list"
+          skeletonCount={4}
+          skeletonHeight="h-28"
+        />
       ) : shops.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-sky-400" /></div>
