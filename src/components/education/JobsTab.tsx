@@ -6,6 +6,7 @@ import {
 import { jobsSupabase, isJobOpen, type Job } from "@/lib/jobsSupabase";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { JobDetailModal } from "@/components/education/JobDetailModal";
+import { JobPlaceholderIcon } from "@/components/education/JobPlaceholderIcon";
 import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
@@ -70,11 +71,11 @@ function JobCard({ job, saved, applied, onOpen, onToggleSave, onShare }: {
       className="bg-card border border-border rounded-2xl p-3.5 flex flex-col gap-2.5 cursor-pointer active:scale-[0.99] transition-all"
     >
       <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center shrink-0 overflow-hidden">
           {job.photo_url ? (
             <img src={job.photo_url} className="w-full h-full object-cover" alt="" />
           ) : (
-            <Briefcase className="w-5 h-5 text-emerald-500" />
+            <JobPlaceholderIcon className="w-7 h-7" />
           )}
         </div>
         <div className="flex-1 min-w-0">

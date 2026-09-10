@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  X, Briefcase, Building2, MapPin, Clock, DollarSign, ExternalLink,
+  X, Building2, MapPin, Clock, DollarSign, ExternalLink,
   BadgeCheck, Bookmark, Share2, Send, Loader2, CheckCircle2, Maximize2,
 } from "lucide-react";
 import { jobsSupabase, isJobOpen, type Job } from "@/lib/jobsSupabase";
+import { JobPlaceholderIcon } from "@/components/education/JobPlaceholderIcon";
 import { useToast } from "@/hooks/use-toast";
 
 const JOB_TYPE_LABELS: Record<Job["job_type"], string> = {
@@ -81,10 +82,10 @@ export function JobDetailModal({ job, user, saved, applied, onToggleSave, onAppl
           {/* Header */}
           <div className="flex items-start gap-3 px-4 pt-4 pb-3 border-b border-border shrink-0">
             <div
-              className="w-12 h-12 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0 overflow-hidden"
+              className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 flex items-center justify-center shrink-0 overflow-hidden"
               onClick={() => job.photo_url && setFullImage(true)}
             >
-              {job.photo_url ? <img src={job.photo_url} className="w-full h-full object-cover" alt="" /> : <Briefcase className="w-5 h-5 text-emerald-500" />}
+              {job.photo_url ? <img src={job.photo_url} className="w-full h-full object-cover" alt="" /> : <JobPlaceholderIcon className="w-8 h-8" />}
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="font-black text-base text-foreground leading-tight">{job.title}</h2>
