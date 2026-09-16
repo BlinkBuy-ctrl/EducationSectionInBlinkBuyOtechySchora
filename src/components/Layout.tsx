@@ -176,6 +176,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const goNotifications = () => { navigate("/notifications"); setActiveTab(""); };
   const goPost   = () => window.dispatchEvent(new CustomEvent("otechy:open-upload"));
 
+  /* ── Soft refresh: re-fetch current page's data only, no app/splash restart ── */
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    fetchUnread();
+    window.dispatchEvent(new CustomEvent("otechy:refresh-content"));
+    setTimeout(() => setRefreshing(false), 650);
+  };
+
   const isHome     = loc === "/" && activeTab === "";
   const isStats    = loc === "/" && activeTab === "dashboard";
   const isSearch   = loc === "/" && activeTab === "resources";
@@ -198,8 +208,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button onClick={() => window.location.reload()} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 active:[&>svg]:rotate-180 [&>svg]:transition-transform [&>svg]:duration-500">
-              <RefreshCw className="w-4 h-4" />
+            <button onClick={handleRefresh} aria-label="Refresh content" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70">
+              <RefreshCw className={`w-4 h-4 transition-transform duration-500 ${refreshing ? "animate-spin" : ""}`} />
             </button>
             <button onClick={goNotifications} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               <Bell className="w-4 h-4" />
