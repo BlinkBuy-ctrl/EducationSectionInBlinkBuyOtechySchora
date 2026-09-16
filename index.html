@@ -122,27 +122,5 @@
         setTimeout(showStartupFallback, 6000);
       })();
     </script>
-
-    <!--
-      Styling compatibility check — runs before React mounts.
-      Our styling system (Tailwind CSS v4) requires color-mix() and oklch()
-      colors, which only exist on Chrome 111+ (2023), Firefox 128+, Safari
-      16.4+. On older browsers that DO support ES modules and DO parse the
-      app's JS fine, every semi-transparent color/border in the app would
-      still silently render as invisible — the same "black screen, no
-      error" symptom, but from CSS rather than JS. This flags that case so
-      main.tsx shows the same clear message instead of leaving it blank.
-    -->
-    <script>
-      try {
-        var supportsColorMix = window.CSS && CSS.supports && CSS.supports('color: color-mix(in oklab, red, blue)');
-        var supportsOklch = window.CSS && CSS.supports && CSS.supports('color: oklch(0.7 0.15 200)');
-        if (!supportsColorMix || !supportsOklch) {
-          window.__schorahub_style_unsupported = true;
-        }
-      } catch (e) {
-        window.__schorahub_style_unsupported = true;
-      }
-    </script>
   </body>
 </html>
