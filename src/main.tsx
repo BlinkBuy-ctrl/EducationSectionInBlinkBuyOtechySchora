@@ -66,24 +66,15 @@ window.addEventListener("error", (e) => {
 const rootEl = document.getElementById("root");
 if (!rootEl) throw new Error("[SchoraHub] #root element not found — check index.html");
 
-if ((window as any).__schorahub_style_unsupported) {
-  // Set by the inline check in index.html — this browser can't render our
-  // styling correctly (missing color-mix()/oklch()). Don't mount React into
-  // broken CSS; show the same clear upgrade message instead.
-  showFatalStartupError(
-    "Your browser doesn't support some styling features SchoraHub needs. Please update your browser."
-  );
-} else {
-  try {
-    createRoot(rootEl).render(<App />);
-    // Tell the outer watchdog script (in index.html) that we made it — this
-    // stops both its 6-second timer and its error listener from firing a
-    // fallback message on top of a perfectly working app.
-    (window as any).__schorahub_react_mounted = true;
-  } catch (err: any) {
-    console.error("[Mount failed]", err);
-    showFatalStartupError(err?.message || "Unknown error");
-  }
+try {
+  createRoot(rootEl).render(<App />);
+  // Tell the outer watchdog script (in index.html) that we made it — this
+  // stops both its 6-second timer and its error listener from firing a
+  // fallback message on top of a perfectly working app.
+  (window as any).__schorahub_react_mounted = true;
+} catch (err: any) {
+  console.error("[Mount failed]", err);
+  showFatalStartupError(err?.message || "Unknown error");
 }
 
 // ── Service Worker ─────────────────────────────────────────────────────────────
