@@ -179,6 +179,12 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (!user) return;
+
+    // Header refresh button (Layout.tsx) — re-fetch this page's data only,
+    // no window.location.reload(), so the splash screen never re-shows.
+    const refreshHandler = () => { fetchNotifications(); };
+    window.addEventListener("otechy:refresh-content", refreshHandler);
+
     fetchNotifications();
 
     const channel = supabase
@@ -190,7 +196,10 @@ export default function NotificationsPage() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      window.removeEventListener("otechy:refresh-content", refreshHandler);
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const markRead = async (id: string) => {

@@ -343,6 +343,15 @@ export default function EducationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
+  // Header refresh button (Layout.tsx) — re-fetch this page's data only,
+  // no window.location.reload(), so the splash screen never re-shows.
+  useEffect(() => {
+    const handler = () => { fetchAll(); };
+    window.addEventListener("otechy:refresh-content", handler);
+    return () => window.removeEventListener("otechy:refresh-content", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id]);
+
   const filtered = resources.filter(r => {
     const q = search.toLowerCase();
     const mS = !q || r.title?.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q);
