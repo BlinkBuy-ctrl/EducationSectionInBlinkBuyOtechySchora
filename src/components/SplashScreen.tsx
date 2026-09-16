@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { TranslationKey } from "@/lib/i18n";
 
 // No canvas. Pure CSS + React state animations.
 // Canvas was crashing old Android WebViews (Huawei budget devices):
@@ -10,7 +12,9 @@ import { useEffect, useState } from "react";
 // CSS (no clip-path, no fake progress bar), so it stays smooth and safe on
 // low-RAM WebViews.
 
-const PILLS = ["📚 Past Papers", "🏆 Scholarships", "👨‍🏫 Tutors", "📖 Textbooks", "📝 Notes"];
+const PILL_KEYS: TranslationKey[] = [
+  "pill_past_papers", "pill_scholarships", "pill_tutors", "pill_textbooks", "pill_notes",
+];
 
 // ── Timeline (ms) — tweak these to retime the whole sequence ──
 const BADGE_IN      = 250;   // badge scales/fades in
@@ -26,9 +30,10 @@ const PILL_STAGGER  = 65;
 const HOLD_AFTER    = 240;   // pause once everything's in place, so it can be read
 const FADE_OUT_DUR  = 420;
 
-const TOTAL = LOGO_START + PILLS_DELAY + PILLS.length * PILL_STAGGER + 260 + HOLD_AFTER;
+const TOTAL = LOGO_START + PILLS_DELAY + PILL_KEYS.length * PILL_STAGGER + 260 + HOLD_AFTER;
 
 export function SplashScreen({ onDone }: { onDone: () => void }) {
+  const { t } = useLanguage();
   const [stage, setStage] = useState<"intro" | "flooding" | "logo" | "hiding">("intro");
 
   useEffect(() => {
@@ -187,7 +192,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
           WebkitTransition: `opacity 260ms ease ${TAGLINE_DELAY}ms`,
           transition: `opacity 260ms ease ${TAGLINE_DELAY}ms`,
         }}>
-          Education Hub · Malawi
+          {t("splash_tagline")}
         </p>
 
         {/* Feature pills */}
@@ -199,11 +204,11 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
           maxWidth: 300,
           padding: "0 20px",
         }}>
-          {PILLS.map((label, i) => {
+          {PILL_KEYS.map((key, i) => {
             const delay = PILLS_DELAY + i * PILL_STAGGER;
             return (
               <span
-                key={label}
+                key={key}
                 style={{
                   background: "rgba(255,255,255,0.14)",
                   border: "1px solid rgba(255,255,255,0.3)",
@@ -221,7 +226,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
                   transition: `opacity 260ms ease ${delay}ms, transform 260ms ease ${delay}ms`,
                 }}
               >
-                {label}
+                {t(key)}
               </span>
             );
           })}
@@ -241,7 +246,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
         opacity: showLogo ? 1 : 0,
         transition: `opacity 300ms ease ${PILLS_DELAY + 100}ms`,
       }}>
-        Powered By Otechy
+        {t("splash_powered_by")}
       </p>
 
       {/* Keyframes injected once — works on all browsers including old WebKit */}

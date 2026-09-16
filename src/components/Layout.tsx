@@ -3,13 +3,15 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useLanguage } from "@/hooks/useLanguage";
+import { LANGUAGES, type Language, type TranslationKey } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import {
   GraduationCap, Sun, Moon, Bell, RefreshCw,
   Home, BarChart2, Search, Upload, Megaphone,
   ChevronUp, ChevronDown, Headphones, Award, Users,
   Briefcase, Building2, BookText, Bookmark, BookOpen, Info,
-  Rocket,
+  Rocket, Languages,
 } from "lucide-react";
 import OtechyAcademyModal from "@/components/education/OtechyAcademyModal";
 
@@ -28,39 +30,53 @@ function CategoryMenuIcon({ className }: { className?: string }) {
   );
 }
 
-interface MenuItem { icon: React.ElementType; label: string; tab?: string; route?: string; action?: "academy" }
-interface MenuGroup { label: string; items: MenuItem[] }
+interface MenuItem {
+  icon: React.ElementType;
+  labelKey: TranslationKey;
+  tab?: string;
+  route?: string;
+  action?: "academy" | "language";
+  lang?: Language; // only set when action === "language"
+}
+interface MenuGroup { labelKey?: TranslationKey; items: MenuItem[] }
 
 const MENU_GROUPS: MenuGroup[] = [
-  { label: "", items: [
-    { icon: Home, label: "Home", tab: "" },
+  { items: [
+    { icon: Home, labelKey: "menu_home", tab: "" },
   ]},
-  { label: "Sections", items: [
-    { icon: Search,     label: "Browse",       tab: "resources" },
-    { icon: Headphones, label: "Audio Books",  tab: "resources" },
-    { icon: Award,      label: "Scholarships", tab: "scholarships" },
-    { icon: Users,      label: "Tutors",       tab: "tutors" },
-    { icon: Briefcase,  label: "Jobs",         tab: "jobs" },
-    { icon: Building2,  label: "Universities", tab: "universities" },
-    { icon: BookText,   label: "E-BookStore",  tab: "bookshops" },
-    { icon: Megaphone,  label: "Adverts",      tab: "adverts" },
+  { labelKey: "menu_section_sections", items: [
+    { icon: Search,     labelKey: "menu_browse",       tab: "resources" },
+    { icon: Headphones, labelKey: "menu_audio_books",  tab: "resources" },
+    { icon: Award,      labelKey: "menu_scholarships", tab: "scholarships" },
+    { icon: Users,      labelKey: "menu_tutors",       tab: "tutors" },
+    { icon: Briefcase,  labelKey: "menu_jobs",         tab: "jobs" },
+    { icon: Building2,  labelKey: "menu_universities", tab: "universities" },
+    { icon: BookText,   labelKey: "menu_bookstore",    tab: "bookshops" },
+    { icon: Megaphone,  labelKey: "menu_adverts",      tab: "adverts" },
   ]},
-  { label: "Personal", items: [
-    { icon: Bookmark,  label: "Saved",    tab: "bookmarks" },
-    { icon: BarChart2, label: "My Stats", tab: "dashboard" },
+  { labelKey: "menu_section_personal", items: [
+    { icon: Bookmark,  labelKey: "menu_saved",    tab: "bookmarks" },
+    { icon: BarChart2, labelKey: "menu_my_stats", tab: "dashboard" },
   ]},
-  { label: "Utility", items: [
-    { icon: BookOpen, label: "Book Request Center", route: "/book-request-center" },
-    { icon: Info,     label: "About Us",            tab: "aboutus" },
+  { labelKey: "menu_section_utility", items: [
+    { icon: BookOpen, labelKey: "menu_book_request_center", route: "/book-request-center" },
+    { icon: Info,     labelKey: "menu_about_us",            tab: "aboutus" },
   ]},
-  { label: "Earn", items: [
-    { icon: Rocket, label: "Income Skills", action: "academy" },
+  { labelKey: "menu_section_earn", items: [
+    { icon: Rocket, labelKey: "menu_income_skills", action: "academy" },
   ]},
+  { labelKey: "menu_section_language", items: LANGUAGES.map(l => ({
+    icon: Languages,
+    labelKey: (l.code === "en" ? "lang_english" : "lang_chichewa") as TranslationKey,
+    action: "language" as const,
+    lang: l.code,
+  })) },
 ];
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
   const [loc, navigate] = useLocation();
   const [unread, setUnread] = useState(0);
   // Track active tab via state so nav buttons never go stale
@@ -80,8 +96,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const goMenuItem = (item: MenuItem) => {
+    if (item.action === "academy") { setMenuOpen(false); window.dispatchEvent(new CustomEvent("otechy:open-academy")); return; }
+    if (item.action === "language" && item.lang) { setLanguage(item.lang); setMenuOpen(false); return; }
     setMenuOpen(false);
-    if (item.action === "academy") { window.dispatchEvent(new CustomEvent("otechy:open-academy")); return; }
     if (item.route) { navigate(item.route); setActiveTab(""); return; }
     navigate("/");
     setActiveTab(item.tab ?? "");
@@ -208,7 +225,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button onClick={handleRefresh} aria-label="Refresh content" className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70">
+            <button onClick={handleRefresh} aria-label={t("aria_refresh")} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70">
               <RefreshCw className={`w-4 h-4 transition-transform duration-500 ${refreshing ? "animate-spin" : ""}`} />
             </button>
             <button onClick={goNotifications} className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
@@ -223,7 +240,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ref={menuBtnRef}
               onClick={() => (menuOpen ? setMenuOpen(false) : openMenu())}
               className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${menuOpen ? "bg-white/10 text-white" : "text-white/70"}`}
-              aria-label="Browse all sections"
+              aria-label={t("aria_browse_sections")}
               aria-expanded={menuOpen}
             >
               <CategoryMenuIcon className="w-[18px] h-[15px]" />
@@ -247,26 +264,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="p-2.5">
               {MENU_GROUPS.map((group, gi) => (
                 <div key={gi} className={gi > 0 ? "mt-3 pt-3 border-t border-white/[0.06]" : ""}>
-                  {group.label && (
+                  {group.labelKey && (
                     <p className="px-1.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">
-                      {group.label}
+                      {t(group.labelKey)}
                     </p>
                   )}
-                  <div className={group.label ? "grid grid-cols-2 gap-1.5" : ""}>
+                  <div className={group.labelKey ? "grid grid-cols-2 gap-1.5" : ""}>
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const active = item.action ? false : item.route ? loc === item.route : (loc === "/" && activeTab === (item.tab ?? ""));
+                      const active = item.action === "language"
+                        ? item.lang === language
+                        : item.action ? false : item.route ? loc === item.route : (loc === "/" && activeTab === (item.tab ?? ""));
                       return (
                         <button
-                          key={item.label}
+                          key={item.labelKey + (item.lang ?? "")}
                           onClick={() => goMenuItem(item)}
                           className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors active:scale-[0.97] ${
                             active ? "bg-sky-500/15" : "active:bg-white/5"
-                          } ${!group.label ? "w-full" : ""}`}
+                          } ${!group.labelKey ? "w-full" : ""}`}
                         >
                           <Icon className={`w-4 h-4 shrink-0 ${active ? "text-sky-400" : "text-sky-400/80"}`} />
                           <span className={`text-[12.5px] font-semibold truncate ${active ? "text-white" : "text-white/85"}`}>
-                            {item.label}
+                            {t(item.labelKey)}
                           </span>
                         </button>
                       );
@@ -294,7 +313,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {showUp && (
               <button
                 onClick={scrollToTop}
-                aria-label="Scroll to top"
+                aria-label={t("aria_scroll_top")}
                 className={`w-10 h-10 rounded-full bg-sidebar/60 backdrop-blur-sm border border-sidebar-border/60 shadow-md flex items-center justify-center text-white/90 active:scale-90 transition-all duration-300 ${scrollBtnsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 style={{ transform: scrollBtnsVisible ? "translateY(0)" : "translateY(4px)" }}
               >
@@ -304,7 +323,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {showDown && (
               <button
                 onClick={scrollToBottom}
-                aria-label="Scroll to bottom"
+                aria-label={t("aria_scroll_bottom")}
                 className={`w-10 h-10 rounded-full bg-sidebar/60 backdrop-blur-sm border border-sidebar-border/60 shadow-md flex items-center justify-center text-white/90 active:scale-90 transition-all duration-300 ${scrollBtnsVisible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
                 style={{ transform: scrollBtnsVisible ? "translateY(0)" : "translateY(-4px)" }}
               >
@@ -323,12 +342,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       >
         <button onClick={goHome}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isHome ? "text-sky-400" : "text-white/50"}`}>
-          <Home className="w-5 h-5" />Home
+          <Home className="w-5 h-5" />{t("nav_home")}
         </button>
 
         <button onClick={goStats}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isStats ? "text-sky-400" : "text-white/50"}`}>
-          <BarChart2 className="w-5 h-5" />My Stats
+          <BarChart2 className="w-5 h-5" />{t("nav_stats")}
         </button>
 
         <div className="flex-1 flex items-center justify-center">
@@ -340,12 +359,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         <button onClick={goSearch}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isSearch ? "text-sky-400" : "text-white/50"}`}>
-          <Search className="w-5 h-5" />Search
+          <Search className="w-5 h-5" />{t("nav_search")}
         </button>
 
         <button onClick={goAdverts}
           className={`flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-colors ${isAdverts ? "text-sky-400" : "text-white/50"}`}>
-          <Megaphone className="w-5 h-5" />Adverts
+          <Megaphone className="w-5 h-5" />{t("nav_adverts")}
         </button>
       </nav>
 
