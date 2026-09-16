@@ -3,6 +3,7 @@ import { Switch, Route } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthContext, useAuthState } from "@/hooks/useAuth";
+import { LanguageContext, useLanguageState } from "@/hooks/useLanguage";
 import Layout from "@/components/Layout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -87,15 +88,18 @@ function AppInner() {
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
+  const languageState = useLanguageState();
 
   return (
     <ErrorBoundary>
-      <OfflineBanner />
-      <QueryClientProvider client={queryClient}>
-        {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-        {splashDone  && <AppInner />}
-        <InstallPrompt />
-      </QueryClientProvider>
+      <LanguageContext.Provider value={languageState}>
+        <OfflineBanner />
+        <QueryClientProvider client={queryClient}>
+          {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
+          {splashDone  && <AppInner />}
+          <InstallPrompt />
+        </QueryClientProvider>
+      </LanguageContext.Provider>
     </ErrorBoundary>
   );
 }
