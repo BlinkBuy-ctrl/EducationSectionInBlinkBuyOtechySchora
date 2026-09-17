@@ -5,7 +5,7 @@ import {
   Plus, X, Upload, Loader2, Wifi, WifiOff,
   MessageSquare, ChevronRight, Star, AlertTriangle, Shield, Check, School
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { TutorDetailModal } from "@/components/education/TutorDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { FetchingState } from "@/components/education/FetchingState";
@@ -59,9 +59,9 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
   const uploadImg = async (file: File, folder: string): Promise<string> => {
     const ext = file.name.split(".").pop();
     const path = `${folder}/${user.id}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("otechy-images").upload(path, file, { upsert: true });
+    const { error } = await tutorsSupabase.storage.from("otechy-images").upload(path, file, { upsert: true });
     if (error) throw error;
-    return supabase.storage.from("otechy-images").getPublicUrl(path).data.publicUrl;
+    return tutorsSupabase.storage.from("otechy-images").getPublicUrl(path).data.publicUrl;
   };
 
   const handleSubmit = async () => {
@@ -76,7 +76,7 @@ function TutorRegisterForm({ user, onSuccess, onClose, ensureProfile }: {
         bannerFile ? uploadImg(bannerFile, "banners") : Promise.resolve(null),
       ]);
       const subjects = form.subjects.split(",").map(s => s.trim()).filter(Boolean);
-      const { error } = await supabase.from("otechy_tutors").insert({
+      const { error } = await tutorsSupabase.from("otechy_tutors").insert({
         user_id: user.id, name: form.name, tagline: form.tagline || null,
         bio: form.bio, subjects, contact: form.contact,
         whatsapp: form.whatsapp || null, email: form.email || null,
@@ -179,7 +179,7 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
   const [likes, setLikes] = useState(t.likes_count ?? 0);
 
   useEffect(() => {
-    supabase.from("otechy_tutor_likes")
+    tutorsSupabase.from("otechy_tutor_likes")
       .select("id").eq("tutor_id", t.id).eq("user_id", user.id).maybeSingle()
       .then(({ data }) => { if (data) setLiked(true); });
   }, [t.id, user.id]);
@@ -187,10 +187,10 @@ function TutorCard({ t, user, onOpen }: { t: any; user: any; onOpen: (t: any) =>
   const toggleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (liked) {
-      await supabase.from("otechy_tutor_likes").delete().eq("tutor_id", t.id).eq("user_id", user.id);
+      await tutorsSupabase.from("otechy_tutor_likes").delete().eq("tutor_id", t.id).eq("user_id", user.id);
       setLikes((l: number) => l - 1); setLiked(false);
     } else {
-      await supabase.from("otechy_tutor_likes").insert({ tutor_id: t.id, user_id: user.id });
+      await tutorsSupabase.from("otechy_tutor_likes").insert({ tutor_id: t.id, user_id: user.id });
       setLikes((l: number) => l + 1); setLiked(true);
     }
   };

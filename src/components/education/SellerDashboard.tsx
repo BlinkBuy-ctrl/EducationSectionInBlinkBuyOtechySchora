@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
+import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { TABLE_AUDIOBOOKS, deleteOwnedAudiobook, formatDuration } from "@/lib/audiobooks";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
@@ -257,7 +258,7 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
         await supabase.storage.from("otechy-docs").remove(filePaths).catch(() => {});
       }
       await supabase.from("otechy_resources").delete().eq("uploader_id", userId);
-      await supabase.from("otechy_tutors").delete().eq("user_id", userId);
+      await tutorsSupabase.from("otechy_tutors").delete().eq("user_id", userId);
       await supabase.from("profiles").delete().eq("id", userId);
 
       toast({ title: "✅ Your uploads and identity were reset" });
@@ -276,7 +277,7 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
           .select("id,title,category,price,download_count,avg_rating,review_count,created_at,file_url")
           .eq("uploader_id", userId)
           .order("created_at", { ascending: false }),
-        supabase.from("otechy_tutors")
+        tutorsSupabase.from("otechy_tutors")
           .select("id,name,tagline,subjects,location,is_online,likes_count,created_at,is_active")
           .eq("user_id", userId)
           .order("created_at", { ascending: false }),
@@ -314,7 +315,7 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
     if (!window.confirm(`Remove tutor profile "${item.name}"?`)) return;
     setDeleting(item.id);
     try {
-      const { error } = await supabase.from("otechy_tutors").delete().eq("id", item.id);
+      const { error } = await tutorsSupabase.from("otechy_tutors").delete().eq("id", item.id);
       if (error) throw error;
       toast({ title: "Tutor profile removed" });
       load(); onRefresh();

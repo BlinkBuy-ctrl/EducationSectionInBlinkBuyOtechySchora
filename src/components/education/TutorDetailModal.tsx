@@ -4,7 +4,7 @@ import {
   X, Heart, Phone, Mail, MapPin, BookOpen,
   School, MessageSquare, AlertTriangle, Shield, Check, Circle, Maximize2
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { tutorsSupabase } from "@/lib/tutorsSupabase";
 
 interface Props { t: any; user: any; onClose: () => void; }
 
@@ -14,17 +14,17 @@ export function TutorDetailModal({ t, user, onClose }: Props) {
   const [fullImage, setFullImage] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from("otechy_tutor_likes")
+    tutorsSupabase.from("otechy_tutor_likes")
       .select("id").eq("tutor_id", t.id).eq("user_id", user.id).maybeSingle()
       .then(({ data }) => { if (data) setLiked(true); });
   }, [t.id, user.id]);
 
   const toggleLike = async () => {
     if (liked) {
-      await supabase.from("otechy_tutor_likes").delete().eq("tutor_id", t.id).eq("user_id", user.id);
+      await tutorsSupabase.from("otechy_tutor_likes").delete().eq("tutor_id", t.id).eq("user_id", user.id);
       setLikes((p: number) => p - 1); setLiked(false);
     } else {
-      await supabase.from("otechy_tutor_likes").insert({ tutor_id: t.id, user_id: user.id });
+      await tutorsSupabase.from("otechy_tutor_likes").insert({ tutor_id: t.id, user_id: user.id });
       setLikes((p: number) => p + 1); setLiked(true);
     }
   };
