@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { advertsSupabase } from "@/lib/advertsSupabase";
 import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 type AdConfig = {
@@ -54,7 +54,7 @@ export function AdOverlay() {
     let cancelled = false;
 
     const fetchConfig = async () => {
-      const { data } = await supabase
+      const { data } = await advertsSupabase
         .from("otechy_ad_config")
         .select("*")
         .order("created_at", { ascending: false })
