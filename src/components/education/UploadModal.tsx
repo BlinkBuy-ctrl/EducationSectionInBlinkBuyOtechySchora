@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle, Image } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { resourcesSupabase } from "@/lib/resourcesSupabase";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = ["Past Papers", "Textbooks", "Notes", "Research", "Other"];
@@ -85,9 +85,9 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       // Upload PDF to otechy-docs
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        supabase.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
+        resourcesSupabase.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
           if (error || !data) {
-            supabase.storage.from("otechy-docs").upload(path, file, {
+            resourcesSupabase.storage.from("otechy-docs").upload(path, file, {
               upsert: false, contentType: file.type || "application/octet-stream",
             }).then(({ error: e }) => e ? reject(new Error(e.message)) : resolve());
             return;
@@ -109,11 +109,11 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       let thumbPublicUrl: string | null = null;
       if (coverBlob) {
         const thumbPath = `covers/${userId}-${Date.now()}.jpg`;
-        const { error: tErr } = await supabase.storage
+        const { error: tErr } = await resourcesSupabase.storage
           .from("otechy-images")
           .upload(thumbPath, coverBlob, { upsert: false, contentType: "image/jpeg" });
         if (!tErr) {
-          const { data: urlData } = supabase.storage
+          const { data: urlData } = resourcesSupabase.storage
             .from("otechy-images")
             .getPublicUrl(thumbPath);
           thumbPublicUrl = urlData?.publicUrl ?? null;
@@ -122,7 +122,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
 
       setProgress(80); setStatus("saving");
 
-      const { error: dbErr } = await supabase.from("otechy_resources").insert({
+      const { error: dbErr } = await resourcesSupabase.from("otechy_resources").insert({
         uploader_id:   userId,
         title:         form.title.trim(),
         description:   form.description.trim() || null,
@@ -134,7 +134,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       });
 
       if (dbErr) {
-        await supabase.storage.from("otechy-docs").remove([path]).catch(() => {});
+        await resourcesSupabase.storage.from("otechy-docs").remove([path]).catch(() => {});
         throw new Error(dbErr.message);
       }
 

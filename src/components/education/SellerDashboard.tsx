@@ -11,6 +11,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
+import { resourcesSupabase } from "@/lib/resourcesSupabase";
 import { TABLE_AUDIOBOOKS, deleteOwnedAudiobook, formatDuration } from "@/lib/audiobooks";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
@@ -255,9 +256,9 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
     try {
       const filePaths = resources.map(r => r.file_url).filter(Boolean);
       if (filePaths.length) {
-        await supabase.storage.from("otechy-docs").remove(filePaths).catch(() => {});
+        await resourcesSupabase.storage.from("otechy-docs").remove(filePaths).catch(() => {});
       }
-      await supabase.from("otechy_resources").delete().eq("uploader_id", userId);
+      await resourcesSupabase.from("otechy_resources").delete().eq("uploader_id", userId);
       await tutorsSupabase.from("otechy_tutors").delete().eq("user_id", userId);
       await supabase.from("profiles").delete().eq("id", userId);
 
@@ -273,7 +274,7 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
     try {
       const [statsRes, resourcesRes, tutorsRes, audiobooksRes] = await Promise.all([
         supabase.rpc("get_seller_stats", { p_user_id: userId }),
-        supabase.from("otechy_resources")
+        resourcesSupabase.from("otechy_resources")
           .select("id,title,category,price,download_count,avg_rating,review_count,created_at,file_url")
           .eq("uploader_id", userId)
           .order("created_at", { ascending: false }),
@@ -301,8 +302,8 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
     if (!window.confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
     setDeleting(item.id);
     try {
-      await supabase.storage.from("otechy-docs").remove([item.file_url]);
-      const { error } = await supabase.from("otechy_resources").delete().eq("id", item.id);
+      await resourcesSupabase.storage.from("otechy-docs").remove([item.file_url]);
+      const { error } = await resourcesSupabase.from("otechy_resources").delete().eq("id", item.id);
       if (error) throw error;
       toast({ title: "Deleted" });
       load(); onRefresh();
