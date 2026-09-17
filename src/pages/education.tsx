@@ -3,6 +3,7 @@ import type { RefObject, MutableRefObject } from "react";
 import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
+import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
@@ -253,7 +254,7 @@ export default function EducationPage() {
         .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
         .order("created_at", { ascending: false }),
       supabase.from("otechy_scholarships").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-      supabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+      tutorsSupabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
       supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
       supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
       bookshopSupabase.from(TABLE_AUDIOBOOKS)
