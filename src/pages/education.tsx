@@ -4,6 +4,8 @@ import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Mega
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { AuthContext } from "@/hooks/useAuth";
+import { useLanguage } from "@/hooks/useLanguage";
+import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { AiModeChat } from "@/components/education/AiModeChat";
@@ -36,13 +38,12 @@ import {
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 const ACATS = ["All", ...AUDIOBOOK_CATEGORIES] as const;
-const RESOURCE_SEARCH_PHRASES = [
-  "Search Physics…", "Search Chemistry…", "Search Agriculture…", "Search Mathematics…",
-  "Search Biology…", "Search Past Papers…", "Search Textbooks…",
-];
-const AUDIO_SEARCH_PHRASES = [
-  "Search Fiction…", "Search Educational…", "Search by author…", "Search by narrator…", "Search Audio Books…",
-];
+// Display labels for CATS — the values above stay in English since they're
+// the actual category strings stored in the database and used for filtering.
+const CAT_LABEL_KEYS: Record<typeof CATS[number], TranslationKey | null> = {
+  All: "filter_all", "Past Papers": "cat_past_papers", Textbooks: "cat_textbooks",
+  Notes: "cat_notes", Research: "cat_research", Other: "cat_other",
+};
 type PriceFilter = "all" | "free" | "paid";
 type ContentType = "documents" | "audio";
 type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "jobs" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
@@ -105,6 +106,7 @@ function handleTripleTap(stateRef: MutableRefObject<{ count: number; timer: Retu
 export default function EducationPage() {
   const { user, ensureProfile } = useContext(AuthContext);
   const { toast } = useToast();
+  const { t, language } = useLanguage();
 
   const [resources,    setResources]    = useState<any[]>([]);
   const [scholarships, setScholarships] = useState<any[]>([]);
@@ -159,7 +161,7 @@ export default function EducationPage() {
     setTabHintEnabled(prev => {
       const next = !prev;
       safeSetItem(TAB_HINT_ANIM_KEY, next ? "1" : "0");
-      toast({ title: next ? "↔️ Tab scroll hint on" : "↔️ Tab scroll hint off" });
+      toast({ title: next ? t("toast_tab_hint_on") : t("toast_tab_hint_off") });
       return next;
     });
   });
@@ -168,7 +170,7 @@ export default function EducationPage() {
     setCatHintEnabled(prev => {
       const next = !prev;
       safeSetItem(CAT_HINT_ANIM_KEY, next ? "1" : "0");
-      toast({ title: next ? "↔️ Category scroll hint on" : "↔️ Category scroll hint off" });
+      toast({ title: next ? t("toast_cat_hint_on") : t("toast_cat_hint_off") });
       return next;
     });
   });
@@ -313,8 +315,8 @@ export default function EducationPage() {
 
     if (errors.length && navigator.onLine) {
       toast({
-        title: "Some content failed to load",
-        description: `Couldn't load: ${errors.join(", ")}. The rest of the page loaded fine.`,
+        title: t("toast_some_content_failed"),
+        description: t("toast_couldnt_load", { items: errors.join(", ") }),
         variant: "destructive",
       });
     }
@@ -407,19 +409,19 @@ export default function EducationPage() {
           if (detailRes?.id === resource.id) setDetailRes((d: any) => ({ ...d, ...fresh }));
         }
       } catch { /* non-critical — download already succeeded */ }
-      toast({ title: "✅ Download started!" });
-    } catch (e: any) { toast({ title: "Download failed", description: e.message, variant: "destructive" }); }
+      toast({ title: t("toast_download_started") });
+    } catch (e: any) { toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" }); }
   };
 
   const handleBuy = async (resource: any) => {
     await ensureProfile();
-    if (!window.confirm(`Purchase "${resource.title}" for MK ${Number(resource.price).toLocaleString()}?`)) return;
+    if (!window.confirm(t("confirm_purchase", { title: resource.title, price: Number(resource.price).toLocaleString() }))) return;
     try {
       const { error } = await supabase.from("otechy_purchases").insert({ buyer_id: user.id, resource_id: resource.id, amount_paid: resource.price });
       if (error && error.code !== "23505") throw error;
       setPurchases(p => new Set([...p, resource.id]));
-      toast({ title: "✅ Purchase successful!" });
-    } catch (e: any) { toast({ title: "Purchase failed", description: e.message, variant: "destructive" }); }
+      toast({ title: t("toast_purchase_successful") });
+    } catch (e: any) { toast({ title: t("toast_purchase_failed"), description: e.message, variant: "destructive" }); }
   };
 
   const handleBookmark = async (resource: any) => {
@@ -429,13 +431,13 @@ export default function EducationPage() {
       if (has) {
         await supabase.from("otechy_bookmarks").delete().eq("user_id", user.id).eq("resource_id", resource.id);
         setBookmarks(p => { const n = new Set(p); n.delete(resource.id); return n; });
-        toast({ title: "Bookmark removed" });
+        toast({ title: t("toast_bookmark_removed") });
       } else {
         await supabase.from("otechy_bookmarks").insert({ user_id: user.id, resource_id: resource.id });
         setBookmarks(p => new Set([...p, resource.id]));
-        toast({ title: "🔖 Bookmarked!" });
+        toast({ title: t("toast_bookmarked") });
       }
-    } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
+    } catch (e: any) { toast({ title: t("toast_failed"), description: e.message, variant: "destructive" }); }
   };
 
   const handleAudioDownload = async (audiobook: AudioBook) => {
@@ -456,21 +458,21 @@ export default function EducationPage() {
           if (detailAudiobook?.id === audiobook.id) setDetailAudiobook(d => (d ? { ...d, ...fresh } : d));
         }
       } catch { /* non-critical — download already succeeded */ }
-      toast({ title: "✅ Download started!" });
-    } catch (e: any) { toast({ title: "Download failed", description: e.message, variant: "destructive" }); }
+      toast({ title: t("toast_download_started") });
+    } catch (e: any) { toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" }); }
   };
 
   const handleAudioBuy = async (audiobook: AudioBook) => {
     await ensureProfile();
-    if (!window.confirm(`Purchase "${audiobook.title}" for MK ${Number(audiobook.price).toLocaleString()}?`)) return;
+    if (!window.confirm(t("confirm_purchase", { title: audiobook.title, price: Number(audiobook.price).toLocaleString() }))) return;
     try {
       const { error } = await bookshopSupabase.from(TABLE_AUDIOBOOK_PURCHASES).insert({
         buyer_id: user.id, audiobook_id: audiobook.id, amount_paid: audiobook.price,
       });
       if (error && error.code !== "23505") throw error;
       setAudiobookPurchases(p => new Set([...p, audiobook.id]));
-      toast({ title: "✅ Purchase successful!" });
-    } catch (e: any) { toast({ title: "Purchase failed", description: e.message, variant: "destructive" }); }
+      toast({ title: t("toast_purchase_successful") });
+    } catch (e: any) { toast({ title: t("toast_purchase_failed"), description: e.message, variant: "destructive" }); }
   };
 
   const handleAudioBookmark = async (audiobook: AudioBook) => {
@@ -480,13 +482,13 @@ export default function EducationPage() {
       if (has) {
         await bookshopSupabase.from(TABLE_AUDIOBOOK_BOOKMARKS).delete().eq("user_id", user.id).eq("audiobook_id", audiobook.id);
         setAudiobookBookmarks(p => { const n = new Set(p); n.delete(audiobook.id); return n; });
-        toast({ title: "Bookmark removed" });
+        toast({ title: t("toast_bookmark_removed") });
       } else {
         await bookshopSupabase.from(TABLE_AUDIOBOOK_BOOKMARKS).insert({ user_id: user.id, audiobook_id: audiobook.id });
         setAudiobookBookmarks(p => new Set([...p, audiobook.id]));
-        toast({ title: "🔖 Bookmarked!" });
+        toast({ title: t("toast_bookmarked") });
       }
-    } catch (e: any) { toast({ title: "Failed", description: e.message, variant: "destructive" }); }
+    } catch (e: any) { toast({ title: t("toast_failed"), description: e.message, variant: "destructive" }); }
   };
 
   const handleAudioPlayStart = async (audiobook: AudioBook) => {
@@ -503,11 +505,11 @@ export default function EducationPage() {
   handleUploadClickRef.current = handleUploadClick;
 
   const rotatingShortcuts = [
-    { icon: GraduationCap, label: "Higher Education", onClick: () => setTab("universities") },
-    { icon: BookOpen,      label: "E-BookStore",       onClick: () => setTab("bookshops") },
-    { icon: Users,         label: "Tutors",            onClick: () => setTab("tutors") },
-    { icon: Headphones,    label: "Audio Books",       onClick: () => { setTab("resources"); setContentType("audio"); } },
-    { icon: Award,         label: "Scholarships",      onClick: () => setTab("scholarships") },
+    { icon: GraduationCap, label: t("shortcut_higher_education"), onClick: () => setTab("universities") },
+    { icon: BookOpen,      label: t("menu_bookstore"),            onClick: () => setTab("bookshops") },
+    { icon: Users,         label: t("menu_tutors"),                onClick: () => setTab("tutors") },
+    { icon: Headphones,    label: t("menu_audio_books"),           onClick: () => { setTab("resources"); setContentType("audio"); } },
+    { icon: Award,         label: t("menu_scholarships"),          onClick: () => setTab("scholarships") },
   ];
 
   useEffect(() => {
@@ -518,16 +520,16 @@ export default function EducationPage() {
   }, []);
 
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
-    { key: "resources",    emoji: "📚", label: "Browse",       count: resources.length + audiobooks.length },
-    { key: "scholarships", emoji: "🏆", label: "Scholarships", count: scholarships.length },
-    { key: "tutors",       emoji: "👨‍🏫", label: "Tutors",       count: tutors.length       },
-    { key: "jobs",         emoji: "💼", label: "Jobs",          count: jobs.length         },
-    { key: "universities", emoji: "🎓", label: "Higher Education", count: null            },
-    { key: "bookshops",    emoji: "📖", label: "E-BookStore",     count: null            },
-    { key: "adverts",      emoji: "📢", label: "Adverts",      count: null                },
-    { key: "bookmarks",    emoji: "🔖", label: "Saved",        count: saved.length + savedAudiobooks.length },
-    { key: "dashboard",    emoji: "📊", label: "My Stats",     count: null                },
-    { key: "aboutus",      emoji: "ℹ️",  label: "About Us",     count: null                },
+    { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: resources.length + audiobooks.length },
+    { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
+    { key: "tutors",       emoji: "👨‍🏫", label: t("menu_tutors"),       count: tutors.length       },
+    { key: "jobs",         emoji: "💼", label: t("menu_jobs"),          count: jobs.length         },
+    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: null            },
+    { key: "bookshops",    emoji: "📖", label: t("menu_bookstore"),     count: null            },
+    { key: "adverts",      emoji: "📢", label: t("menu_adverts"),      count: null                },
+    { key: "bookmarks",    emoji: "🔖", label: t("menu_saved"),        count: saved.length + savedAudiobooks.length },
+    { key: "dashboard",    emoji: "📊", label: t("menu_my_stats"),     count: null                },
+    { key: "aboutus",      emoji: "ℹ️",  label: t("menu_about_us"),     count: null                },
   ];
 
   return (
@@ -540,7 +542,7 @@ export default function EducationPage() {
         />
       )}
 
-      <p className="text-sm font-black text-foreground mb-3">Did You Know SchoraHub Consist?</p>
+      <p className="text-sm font-black text-foreground mb-3">{t("did_you_know")}</p>
 
       <style>{`
         @keyframes shortcutFadeIn {
@@ -587,15 +589,15 @@ export default function EducationPage() {
             <AnimatedSearchInput
               value={search}
               onChange={setSearch}
-              phrases={contentType === "audio" ? AUDIO_SEARCH_PHRASES : RESOURCE_SEARCH_PHRASES}
+              phrases={contentType === "audio" ? SEARCH_PHRASES[language].audio : SEARCH_PHRASES[language].resources}
               ringColorClass={contentType === "audio" ? "focus:ring-pink-500/50" : "focus:ring-sky-500/50"}
-              ariaLabel={contentType === "audio" ? "Search audio books" : "Search resources"}
+              ariaLabel={contentType === "audio" ? t("aria_search_audiobooks") : t("aria_search_resources")}
               suggestionPool={searchSuggestions}
               className="flex-1"
             />
             <button
               onClick={() => setAiModeOpen(true)}
-              aria-label="Open AI Mode"
+              aria-label={t("aria_open_ai_mode")}
               className="shrink-0 w-10 h-10 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 text-white flex items-center justify-center active:scale-95 transition-transform"
             >
               <Sparkles className="w-4 h-4" />
@@ -614,7 +616,7 @@ export default function EducationPage() {
                   : "text-muted-foreground"
               }`}
             >
-              <FileText className="w-3.5 h-3.5" /> Documents
+              <FileText className="w-3.5 h-3.5" /> {t("content_documents")}
             </button>
             <button
               onClick={() => setContentType("audio")}
@@ -624,14 +626,14 @@ export default function EducationPage() {
                   : "text-muted-foreground"
               }`}
             >
-              <Headphones className="w-3.5 h-3.5" /> Audio Books
+              <Headphones className="w-3.5 h-3.5" /> {t("menu_audio_books")}
             </button>
           </div>
 
           <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
             {(["all","free","paid"] as PriceFilter[]).map(f => (
               <button key={f} onClick={() => setPrice(f)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${price === f ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                {f === "all" ? "All" : f === "free" ? "Free" : "Paid"}
+                {f === "all" ? t("filter_all") : f === "free" ? t("filter_free") : t("filter_paid")}
               </button>
             ))}
           </div>
@@ -645,12 +647,12 @@ export default function EducationPage() {
             {contentType === "audio"
               ? ACATS.map(c => (
                   <button key={c} onClick={() => setAudiobookCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${audiobookCat === c ? "bg-pink-600 border-pink-600 text-white" : "border-border text-muted-foreground"}`}>
-                    {c}
+                    {c === "All" ? t("filter_all") : c}
                   </button>
                 ))
               : CATS.map(c => (
                   <button key={c} onClick={() => setCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${cat === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
-                    {c}
+                    {CAT_LABEL_KEYS[c] ? t(CAT_LABEL_KEYS[c]!) : c}
                   </button>
                 ))}
           </div>
@@ -659,7 +661,7 @@ export default function EducationPage() {
             loading && filteredAudiobooks.length === 0 ? (
               <FetchingState
                 icon={Headphones}
-                label="Fetching audio books"
+                label={t("fetching_audio_books")}
                 accentBg="bg-pink-500/10"
                 accentText="text-pink-400"
                 ringColor="border-t-pink-500"
@@ -667,10 +669,10 @@ export default function EducationPage() {
             ) : filteredAudiobooks.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-pink-500/10 flex items-center justify-center"><Headphones className="w-7 h-7 text-pink-400" /></div>
-                <p className="font-semibold text-foreground">No audio books found</p>
-                <p className="text-sm text-muted-foreground">Be the first to upload one!</p>
+                <p className="font-semibold text-foreground">{t("no_audio_books_found")}</p>
+                <p className="text-sm text-muted-foreground">{t("be_first_to_upload")}</p>
                 <button onClick={handleUploadClick} className="flex items-center gap-2 bg-gradient-to-r from-pink-600 to-sky-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-all">
-                  <Upload className="w-4 h-4" /> Upload Audio Book
+                  <Upload className="w-4 h-4" /> {t("upload_audio_book")}
                 </button>
               </div>
             ) : (
@@ -692,7 +694,7 @@ export default function EducationPage() {
             loading && filtered.length === 0 ? (
               <FetchingState
                 icon={BookOpen}
-                label="Fetching resources"
+                label={t("fetching_resources")}
                 accentBg="bg-sky-500/10"
                 accentText="text-sky-400"
                 ringColor="border-t-sky-500"
@@ -700,10 +702,10 @@ export default function EducationPage() {
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><BookOpen className="w-7 h-7 text-sky-400" /></div>
-                <p className="font-semibold text-foreground">No resources found</p>
-                <p className="text-sm text-muted-foreground">Be the first to upload one!</p>
+                <p className="font-semibold text-foreground">{t("no_resources_found")}</p>
+                <p className="text-sm text-muted-foreground">{t("be_first_to_upload")}</p>
                 <button onClick={handleUploadClick} className="flex items-center gap-2 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-all">
-                  <Upload className="w-4 h-4" /> Upload Resource
+                  <Upload className="w-4 h-4" /> {t("upload_resource")}
                 </button>
               </div>
             ) : (
@@ -755,14 +757,14 @@ export default function EducationPage() {
         saved.length === 0 && savedAudiobooks.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-14 text-center">
             <div className="w-16 h-16 rounded-2xl bg-sky-500/10 flex items-center justify-center"><Bookmark className="w-7 h-7 text-sky-400" /></div>
-            <p className="font-semibold">No saved items</p>
-            <p className="text-sm text-muted-foreground">Tap the bookmark icon on any resource or audio book.</p>
+            <p className="font-semibold">{t("no_saved_items")}</p>
+            <p className="text-sm text-muted-foreground">{t("tap_bookmark_hint")}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-5">
             {saved.length > 0 && (
               <div>
-                <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">Resources</h2>
+                <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">{t("section_resources")}</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
                 </div>
@@ -770,7 +772,7 @@ export default function EducationPage() {
             )}
             {savedAudiobooks.length > 0 && (
               <div>
-                <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">Audio Books</h2>
+                <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">{t("menu_audio_books")}</h2>
                 <div className="grid grid-cols-2 gap-3">
                   {savedAudiobooks.map(a => (
                     <AudioBookCard
