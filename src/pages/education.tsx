@@ -1,10 +1,10 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase, ChevronUp, ChevronDown } from "lucide-react";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
-import { resourcesSupabase } from "@/lib/resourcesSupabase";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { AuthContext } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
@@ -125,6 +125,9 @@ export default function EducationPage() {
   const [search,       setSearch]       = useState("");
   const [cat,          setCat]          = useState<typeof CATS[number]>("All");
   const [price,        setPrice]        = useState<PriceFilter>("all");
+  const [level,        setLevel]        = useState<EducationLevel>("MSCE");
+  const [subject,      setSubject]      = useState<string>("All");
+  const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [tab,          setTab]          = useState<Tab>("resources");
   const [aiModeOpen,   setAiModeOpen]   = useState(false);
   const [showOnboard,  setShowOnboard]  = useState(false);
@@ -212,32 +215,92 @@ export default function EducationPage() {
   // ── OFFLINE-FIRST: load cache immediately, then refresh from network ────
   const loadFromCacheFirst = async () => {
     const [
-      cachedResources, cachedScholarships, cachedTutors,
-      cachedPurchases, cachedBookmarks,
+      cachedScholarships, cachedTutors,
       cachedAudiobooks, cachedAudiobookPurchases, cachedAudiobookBookmarks,
       cachedJobs,
     ] = await Promise.all([
-      getCache<any>("resources"),
       getCache<any>("scholarships"),
       getCache<any>("tutors"),
-      getCache<{ id: string; resource_id: string }>("purchases"),
-      getCache<{ id: string; resource_id: string }>("bookmarks"),
       getCache<AudioBook>("audiobooks"),
       getCache<{ id: string; audiobook_id: string }>("audiobook_purchases"),
       getCache<{ id: string; audiobook_id: string }>("audiobook_bookmarks"),
       getCache<Job>("jobs"),
     ]);
 
-    if (cachedResources.length)    setResources(cachedResources);
     if (cachedScholarships.length) setScholarships(cachedScholarships);
     if (cachedTutors.length)       setTutors(cachedTutors);
     if (cachedAudiobooks.length)   setAudiobooks(cachedAudiobooks);
     if (cachedJobs.length)         setJobs(cachedJobs);
-    if (cachedPurchases.length)    setPurchases(new Set(cachedPurchases.map(p => p.resource_id)));
-    if (cachedBookmarks.length)    setBookmarks(new Set(cachedBookmarks.map(b => b.resource_id)));
     if (cachedAudiobookPurchases.length) setAudiobookPurchases(new Set(cachedAudiobookPurchases.map(p => p.audiobook_id)));
     if (cachedAudiobookBookmarks.length) setAudiobookBookmarks(new Set(cachedAudiobookBookmarks.map(b => b.audiobook_id)));
   };
+
+  // Resources now live in a separate Supabase project per education level.
+  // This fetches (and caches) resources + purchases + bookmarks for
+  // whichever level is currently selected — it re-runs every time the
+  // person switches Level on Browse.
+  const fetchResources = async (lvl: EducationLevel) => {
+    const noTable = (e: any) => e?.code === "42P01";
+    const client = resourcesClientForLevel(lvl);
+
+    // Cache-first flash on the very first load only.
+    if (resources.length === 0) {
+      const [cachedResources, cachedPurchases, cachedBookmarks] = await Promise.all([
+        getCache<any>("resources"),
+        getCache<{ id: string; resource_id: string }>("purchases"),
+        getCache<{ id: string; resource_id: string }>("bookmarks"),
+      ]);
+      if (cachedResources.length) setResources(cachedResources);
+      if (cachedPurchases.length) setPurchases(new Set(cachedPurchases.map(p => p.resource_id)));
+      if (cachedBookmarks.length) setBookmarks(new Set(cachedBookmarks.map(b => b.resource_id)));
+    }
+
+    const [rRes, pRes, bRes] = await Promise.allSettled([
+      client.from("otechy_resources")
+        .select("id,title,description,category,subject,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
+        .order("created_at", { ascending: false }),
+      client.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
+      client.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
+    ]);
+
+    if (rRes.status === "fulfilled" && (!rRes.value.error || noTable(rRes.value.error))) {
+      const rows = rRes.value.data ?? [];
+      setResources(rows);
+      setCache("resources", rows);
+    } else if (navigator.onLine) {
+      toast({
+        title: t("toast_some_content_failed"),
+        description: t("toast_couldnt_load", { items: "resources" }),
+        variant: "destructive",
+      });
+    }
+
+    if (pRes.status === "fulfilled" && !pRes.value.error) {
+      const rows = pRes.value.data ?? [];
+      setPurchases(new Set(rows.map((p: any) => p.resource_id)));
+      setCache("purchases", rows.map((p: any) => ({ id: p.resource_id, resource_id: p.resource_id })));
+    } else {
+      setPurchases(new Set());
+    }
+    if (bRes.status === "fulfilled" && !bRes.value.error) {
+      const rows = bRes.value.data ?? [];
+      setBookmarks(new Set(rows.map((b: any) => b.resource_id)));
+      setCache("bookmarks", rows.map((b: any) => ({ id: b.resource_id, resource_id: b.resource_id })));
+    } else {
+      setBookmarks(new Set());
+    }
+  };
+
+  useEffect(() => { fetchResources(level); }, [level, user.id]);
+
+  const handleLevelChange = (l: EducationLevel) => {
+    setLevel(l);
+    setSubject("All"); // subject list changes with level, so reset the old pick
+  };
+
+  // Whichever level's backend is currently active — used everywhere a
+  // resource is read from or written to (download, buy, bookmark, rate).
+  const activeResourcesClient = resourcesClientForLevel(level);
 
   const fetchAll = async () => {
     // Show cached content immediately if this is the very first load and we
@@ -250,27 +313,15 @@ export default function EducationPage() {
     const noTable = (e: any) => e?.code === "42P01";
     const errors: string[] = [];
 
-    const [rRes, sRes, tRes, pRes, bRes, abRes, apRes, abmRes] = await Promise.allSettled([
-      resourcesSupabase.from("otechy_resources")
-        .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
-        .order("created_at", { ascending: false }),
+    const [sRes, tRes, abRes, apRes, abmRes] = await Promise.allSettled([
       scholarshipsSupabase.from("otechy_scholarships").select("*").eq("is_active", true).order("created_at", { ascending: false }),
       tutorsSupabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-      resourcesSupabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
-      resourcesSupabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
       bookshopSupabase.from(TABLE_AUDIOBOOKS)
         .select("id,uploader_id,title,description,author,narrator,category,price,audio_url,audio_format,file_size,duration_seconds,cover_url,play_count,download_count,avg_rating,review_count,created_at")
         .order("created_at", { ascending: false }),
       bookshopSupabase.from(TABLE_AUDIOBOOK_PURCHASES).select("audiobook_id").eq("buyer_id", user.id),
       bookshopSupabase.from(TABLE_AUDIOBOOK_BOOKMARKS).select("audiobook_id").eq("user_id", user.id),
     ]);
-
-    // Resources
-    if (rRes.status === "fulfilled" && (!rRes.value.error || noTable(rRes.value.error))) {
-      const rows = rRes.value.data ?? [];
-      setResources(rows);
-      setCache("resources", rows);
-    } else errors.push("resources");
 
     // Scholarships
     if (sRes.status === "fulfilled" && (!sRes.value.error || noTable(sRes.value.error))) {
@@ -294,16 +345,6 @@ export default function EducationPage() {
     } else errors.push("audiobooks");
 
     // Non-critical sets
-    if (pRes.status === "fulfilled" && !pRes.value.error) {
-      const rows = pRes.value.data ?? [];
-      setPurchases(new Set(rows.map((p: any) => p.resource_id)));
-      setCache("purchases", rows.map((p: any) => ({ id: p.resource_id, resource_id: p.resource_id })));
-    }
-    if (bRes.status === "fulfilled" && !bRes.value.error) {
-      const rows = bRes.value.data ?? [];
-      setBookmarks(new Set(rows.map((b: any) => b.resource_id)));
-      setCache("bookmarks", rows.map((b: any) => ({ id: b.resource_id, resource_id: b.resource_id })));
-    }
     if (apRes.status === "fulfilled" && !apRes.value.error) {
       const rows = apRes.value.data ?? [];
       setAudiobookPurchases(new Set(rows.map((p: any) => p.audiobook_id)));
@@ -360,8 +401,8 @@ export default function EducationPage() {
     const q = search.toLowerCase();
     const mS = !q || r.title?.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q);
     const mC = cat === "All" || r.category === cat;
-    const mP = price === "all" || (price === "free" ? Number(r.price) === 0 : Number(r.price) > 0);
-    return mS && mC && mP;
+    const mSub = subject === "All" || r.subject === subject;
+    return mS && mC && mSub;
   });
 
   const filteredAudiobooks = audiobooks.filter(a => {
@@ -392,7 +433,7 @@ export default function EducationPage() {
 
   const handleDownload = async (resource: any) => {
     try {
-      const { data, error } = await resourcesSupabase.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
+      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
       if (error) throw error;
       const blob = await (await fetch(data.signedUrl)).blob();
       const url = URL.createObjectURL(blob);
@@ -400,8 +441,8 @@ export default function EducationPage() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       try {
-        await resourcesSupabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-        const { data: fresh } = await resourcesSupabase
+        await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
+        const { data: fresh } = await activeResourcesClient
           .from("otechy_resources")
           .select("download_count,avg_rating,review_count")
           .eq("id", resource.id)
@@ -419,7 +460,7 @@ export default function EducationPage() {
     await ensureProfile();
     if (!window.confirm(t("confirm_purchase", { title: resource.title, price: Number(resource.price).toLocaleString() }))) return;
     try {
-      const { error } = await resourcesSupabase.from("otechy_purchases").insert({ buyer_id: user.id, resource_id: resource.id, amount_paid: resource.price });
+      const { error } = await activeResourcesClient.from("otechy_purchases").insert({ buyer_id: user.id, resource_id: resource.id, amount_paid: resource.price });
       if (error && error.code !== "23505") throw error;
       setPurchases(p => new Set([...p, resource.id]));
       toast({ title: t("toast_purchase_successful") });
@@ -431,11 +472,11 @@ export default function EducationPage() {
     const has = bookmarks.has(resource.id);
     try {
       if (has) {
-        await resourcesSupabase.from("otechy_bookmarks").delete().eq("user_id", user.id).eq("resource_id", resource.id);
+        await activeResourcesClient.from("otechy_bookmarks").delete().eq("user_id", user.id).eq("resource_id", resource.id);
         setBookmarks(p => { const n = new Set(p); n.delete(resource.id); return n; });
         toast({ title: t("toast_bookmark_removed") });
       } else {
-        await resourcesSupabase.from("otechy_bookmarks").insert({ user_id: user.id, resource_id: resource.id });
+        await activeResourcesClient.from("otechy_bookmarks").insert({ user_id: user.id, resource_id: resource.id });
         setBookmarks(p => new Set([...p, resource.id]));
         toast({ title: t("toast_bookmarked") });
       }
@@ -632,32 +673,81 @@ export default function EducationPage() {
             </button>
           </div>
 
-          <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
-            {(["all","free","paid"] as PriceFilter[]).map(f => (
-              <button key={f} onClick={() => setPrice(f)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${price === f ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                {f === "all" ? t("filter_all") : f === "free" ? t("filter_free") : t("filter_paid")}
-              </button>
-            ))}
-          </div>
-
-          <div
-            ref={catsScrollRef}
-            onClick={handleCatsBarTap}
-            onTouchEnd={handleCatsBarTap}
-            className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide scroll-smooth"
-          >
-            {contentType === "audio"
-              ? ACATS.map(c => (
-                  <button key={c} onClick={() => setAudiobookCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${audiobookCat === c ? "bg-pink-600 border-pink-600 text-white" : "border-border text-muted-foreground"}`}>
-                    {c === "All" ? t("filter_all") : c}
-                  </button>
-                ))
-              : CATS.map(c => (
-                  <button key={c} onClick={() => setCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${cat === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
-                    {CAT_LABEL_KEYS[c] ? t(CAT_LABEL_KEYS[c]!) : c}
+          {/* Level picker — MSCE / JCE / Primary. Documents-only: each level
+              is its own backend, so this decides which project gets queried.
+              Always visible (not part of the collapsible filters) since it's
+              the primary choice, not a refinement. */}
+          {contentType === "documents" && (
+            <div className="mb-2">
+              <div className="grid grid-cols-3 gap-2">
+                {EDUCATION_LEVELS.map(l => (
+                  <button key={l} onClick={() => handleLevelChange(l)}
+                    className={`text-xs font-bold py-2.5 rounded-xl border transition-all ${
+                      level === l ? "bg-gradient-to-r from-sky-600 to-blue-600 border-transparent text-white shadow-sm" : "border-border text-muted-foreground"
+                    }`}>
+                    {l === "MSCE" ? t("level_msce") : l === "JCE" ? t("level_jce") : t("level_primary")}
                   </button>
                 ))}
-          </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5 px-0.5">{t("pick_level_reminder")}</p>
+            </div>
+          )}
+
+          {/* Filters show/hide toggle — keeps Browse from feeling crowded;
+              tap to reveal Subject + Category (documents) or Price +
+              Category (audio), tap again to tuck them away. */}
+          <button
+            onClick={() => setFiltersOpen(o => !o)}
+            aria-label={t("aria_toggle_filters")}
+            className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold text-sky-500 active:scale-95 transition-transform"
+          >
+            {filtersOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {filtersOpen ? t("filters_hide") : t("filters_show")}
+          </button>
+
+          {filtersOpen && (
+            <>
+              {contentType === "documents" ? (
+                <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                  <button onClick={() => setSubject("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                    {t("filter_all_subjects")}
+                  </button>
+                  {SUBJECTS_BY_LEVEL[level].map(s => (
+                    <button key={s} onClick={() => setSubject(s)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === s ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                  {(["all","free","paid"] as PriceFilter[]).map(f => (
+                    <button key={f} onClick={() => setPrice(f)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${price === f ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                      {f === "all" ? t("filter_all") : f === "free" ? t("filter_free") : t("filter_paid")}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div
+                ref={catsScrollRef}
+                onClick={handleCatsBarTap}
+                onTouchEnd={handleCatsBarTap}
+                className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide scroll-smooth"
+              >
+                {contentType === "audio"
+                  ? ACATS.map(c => (
+                      <button key={c} onClick={() => setAudiobookCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${audiobookCat === c ? "bg-pink-600 border-pink-600 text-white" : "border-border text-muted-foreground"}`}>
+                        {c === "All" ? t("filter_all") : c}
+                      </button>
+                    ))
+                  : CATS.map(c => (
+                      <button key={c} onClick={() => setCat(c)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${cat === c ? "bg-blue-600 border-blue-600 text-white" : "border-border text-muted-foreground"}`}>
+                        {CAT_LABEL_KEYS[c] ? t(CAT_LABEL_KEYS[c]!) : c}
+                      </button>
+                    ))}
+              </div>
+            </>
+          )}
 
           {contentType === "audio" ? (
             loading && filteredAudiobooks.length === 0 ? (
@@ -713,7 +803,7 @@ export default function EducationPage() {
             ) : (
               <>
                 <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
-                  {filtered.slice(0, Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                  {filtered.slice(0, Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
                 </div>
 
                 {/* Embedded horizontal scholarships carousel — Facebook "People You May
@@ -725,7 +815,7 @@ export default function EducationPage() {
                 />
 
                 <div className="grid grid-cols-2 gap-3">
-                  {filtered.slice(Math.ceil(filtered.length / 2), Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                  {filtered.slice(Math.ceil(filtered.length / 2), Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
                 </div>
 
                 {/* Second carousel — identical component/style — reappears after
@@ -740,7 +830,7 @@ export default function EducationPage() {
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                  {filtered.slice(Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                  {filtered.slice(Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
                 </div>
               </>
             )
@@ -768,7 +858,7 @@ export default function EducationPage() {
               <div>
                 <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">{t("section_resources")}</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} />)}
+                  {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
                 </div>
               </div>
             )}
@@ -820,8 +910,9 @@ export default function EducationPage() {
           onBookmarkToggle={handleBookmark}
           allResources={resources}
           onOpenSimilar={setDetailRes}
+          client={activeResourcesClient}
           onRatingSubmit={async (resourceId: string) => {
-            const { data: fresh } = await resourcesSupabase
+            const { data: fresh } = await activeResourcesClient
               .from("otechy_resources")
               .select("download_count,avg_rating,review_count")
               .eq("id", resourceId)
