@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import MuxPlayer from "@mux/mux-player-react";
 import { ThumbsUp, ThumbsDown, Volume2, VolumeX, Play, Pause, Maximize, Minimize } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { advertsSupabase } from "@/lib/advertsSupabase";
 import { useToast } from "@/hooks/use-toast";
 
 export type Advert = {
@@ -105,14 +105,14 @@ export function AdvertCard({ advert, userId, myReaction, onReactionChange, isAct
 
     try {
       if (clearing) {
-        const { error } = await supabase
+        const { error } = await advertsSupabase
           .from("otechy_reel_reactions")
           .delete()
           .eq("reel_id", advert.id)
           .eq("user_id", userId);
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { error } = await advertsSupabase
           .from("otechy_reel_reactions")
           .upsert(
             { reel_id: advert.id, user_id: userId, reaction },

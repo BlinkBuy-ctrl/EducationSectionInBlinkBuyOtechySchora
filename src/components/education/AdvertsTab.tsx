@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Megaphone, ChevronUp, ChevronDown } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { advertsSupabase } from "@/lib/advertsSupabase";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertCard, type Advert } from "@/components/education/AdvertCard";
 import { FetchingState } from "@/components/education/FetchingState";
@@ -28,7 +28,7 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
       setLoading(false);
     }
 
-    const { data: advertRows, error: advertError } = await supabase
+    const { data: advertRows, error: advertError } = await advertsSupabase
       .from("otechy_reels")
       .select("id,mux_playback_id,title,description,like_count,dislike_count")
       .eq("is_active", true)
@@ -47,7 +47,7 @@ export function AdvertsTab({ userId }: AdvertsTabProps) {
     setCache("adverts", rows);
 
     if (rows.length > 0) {
-      const { data: reactionRows } = await supabase
+      const { data: reactionRows } = await advertsSupabase
         .from("otechy_reel_reactions")
         .select("reel_id,reaction")
         .eq("user_id", userId)
