@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
-import { resourcesSupabase } from "@/lib/resourcesSupabase";
+import { EDUCATION_LEVELS, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { TABLE_AUDIOBOOKS, deleteOwnedAudiobook, formatDuration } from "@/lib/audiobooks";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
@@ -254,11 +254,16 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
     if (!window.confirm("This will permanently delete YOUR uploaded resources, tutor profiles, and your profile identity (display name). It will NOT touch purchases, bookmarks, or other users' data. Continue?")) return;
     setResetting(true);
     try {
-      const filePaths = resources.map(r => r.file_url).filter(Boolean);
-      if (filePaths.length) {
-        await resourcesSupabase.storage.from("otechy-docs").remove(filePaths).catch(() => {});
+      // Resources are now split across 3 level backends (MSCE/JCE/Primary),
+      // so clean up each one individually — a seller's uploads can span all 3.
+      for (const lvl of EDUCATION_LEVELS) {
+        const client = resourcesClientForLevel(lvl);
+        const filePaths = resources.filter(r => r._level === lvl).map(r => r.file_url).filter(Boolean);
+        if (filePaths.length) {
+          await client.storage.from("otechy-docs").remove(filePaths).catch(() => {});
+        }
+        await client.from("otechy_resources").delete().eq("uploader_id", userId);
       }
-      await resourcesSupabase.from("otechy_resources").delete().eq("uploader_id", userId);
       await tutorsSupabase.from("otechy_tutors").delete().eq("user_id", userId);
       await supabase.from("profiles").delete().eq("id", userId);
 
@@ -272,12 +277,16 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
   const load = async () => {
     setLoading(true);
     try {
-      const [statsRes, resourcesRes, tutorsRes, audiobooksRes] = await Promise.all([
+      const resourceCols = "id,title,category,subject,price,download_count,avg_rating,review_count,created_at,file_url";
+
+      const [statsRes, msceRes, jceRes, primaryRes, tutorsRes, audiobooksRes] = await Promise.all([
         supabase.rpc("get_seller_stats", { p_user_id: userId }),
-        resourcesSupabase.from("otechy_resources")
-          .select("id,title,category,price,download_count,avg_rating,review_count,created_at,file_url")
-          .eq("uploader_id", userId)
-          .order("created_at", { ascending: false }),
+        resourcesClientForLevel("MSCE").from("otechy_resources")
+          .select(resourceCols).eq("uploader_id", userId).order("created_at", { ascending: false }),
+        resourcesClientForLevel("JCE").from("otechy_resources")
+          .select(resourceCols).eq("uploader_id", userId).order("created_at", { ascending: false }),
+        resourcesClientForLevel("Primary").from("otechy_resources")
+          .select(resourceCols).eq("uploader_id", userId).order("created_at", { ascending: false }),
         tutorsSupabase.from("otechy_tutors")
           .select("id,name,tagline,subjects,location,is_online,likes_count,created_at,is_active")
           .eq("user_id", userId)
@@ -287,8 +296,17 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
           .eq("uploader_id", userId)
           .order("created_at", { ascending: false }),
       ]);
-      if (statsRes.data)     setStats(statsRes.data);
-      if (resourcesRes.data) setResources(resourcesRes.data);
+      if (statsRes.data) setStats(statsRes.data);
+
+      // Merge the 3 levels into one list, tagging each row with which
+      // backend it came from so delete/reset know where to send the request.
+      const merged = [
+        ...(msceRes.data ?? []).map(r => ({ ...r, _level: "MSCE" as EducationLevel })),
+        ...(jceRes.data ?? []).map(r => ({ ...r, _level: "JCE" as EducationLevel })),
+        ...(primaryRes.data ?? []).map(r => ({ ...r, _level: "Primary" as EducationLevel })),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setResources(merged);
+
       if (tutorsRes.data)    setTutors(tutorsRes.data);
       if (audiobooksRes.data) setAudiobooks(audiobooksRes.data);
     } catch (e: any) {
@@ -302,8 +320,9 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
     if (!window.confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
     setDeleting(item.id);
     try {
-      await resourcesSupabase.storage.from("otechy-docs").remove([item.file_url]);
-      const { error } = await resourcesSupabase.from("otechy_resources").delete().eq("id", item.id);
+      const client = resourcesClientForLevel(item._level ?? "MSCE");
+      await client.storage.from("otechy-docs").remove([item.file_url]);
+      const { error } = await client.from("otechy_resources").delete().eq("id", item.id);
       if (error) throw error;
       toast({ title: "Deleted" });
       load(); onRefresh();
