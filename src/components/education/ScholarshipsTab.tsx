@@ -5,7 +5,7 @@ import {
   ChevronUp, Send, Plus, X, Upload, Loader2, Calendar,
   MapPin, BookOpen, Tag, AlertTriangle, Shield, Check
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
 import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { FetchingState } from "@/components/education/FetchingState";
@@ -59,13 +59,13 @@ function ScholarshipPostForm({ user, onSuccess, onClose, ensureProfile }: { user
       if (imgFile) {
         const ext = imgFile.name.split(".").pop();
         const path = `scholarships/${user.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("otechy-images").upload(path, imgFile, { upsert: true });
+        const { error: upErr } = await scholarshipsSupabase.storage.from("otechy-images").upload(path, imgFile, { upsert: true });
         if (upErr) throw upErr;
-        const { data: pub } = supabase.storage.from("otechy-images").getPublicUrl(path);
+        const { data: pub } = scholarshipsSupabase.storage.from("otechy-images").getPublicUrl(path);
         image_url = pub.publicUrl;
       }
       const tags = form.tags.split(",").map(t => t.trim()).filter(Boolean);
-      const { error } = await supabase.from("otechy_scholarships").insert({
+      const { error } = await scholarshipsSupabase.from("otechy_scholarships").insert({
         title: form.title, provider: form.provider, description: form.description,
         link: form.link || null, amount: form.amount || null,
         deadline: form.deadline || null, eligibility: form.eligibility || null,
@@ -179,7 +179,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
   const [sending, setSending] = useState(false);
 
   const load = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await scholarshipsSupabase
       .from("otechy_scholarship_comments")
       .select("*")
       .eq("scholarship_id", scholarshipId)
@@ -195,7 +195,7 @@ function CommentSection({ scholarshipId, user }: { scholarshipId: string; user: 
     if (!body.trim()) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("otechy_scholarship_comments").insert({
+      const { error } = await scholarshipsSupabase.from("otechy_scholarship_comments").insert({
         scholarship_id: scholarshipId, user_id: user.id, body: body.trim(),
       });
       if (error) throw error;
@@ -248,7 +248,7 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
   const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
-    supabase.from("otechy_scholarship_likes")
+    scholarshipsSupabase.from("otechy_scholarship_likes")
       .select("id").eq("scholarship_id", s.id).eq("user_id", user.id).maybeSingle()
       .then(({ data }) => { if (data) setLiked(true); });
   }, [s.id, user.id]);
@@ -256,10 +256,10 @@ function ScholarshipCard({ s, user, onOpen }: { s: any; user: any; onOpen: (s: a
   const toggleLike = async () => {
     // user always present - no gate needed
     if (liked) {
-      await supabase.from("otechy_scholarship_likes").delete().eq("scholarship_id", s.id).eq("user_id", user.id);
+      await scholarshipsSupabase.from("otechy_scholarship_likes").delete().eq("scholarship_id", s.id).eq("user_id", user.id);
       setLikes((p: number) => p - 1); setLiked(false);
     } else {
-      await supabase.from("otechy_scholarship_likes").insert({ scholarship_id: s.id, user_id: user.id });
+      await scholarshipsSupabase.from("otechy_scholarship_likes").insert({ scholarship_id: s.id, user_id: user.id });
       setLikes((p: number) => p + 1); setLiked(true);
     }
   };

@@ -4,7 +4,7 @@ import {
   X, Award, Calendar, MapPin, BookOpen, Tag,
   Heart, MessageCircle, ExternalLink, Send, Loader2, AlertTriangle, Shield, Check, Maximize2
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props { s: any; user: any; onClose: () => void; }
@@ -22,8 +22,8 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
   useEffect(() => {
     const load = async () => {
       const [likeRes, commRes] = await Promise.all([
-        supabase.from("otechy_scholarship_likes").select("id").eq("scholarship_id", s.id).eq("user_id", user.id).maybeSingle(),
-        supabase.from("otechy_scholarship_comments").select("*").eq("scholarship_id", s.id).order("created_at", { ascending: true }),
+        scholarshipsSupabase.from("otechy_scholarship_likes").select("id").eq("scholarship_id", s.id).eq("user_id", user.id).maybeSingle(),
+        scholarshipsSupabase.from("otechy_scholarship_comments").select("*").eq("scholarship_id", s.id).order("created_at", { ascending: true }),
       ]);
       if (likeRes.data) setLiked(true);
       if (commRes.error) {
@@ -37,10 +37,10 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
 
   const toggleLike = async () => {
     if (liked) {
-      await supabase.from("otechy_scholarship_likes").delete().eq("scholarship_id", s.id).eq("user_id", user.id);
+      await scholarshipsSupabase.from("otechy_scholarship_likes").delete().eq("scholarship_id", s.id).eq("user_id", user.id);
       setLikes((p: number) => p - 1); setLiked(false);
     } else {
-      await supabase.from("otechy_scholarship_likes").insert({ scholarship_id: s.id, user_id: user.id });
+      await scholarshipsSupabase.from("otechy_scholarship_likes").insert({ scholarship_id: s.id, user_id: user.id });
       setLikes((p: number) => p + 1); setLiked(true);
     }
   };
@@ -49,12 +49,12 @@ export function ScholarshipDetailModal({ s, user, onClose }: Props) {
     if (!body.trim()) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("otechy_scholarship_comments").insert({
+      const { error } = await scholarshipsSupabase.from("otechy_scholarship_comments").insert({
         scholarship_id: s.id, user_id: user.id, body: body.trim(),
       });
       if (error) throw error;
       setBody("");
-      const { data, error: reloadErr } = await supabase.from("otechy_scholarship_comments").select("*").eq("scholarship_id", s.id).order("created_at", { ascending: true });
+      const { data, error: reloadErr } = await scholarshipsSupabase.from("otechy_scholarship_comments").select("*").eq("scholarship_id", s.id).order("created_at", { ascending: true });
       if (reloadErr) throw reloadErr;
       setComments(data ?? []);
     } catch (e: any) {
