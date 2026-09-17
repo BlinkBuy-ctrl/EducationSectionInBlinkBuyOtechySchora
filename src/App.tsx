@@ -10,6 +10,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { AdOverlay } from "@/components/AdOverlay";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { MaintenanceGate } from "@/components/MaintenanceGate"; // TEMPORARY — remove this line + usage below when done
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { supabase } from "@/lib/supabase";
 import { generateUUID } from "@/lib/utils";
@@ -96,7 +97,11 @@ export default function App() {
         <OfflineBanner />
         <QueryClientProvider client={queryClient}>
           {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-          {splashDone  && <AppInner />}
+          {splashDone  && (
+            <MaintenanceGate>
+              <AppInner />
+            </MaintenanceGate>
+          )}
           <InstallPrompt />
         </QueryClientProvider>
       </LanguageContext.Provider>
