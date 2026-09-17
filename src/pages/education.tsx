@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
+import { resourcesSupabase } from "@/lib/resourcesSupabase";
 import { AuthContext } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
@@ -251,13 +252,13 @@ export default function EducationPage() {
     const errors: string[] = [];
 
     const [rRes, sRes, tRes, pRes, bRes, abRes, apRes, abmRes] = await Promise.allSettled([
-      supabase.from("otechy_resources")
+      resourcesSupabase.from("otechy_resources")
         .select("id,title,description,category,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
         .order("created_at", { ascending: false }),
       scholarshipsSupabase.from("otechy_scholarships").select("*").eq("is_active", true).order("created_at", { ascending: false }),
       tutorsSupabase.from("otechy_tutors").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-      supabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
-      supabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
+      resourcesSupabase.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
+      resourcesSupabase.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
       bookshopSupabase.from(TABLE_AUDIOBOOKS)
         .select("id,uploader_id,title,description,author,narrator,category,price,audio_url,audio_format,file_size,duration_seconds,cover_url,play_count,download_count,avg_rating,review_count,created_at")
         .order("created_at", { ascending: false }),
@@ -392,7 +393,7 @@ export default function EducationPage() {
 
   const handleDownload = async (resource: any) => {
     try {
-      const { data, error } = await supabase.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
+      const { data, error } = await resourcesSupabase.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
       if (error) throw error;
       const blob = await (await fetch(data.signedUrl)).blob();
       const url = URL.createObjectURL(blob);
@@ -400,8 +401,8 @@ export default function EducationPage() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 10000);
       try {
-        await supabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-        const { data: fresh } = await supabase
+        await resourcesSupabase.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
+        const { data: fresh } = await resourcesSupabase
           .from("otechy_resources")
           .select("download_count,avg_rating,review_count")
           .eq("id", resource.id)
@@ -419,7 +420,7 @@ export default function EducationPage() {
     await ensureProfile();
     if (!window.confirm(t("confirm_purchase", { title: resource.title, price: Number(resource.price).toLocaleString() }))) return;
     try {
-      const { error } = await supabase.from("otechy_purchases").insert({ buyer_id: user.id, resource_id: resource.id, amount_paid: resource.price });
+      const { error } = await resourcesSupabase.from("otechy_purchases").insert({ buyer_id: user.id, resource_id: resource.id, amount_paid: resource.price });
       if (error && error.code !== "23505") throw error;
       setPurchases(p => new Set([...p, resource.id]));
       toast({ title: t("toast_purchase_successful") });
@@ -431,11 +432,11 @@ export default function EducationPage() {
     const has = bookmarks.has(resource.id);
     try {
       if (has) {
-        await supabase.from("otechy_bookmarks").delete().eq("user_id", user.id).eq("resource_id", resource.id);
+        await resourcesSupabase.from("otechy_bookmarks").delete().eq("user_id", user.id).eq("resource_id", resource.id);
         setBookmarks(p => { const n = new Set(p); n.delete(resource.id); return n; });
         toast({ title: t("toast_bookmark_removed") });
       } else {
-        await supabase.from("otechy_bookmarks").insert({ user_id: user.id, resource_id: resource.id });
+        await resourcesSupabase.from("otechy_bookmarks").insert({ user_id: user.id, resource_id: resource.id });
         setBookmarks(p => new Set([...p, resource.id]));
         toast({ title: t("toast_bookmarked") });
       }
@@ -821,7 +822,7 @@ export default function EducationPage() {
           allResources={resources}
           onOpenSimilar={setDetailRes}
           onRatingSubmit={async (resourceId: string) => {
-            const { data: fresh } = await supabase
+            const { data: fresh } = await resourcesSupabase
               .from("otechy_resources")
               .select("download_count,avg_rating,review_count")
               .eq("id", resourceId)
