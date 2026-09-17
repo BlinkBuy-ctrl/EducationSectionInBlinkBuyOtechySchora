@@ -7,7 +7,8 @@ const LANG_KEY = "otechy_language";
 export interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: TranslationKey) => string;
+  /** Plain lookup, or pass vars to fill in {placeholders} in the string. */
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 }
 
 export const LanguageContext = createContext<LanguageContextType>({} as LanguageContextType);
@@ -33,8 +34,13 @@ export function useLanguageState(): LanguageContextType {
   }, []);
 
   const t = useCallback(
-    (key: TranslationKey): string => {
-      return translations[language][key] ?? translations.en[key] ?? key;
+    (key: TranslationKey, vars?: Record<string, string | number>): string => {
+      const raw = translations[language][key] ?? translations.en[key] ?? key;
+      if (!vars) return raw;
+      return Object.entries(vars).reduce(
+        (str, [k, v]) => str.replace(new RegExp(`\\{${k}\\}`, "g"), String(v)),
+        raw
+      );
     },
     [language]
   );
