@@ -1,7 +1,6 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
 import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase } from "lucide-react";
-import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
