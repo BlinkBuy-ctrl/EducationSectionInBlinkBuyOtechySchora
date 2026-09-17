@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle, Image } from "lucide-react";
-import { resourcesSupabase } from "@/lib/resourcesSupabase";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = ["Past Papers", "Textbooks", "Notes", "Research", "Other"];
@@ -40,9 +40,20 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const [progress,     setProgress]     = useState(0);
   const [errMsg,       setErrMsg]       = useState("");
   const [form,         setForm]         = useState({ title: "", description: "", category: "Notes" });
+  const [level,        setLevel]        = useState<EducationLevel>("MSCE");
+  const [subject,      setSubject]      = useState("");
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const isLoading = ["extracting", "uploading", "saving"].includes(status);
+
+  // Resources now live in a separate Supabase project per education level —
+  // whichever level is selected decides where this upload actually goes.
+  const activeClient = resourcesClientForLevel(level);
+
+  const handleLevelChange = (l: EducationLevel) => {
+    setLevel(l);
+    setSubject(""); // subject list changes with level, so clear the old pick
+  };
 
   const statusLabel: Record<Status, string> = {
     idle:       "Publish Resource",
@@ -73,6 +84,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const handleSubmit = async () => {
     if (!file)              { setErrMsg("Select a file."); return; }
     if (!form.title.trim()) { setErrMsg("Title required."); return; }
+    if (!subject)            { setErrMsg("Pick a subject."); return; }
 
     setErrMsg(""); setProgress(5);
 
@@ -85,9 +97,9 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       // Upload PDF to otechy-docs
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        resourcesSupabase.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
+        activeClient.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
           if (error || !data) {
-            resourcesSupabase.storage.from("otechy-docs").upload(path, file, {
+            activeClient.storage.from("otechy-docs").upload(path, file, {
               upsert: false, contentType: file.type || "application/octet-stream",
             }).then(({ error: e }) => e ? reject(new Error(e.message)) : resolve());
             return;
@@ -109,11 +121,11 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       let thumbPublicUrl: string | null = null;
       if (coverBlob) {
         const thumbPath = `covers/${userId}-${Date.now()}.jpg`;
-        const { error: tErr } = await resourcesSupabase.storage
+        const { error: tErr } = await activeClient.storage
           .from("otechy-images")
           .upload(thumbPath, coverBlob, { upsert: false, contentType: "image/jpeg" });
         if (!tErr) {
-          const { data: urlData } = resourcesSupabase.storage
+          const { data: urlData } = activeClient.storage
             .from("otechy-images")
             .getPublicUrl(thumbPath);
           thumbPublicUrl = urlData?.publicUrl ?? null;
@@ -122,11 +134,12 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
 
       setProgress(80); setStatus("saving");
 
-      const { error: dbErr } = await resourcesSupabase.from("otechy_resources").insert({
+      const { error: dbErr } = await activeClient.from("otechy_resources").insert({
         uploader_id:   userId,
         title:         form.title.trim(),
         description:   form.description.trim() || null,
         category:      form.category,
+        subject:       subject,
         file_url:      path,
         file_name:     file.name,
         file_size:     file.size,
@@ -134,7 +147,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       });
 
       if (dbErr) {
-        await resourcesSupabase.storage.from("otechy-docs").remove([path]).catch(() => {});
+        await activeClient.storage.from("otechy-docs").remove([path]).catch(() => {});
         throw new Error(dbErr.message);
       }
 
@@ -262,6 +275,29 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
             <textarea value={form.description} onChange={e => set("description", e.target.value)}
               rows={2} disabled={isLoading} placeholder="What's inside?"
               className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-none disabled:opacity-60" />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Level <span className="text-red-500">*</span></label>
+            <div className="grid grid-cols-3 gap-2">
+              {EDUCATION_LEVELS.map(l => (
+                <button key={l} type="button" disabled={isLoading} onClick={() => handleLevelChange(l)}
+                  className={`text-xs font-semibold py-2 rounded-xl border transition-all ${
+                    level === l ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"
+                  } disabled:opacity-60`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Subject <span className="text-red-500">*</span></label>
+            <select value={subject} onChange={e => setSubject(e.target.value)} disabled={isLoading}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60">
+              <option value="" disabled>Select a subject…</option>
+              {SUBJECTS_BY_LEVEL[level].map(s => <option key={s}>{s}</option>)}
+            </select>
           </div>
 
           <div>

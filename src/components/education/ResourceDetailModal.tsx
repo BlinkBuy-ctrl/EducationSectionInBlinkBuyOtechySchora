@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, Loader2, CheckCircle2, Eye, Share2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { resourcesSupabase } from "@/lib/resourcesSupabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -118,7 +118,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
   }, []);
 
   useEffect(() => {
-    resourcesSupabase.storage.from("otechy-docs")
+    client.storage.from("otechy-docs")
       .createSignedUrl(resource.file_url, 3600)
       .then(({ data, error: e }) => {
         if (e || !data) { setError(true); setRendering(false); setInitLoad(false); return; }
@@ -421,12 +421,13 @@ interface Props {
   onRatingSubmit?: (resourceId: string) => void;
   allResources?: any[];
   onOpenSimilar?: (r: any) => void;
+  client: SupabaseClient; // which level's backend this resource lives in
 }
 
 export function ResourceDetailModal({
   resource, isPurchased, isBookmarked,
   onClose, onBuy, onDownload, onBookmarkToggle, onRatingSubmit,
-  allResources, onOpenSimilar,
+  allResources, onOpenSimilar, client,
 }: Props) {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
@@ -477,7 +478,7 @@ export function ResourceDetailModal({
   useEffect(() => {
     const load = async () => {
       const [rRes, uRes] = await Promise.all([
-        resourcesSupabase.from("otechy_ratings")
+        client.from("otechy_ratings")
           .select("id,user_id,resource_id,rating,review,created_at")
           .eq("resource_id", resource.id)
           .order("created_at", { ascending: false }),
@@ -501,7 +502,7 @@ export function ResourceDetailModal({
   useEffect(() => {
     if (!isPDF) return;
     setPreviewLoading(true);
-    resourcesSupabase.storage.from("otechy-docs")
+    client.storage.from("otechy-docs")
       .createSignedUrl(resource.file_url, 3600)
       .then(({ data, error }) => { if (!error && data) setPreviewUrl(data.signedUrl); })
       .finally(() => setPreviewLoading(false));
@@ -511,7 +512,7 @@ export function ResourceDetailModal({
     if (!myRating) { toast({ title: "Pick a star rating first", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
-      const { data: upserted, error } = await resourcesSupabase.from("otechy_ratings").upsert({
+      const { data: upserted, error } = await client.from("otechy_ratings").upsert({
         resource_id: resource.id, user_id: user.id,
         rating: myRating, review: myReview.trim() || null,
       }, { onConflict: "resource_id,user_id" }).select().single();
@@ -537,7 +538,7 @@ export function ResourceDetailModal({
       onRatingSubmit?.(resource.id);
 
       // Re-fetch in background to get accurate data
-      resourcesSupabase.from("otechy_ratings")
+      client.from("otechy_ratings")
         .select("id,user_id,resource_id,rating,review,created_at")
         .eq("resource_id", resource.id)
         .order("created_at", { ascending: false })

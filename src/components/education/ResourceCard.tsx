@@ -3,7 +3,7 @@ import {
   FileText, Download, Lock, Star, BadgeCheck,
   Eye, X, Loader2, ChevronLeft, ChevronRight, BookOpen
 } from "lucide-react";
-import { resourcesSupabase } from "@/lib/resourcesSupabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const CAT_COLORS: Record<string, string> = {
@@ -89,13 +89,13 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
   }, []);
 
   useEffect(() => {
-    resourcesSupabase.storage.from("otechy-docs")
+    client.storage.from("otechy-docs")
       .createSignedUrl(resource.file_url, 3600)
       .then(({ data, error: e }) => {
         if (e || !data) { setError(true); setRendering(false); setInitLoad(false); return; }
         setSignedUrl(data.signedUrl);
       });
-  }, [resource.file_url]);
+  }, [resource.file_url, client]);
 
   useEffect(() => {
     if (!signedUrl) return;
@@ -273,9 +273,10 @@ interface Props {
   onBuy: (r: any) => void;
   onDownload: (r: any) => void;
   onOpen: (r: any) => void;
+  client: SupabaseClient; // which level's backend this resource lives in
 }
 
-export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen }: Props) {
+export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen, client }: Props) {
   const [showReader,  setShowReader]  = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
 
