@@ -64,6 +64,52 @@ const en = {
   pill_tutors: "👨‍🏫 Tutors",
   pill_textbooks: "📖 Textbooks",
   pill_notes: "📝 Notes",
+
+  // ── 404 page ──
+  page_not_found: "Page not found",
+  back_to_hub: "Back to Education Hub",
+
+  // ── education.tsx (main hub) ──
+  did_you_know: "Did You Know SchoraHub Consist?",
+  shortcut_higher_education: "Higher Education",
+  filter_all: "All",
+  filter_free: "Free",
+  filter_paid: "Paid",
+  content_documents: "Documents",
+  aria_search_resources: "Search resources",
+  aria_search_audiobooks: "Search audio books",
+  aria_open_ai_mode: "Open AI Mode",
+  fetching_resources: "Fetching resources",
+  fetching_audio_books: "Fetching audio books",
+  no_resources_found: "No resources found",
+  no_audio_books_found: "No audio books found",
+  be_first_to_upload: "Be the first to upload one!",
+  upload_resource: "Upload Resource",
+  upload_audio_book: "Upload Audio Book",
+  no_saved_items: "No saved items",
+  tap_bookmark_hint: "Tap the bookmark icon on any resource or audio book.",
+  section_resources: "Resources",
+  toast_some_content_failed: "Some content failed to load",
+  toast_couldnt_load: "Couldn't load: {items}. The rest of the page loaded fine.",
+  toast_download_started: "✅ Download started!",
+  toast_download_failed: "Download failed",
+  toast_purchase_successful: "✅ Purchase successful!",
+  toast_purchase_failed: "Purchase failed",
+  toast_bookmark_removed: "Bookmark removed",
+  toast_bookmarked: "🔖 Bookmarked!",
+  toast_failed: "Failed",
+  toast_tab_hint_on: "↔️ Tab scroll hint on",
+  toast_tab_hint_off: "↔️ Tab scroll hint off",
+  toast_cat_hint_on: "↔️ Category scroll hint on",
+  toast_cat_hint_off: "↔️ Category scroll hint off",
+  confirm_purchase: "Purchase \"{title}\" for MK {price}?",
+
+  // ── resource categories ──
+  cat_past_papers: "Past Papers",
+  cat_textbooks: "Textbooks",
+  cat_notes: "Notes",
+  cat_research: "Research",
+  cat_other: "Other",
 } as const;
 
 // Chichewa — best-effort draft, flagged above for your review.
@@ -107,7 +153,73 @@ const ny: Record<keyof typeof en, string> = {
   pill_tutors: "👨‍🏫 Aphunzitsi",
   pill_textbooks: "📖 Mabuku a Maphunziro",
   pill_notes: "📝 Zolemba",
+
+  page_not_found: "Tsamba silinapezeke",
+  back_to_hub: "Bwererani ku Education Hub",
+
+  did_you_know: "Kodi Mukudziwa Zomwe SchoraHub Ili Nazo?",
+  shortcut_higher_education: "Maphunziro Apamwamba",
+  filter_all: "Zonse",
+  filter_free: "Zaulere",
+  filter_paid: "Zolipira",
+  content_documents: "Zolemba",
+  aria_search_resources: "Funafuna zinthu",
+  aria_search_audiobooks: "Funafuna mabuku a mawu",
+  aria_open_ai_mode: "Tsegulani AI Mode",
+  fetching_resources: "Kutenga zinthu",
+  fetching_audio_books: "Kutenga mabuku a mawu",
+  no_resources_found: "Palibe zinthu zapezeka",
+  no_audio_books_found: "Palibe mabuku a mawu apezeka",
+  be_first_to_upload: "Khalani woyamba kutumiza chinthu!",
+  upload_resource: "Tumizani Chinthu",
+  upload_audio_book: "Tumizani Buku la Mawu",
+  no_saved_items: "Palibe zosungidwa",
+  tap_bookmark_hint: "Dinani chizindikiro cha bookmark pa chinthu chilichonse kapena buku la mawu.",
+  section_resources: "Zinthu",
+  toast_some_content_failed: "Zina sizinatsitsidwe bwino",
+  toast_couldnt_load: "Sizinathe kutsitsidwa: {items}. Zina zonse zatsitsidwa bwino.",
+  toast_download_started: "✅ Kutsitsa kwayamba!",
+  toast_download_failed: "Kutsitsa kwalephera",
+  toast_purchase_successful: "✅ Kugula kwatheka!",
+  toast_purchase_failed: "Kugula kwalephera",
+  toast_bookmark_removed: "Bookmark yachotsedwa",
+  toast_bookmarked: "🔖 Yasungidwa!",
+  toast_failed: "Zalephera",
+  toast_tab_hint_on: "↔️ Chizindikiro cha tab chayatsidwa",
+  toast_tab_hint_off: "↔️ Chizindikiro cha tab chazimitsidwa",
+  toast_cat_hint_on: "↔️ Chizindikiro cha gulu chayatsidwa",
+  toast_cat_hint_off: "↔️ Chizindikiro cha gulu chazimitsidwa",
+  confirm_purchase: "Mugula \"{title}\" ndi MK {price}?",
+
+  cat_past_papers: "Mapepala Akale",
+  cat_textbooks: "Mabuku a Maphunziro",
+  cat_notes: "Zolemba",
+  cat_research: "Kafukufuku",
+  cat_other: "Zina",
 };
 
 export const translations = { en, ny };
 export type TranslationKey = keyof typeof en;
+
+// Rotating placeholder phrases in the search bar — kept separate from the
+// flat key/value dictionary above since each is a list, not a single string.
+export const SEARCH_PHRASES: Record<Language, { resources: string[]; audio: string[] }> = {
+  en: {
+    resources: [
+      "Search Physics…", "Search Chemistry…", "Search Agriculture…", "Search Mathematics…",
+      "Search Biology…", "Search Past Papers…", "Search Textbooks…",
+    ],
+    audio: [
+      "Search Fiction…", "Search Educational…", "Search by author…", "Search by narrator…", "Search Audio Books…",
+    ],
+  },
+  ny: {
+    resources: [
+      "Funafuni Physics…", "Funafuni Chemistry…", "Funafuni Ulimi…", "Funafuni Masamu…",
+      "Funafuni Biology…", "Funafuni Mapepala Akale…", "Funafuni Mabuku a Maphunziro…",
+    ],
+    audio: [
+      "Funafuni Nkhani…", "Funafuni Zamaphunziro…", "Funafuni ndi dzina la wolemba…", "Funafuni ndi dzina la wowerenga…", "Funafuni Mabuku a Mawu…",
+    ],
+  },
+};
