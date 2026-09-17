@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
+import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertsAdmin } from "@/components/admin/AdvertsAdminForm";
@@ -28,10 +29,8 @@ type ContentRow = {
 
 type Table = "otechy_tutors" | "otechy_scholarships";
 
-// Each content section may live on its own Supabase project now. Scholarships
-// is still on the main project for now — it'll move to its own client the
-// same way once that account exists.
-const clientFor = (table: Table) => table === "otechy_tutors" ? tutorsSupabase : supabase;
+// Each content section now lives on its own Supabase project.
+const clientFor = (table: Table) => table === "otechy_tutors" ? tutorsSupabase : scholarshipsSupabase;
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
