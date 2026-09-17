@@ -110,6 +110,16 @@ const en = {
   cat_notes: "Notes",
   cat_research: "Research",
   cat_other: "Other",
+
+  // ── education level + subject filter (Browse) ──
+  level_msce: "MSCE",
+  level_jce: "JCE",
+  level_primary: "Primary",
+  pick_level_reminder: "👋 Pick your level above to see resources for MSCE, JCE, or Primary.",
+  filter_all_subjects: "All Subjects",
+  filters_show: "Show Filters",
+  filters_hide: "Hide Filters",
+  aria_toggle_filters: "Show or hide filters",
 } as const;
 
 // Chichewa — best-effort draft, flagged above for your review.
@@ -196,6 +206,15 @@ const ny: Record<keyof typeof en, string> = {
   cat_notes: "Zolemba",
   cat_research: "Kafukufuku",
   cat_other: "Zina",
+
+  level_msce: "MSCE",
+  level_jce: "JCE",
+  level_primary: "Pulaimale",
+  pick_level_reminder: "👋 Sankhani gawo lanu pamwamba kuti muwone zinthu za MSCE, JCE, kapena Pulaimale.",
+  filter_all_subjects: "Maphunziro Onse",
+  filters_show: "Onetsani Zosefera",
+  filters_hide: "Bisani Zosefera",
+  aria_toggle_filters: "Onetsani kapena bisani zosefera",
 };
 
 export const translations = { en, ny };
