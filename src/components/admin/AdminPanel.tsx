@@ -4,6 +4,7 @@ import {
   Megaphone, LayoutGrid, LogOut, Video, School, Eye, Store, Briefcase,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertsAdmin } from "@/components/admin/AdvertsAdminForm";
@@ -26,6 +27,11 @@ type ContentRow = {
 };
 
 type Table = "otechy_tutors" | "otechy_scholarships";
+
+// Each content section may live on its own Supabase project now. Scholarships
+// is still on the main project for now — it'll move to its own client the
+// same way once that account exists.
+const clientFor = (table: Table) => table === "otechy_tutors" ? tutorsSupabase : supabase;
 
 const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 
@@ -186,7 +192,7 @@ function ContentModeration() {
   const load = async (table: Table) => {
     setLoading(true);
     const labelCol = table === "otechy_tutors" ? "name" : "title";
-    const { data, error } = await supabase
+    const { data, error } = await clientFor(table)
       .from(table)
       .select(`id,${labelCol},is_verified,is_scam,scam_reason`)
       .order("created_at", { ascending: false });
@@ -210,7 +216,7 @@ function ContentModeration() {
 
   const toggleVerify = async (row: ContentRow) => {
     const next = !row.is_verified;
-    const { error } = await supabase.from(section).update({
+    const { error } = await clientFor(section).from(section).update({
       is_verified: next,
       verified_at: next ? new Date().toISOString() : null,
     }).eq("id", row.id);
@@ -220,14 +226,14 @@ function ContentModeration() {
   };
 
   const clearScam = async (row: ContentRow) => {
-    const { error } = await supabase.from(section).update({ is_scam: false, scam_reason: null }).eq("id", row.id);
+    const { error } = await clientFor(section).from(section).update({ is_scam: false, scam_reason: null }).eq("id", row.id);
     if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, is_scam: false, scam_reason: null } : r));
   };
 
   const confirmScamFlag = async (row: ContentRow) => {
     if (!scamReasonDraft.trim()) return;
-    const { error } = await supabase.from(section).update({
+    const { error } = await clientFor(section).from(section).update({
       is_scam: true,
       scam_reason: scamReasonDraft.trim(),
     }).eq("id", row.id);
@@ -240,7 +246,7 @@ function ContentModeration() {
 
   const handleDelete = async (row: ContentRow) => {
     if (!confirm(`Permanently delete "${row.label}"? This cannot be undone.`)) return;
-    const { error } = await supabase.from(section).delete().eq("id", row.id);
+    const { error } = await clientFor(section).from(section).delete().eq("id", row.id);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
     setRows(prev => prev.filter(r => r.id !== row.id));
     toast({ title: "Deleted" });
