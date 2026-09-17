@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
+import { advertsSupabase } from "@/lib/advertsSupabase";
 import { signOutAdmin, type AdminProfile } from "@/lib/adminAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AdvertsAdmin } from "@/components/admin/AdvertsAdminForm";
@@ -359,7 +360,7 @@ function AdConfigEditor({ adminId }: { adminId: string }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    supabase.from("otechy_ad_config").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle()
+    advertsSupabase.from("otechy_ad_config").select("*").order("created_at", { ascending: false }).limit(1).maybeSingle()
       .then(({ data }) => {
         if (data) {
           setRowId(data.id);
@@ -390,8 +391,8 @@ function AdConfigEditor({ adminId }: { adminId: string }) {
     setSaving(true);
     const payload = { ...config, created_by: adminId };
     const { data, error } = rowId
-      ? await supabase.from("otechy_ad_config").update(payload).eq("id", rowId).select().single()
-      : await supabase.from("otechy_ad_config").insert(payload).select().single();
+      ? await advertsSupabase.from("otechy_ad_config").update(payload).eq("id", rowId).select().single()
+      : await advertsSupabase.from("otechy_ad_config").insert(payload).select().single();
 
     setSaving(false);
     if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }

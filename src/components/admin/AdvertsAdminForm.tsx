@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Loader2, Trash2, EyeOff, Eye, PlusCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { advertsSupabase } from "@/lib/advertsSupabase";
 import { useToast } from "@/hooks/use-toast";
 
 type AdvertRow = {
@@ -25,7 +25,7 @@ export function AdvertsAdmin() {
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await advertsSupabase
       .from("otechy_reels")
       .select("id,mux_playback_id,title,description,is_active,like_count,dislike_count,created_at")
       .order("created_at", { ascending: false });
@@ -49,7 +49,7 @@ export function AdvertsAdmin() {
       return;
     }
     setSaving(true);
-    const { data, error } = await supabase
+    const { data, error } = await advertsSupabase
       .from("otechy_reels")
       .insert({
         mux_playback_id: playbackId,
@@ -71,14 +71,14 @@ export function AdvertsAdmin() {
 
   const toggleActive = async (row: AdvertRow) => {
     const next = !row.is_active;
-    const { error } = await supabase.from("otechy_reels").update({ is_active: next }).eq("id", row.id);
+    const { error } = await advertsSupabase.from("otechy_reels").update({ is_active: next }).eq("id", row.id);
     if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
     setRows(prev => prev.map(r => r.id === row.id ? { ...r, is_active: next } : r));
   };
 
   const handleDelete = async (row: AdvertRow) => {
     if (!confirm(`Permanently delete "${row.title}"? This cannot be undone.`)) return;
-    const { error } = await supabase.from("otechy_reels").delete().eq("id", row.id);
+    const { error } = await advertsSupabase.from("otechy_reels").delete().eq("id", row.id);
     if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); return; }
     setRows(prev => prev.filter(r => r.id !== row.id));
     toast({ title: "Deleted" });
