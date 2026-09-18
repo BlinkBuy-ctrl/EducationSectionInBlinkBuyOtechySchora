@@ -41,32 +41,34 @@ self.addEventListener("fetch", (event) => {
   const isNavigation = request.mode === "navigate";
 
   // ── Supabase REST API reads (any *.supabase.co /rest/v1/... GET) ──────
-  // Stale-while-revalidate: serve the cached response instantly if we have
-  // one, refresh it in the background from the network. This is what makes
-  // Higher Education / E-BookStore / Adverts tabs work even if the app's own
-  // IndexedDB cache were ever unavailable — a second, SW-level safety net.
+  // Network-first, cache as fallback: always try to get the freshest data
+  // (e.g. a book someone just uploaded) instead of serving a stale cached
+  // list first. Raced against a 3s timeout so a slow/flaky/offline
+  // connection still falls back to cache almost instantly instead of the
+  // screen getting stuck — this is what makes Higher Education /
+  // E-BookStore / Adverts tabs work even if the app's own IndexedDB cache
+  // were ever unavailable, and offline still works, it's just no longer
+  // preferred over a live network response.
   const isSupabaseRest = url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/rest/v1/");
   if (isSupabaseRest) {
     event.respondWith(
       caches.open(API_CACHE).then(async (cache) => {
-        const cached = await cache.match(request);
-        const networkFetch = fetch(request)
-          .then((response) => {
-            if (response && response.status === 200) {
-              cache.put(request, response.clone());
-            }
-            return response;
-          })
-          .catch(() => undefined);
-
-        if (cached) {
-          networkFetch.catch(() => {});
-          return cached;
+        try {
+          const response = await Promise.race([
+            fetch(request),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
+          ]);
+          if (response && response.status === 200) {
+            cache.put(request, response.clone());
+          }
+          return response;
+        } catch {
+          const cached = await cache.match(request);
+          return cached || new Response("[]", {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
         }
-        return networkFetch.then((response) => response || new Response("[]", {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }));
       })
     );
     return;
