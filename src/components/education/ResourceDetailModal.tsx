@@ -561,6 +561,11 @@ export function ResourceDetailModal({
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${CAT_COLORS[resource.category] ?? CAT_COLORS["Other"]}`}>
                   {resource.category}
                 </span>
+                {resource.year && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-foreground">
+                    {resource.year}
+                  </span>
+                )}
                 {isFree
                   ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">FREE</span>
                   : isPurchased

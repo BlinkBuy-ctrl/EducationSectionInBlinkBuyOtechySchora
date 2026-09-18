@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle, Image } from "lucide-react";
-import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, RESOURCE_YEARS, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = ["Past Papers", "Textbooks", "Notes", "Research", "Other"];
@@ -42,6 +42,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const [form,         setForm]         = useState({ title: "", description: "", category: "Notes" });
   const [level,        setLevel]        = useState<EducationLevel>("MSCE");
   const [subject,      setSubject]      = useState("");
+  const [year,         setYear]         = useState("");
 
   const set = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const isLoading = ["extracting", "uploading", "saving"].includes(status);
@@ -85,6 +86,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     if (!file)              { setErrMsg("Select a file."); return; }
     if (!form.title.trim()) { setErrMsg("Title required."); return; }
     if (!subject)            { setErrMsg("Pick a subject."); return; }
+    if (!year)               { setErrMsg("Pick a year."); return; }
 
     setErrMsg(""); setProgress(5);
 
@@ -140,6 +142,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         description:   form.description.trim() || null,
         category:      form.category,
         subject:       subject,
+        year:          year,
         file_url:      path,
         file_name:     file.name,
         file_size:     file.size,
@@ -297,6 +300,15 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
               className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60">
               <option value="" disabled>Select a subject…</option>
               {SUBJECTS_BY_LEVEL[level].map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Year <span className="text-red-500">*</span></label>
+            <select value={year} onChange={e => setYear(e.target.value)} disabled={isLoading}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-60">
+              <option value="" disabled>Select a year…</option>
+              {RESOURCE_YEARS.map(y => <option key={y}>{y}</option>)}
             </select>
           </div>
 

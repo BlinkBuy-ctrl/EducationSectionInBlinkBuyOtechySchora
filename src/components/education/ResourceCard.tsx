@@ -319,9 +319,16 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen,
 
           {/* Top badges */}
           <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 ${CAT_COLORS[resource.category] ?? CAT_COLORS["Other"]}`}>
-              {resource.category}
-            </span>
+            <div className="flex items-center gap-1 min-w-0">
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 ${CAT_COLORS[resource.category] ?? CAT_COLORS["Other"]}`}>
+                {resource.category}
+              </span>
+              {resource.year && (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 text-foreground shrink-0">
+                  {resource.year}
+                </span>
+              )}
+            </div>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
               isFree
                 ? "bg-emerald-500 text-white"
