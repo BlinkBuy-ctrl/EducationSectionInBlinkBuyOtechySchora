@@ -175,6 +175,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("otechy:set-tab", handler);
   }, []);
 
+  /* ── File download trigger — a single persistent hidden iframe handles
+     every download for the whole app session. Never created/destroyed per
+     click, so there's nothing to race against a modal closing at the same
+     moment (that race was the actual cause of the earlier freeze). Also
+     never opens a new tab — the iframe just quietly loads the file URL,
+     the browser's Content-Disposition header (set via the signed URL's
+     `download` option) turns that into a native file save, nothing visibly
+     navigates. ── */
+  const downloadFrameRef = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const url = (e as CustomEvent<{ url: string }>).detail?.url;
+      if (url && downloadFrameRef.current) downloadFrameRef.current.src = url;
+    };
+    window.addEventListener("otechy:trigger-download", handler);
+    return () => window.removeEventListener("otechy:trigger-download", handler);
+  }, []);
+
   /* ── Reset tab on route change ── */
   useEffect(() => { setActiveTab(""); }, [loc]);
 
@@ -216,6 +234,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"calc(var(--vh,1vh) * 100)", overflow:"hidden" }}
          className="bg-background text-foreground">
+
+      {/* Hidden, permanent — powers every file download in the app.
+          display:none intentionally, not visually hidden-but-present, since
+          it never needs to be seen. */}
+      <iframe ref={downloadFrameRef} title="downloads" style={{ display: "none" }} />
 
       {/* ── Top bar ── */}
       <header className="shrink-0 bg-sidebar border-b border-sidebar-border z-40">
