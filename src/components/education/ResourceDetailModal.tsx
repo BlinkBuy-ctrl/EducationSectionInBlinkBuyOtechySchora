@@ -449,31 +449,25 @@ export function ResourceDetailModal({
   const size      = formatSize(resource.file_size);
   const isPDF     = resource.file_name?.toLowerCase().endsWith(".pdf");
 
-  // "Similar to this book" — approximated from what's already loaded: same
-  // category, or overlapping keywords in the title (e.g. both mention
-  // "Chemistry"). No subject/tag data is stored in this app yet.
+  // "Similar to this book" — same subject first (strongest signal, now that
+  // every resource actually has a subject), then same category as a
+  // secondary match. Replaces the old fuzzy title-keyword heuristic, which
+  // was only ever a workaround for not having subject data.
   const similar = useMemo(() => {
     if (!allResources?.length) return [];
-    const stop = new Set(["the","and","for","with","form","notes","note","paper","papers","exam","past","of","in","a","an"]);
-    const words = (resource.title ?? "")
-      .toLowerCase()
-      .split(/[^a-z0-9]+/)
-      .filter((w: string) => w.length > 2 && !stop.has(w));
-
     return allResources
       .filter(r => r.id !== resource.id)
       .map(r => {
-        const rTitle = (r.title ?? "").toLowerCase();
-        const sharedWords = words.filter((w: string) => rTitle.includes(w)).length;
+        const sameSubject  = r.subject  && r.subject === resource.subject;
         const sameCategory = r.category === resource.category;
-        const score = sharedWords * 2 + (sameCategory ? 1 : 0);
+        const score = (sameSubject ? 2 : 0) + (sameCategory ? 1 : 0);
         return { r, score };
       })
       .filter(x => x.score > 0)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score || new Date(b.r.created_at).getTime() - new Date(a.r.created_at).getTime())
       .slice(0, 10)
       .map(x => x.r);
-  }, [allResources, resource.id, resource.title, resource.category]);
+  }, [allResources, resource.id, resource.subject, resource.category]);
 
   useEffect(() => {
     const load = async () => {
@@ -573,11 +567,11 @@ export function ResourceDetailModal({
                   ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400">OWNED</span>
                   : null}
               </div>
-              <h2 className="font-bold text-sm text-foreground leading-snug line-clamp-2">{resource.title}</h2>
+              <h2 className="font-bold text-base text-foreground leading-snug line-clamp-2">{resource.title}</h2>
               {resource.review_count > 0 && (
                 <div className="flex items-center gap-1 mt-0.5">
                   <StarRating value={Math.round(resource.avg_rating ?? 0)} readonly />
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs text-foreground/70">
                     {Number(resource.avg_rating ?? 0).toFixed(1)} · {resource.review_count} review{resource.review_count !== 1 ? "s" : ""}
                   </span>
                 </div>
@@ -627,13 +621,13 @@ export function ResourceDetailModal({
                       <span className="text-xs font-bold text-foreground">{uploader.name}</span>
                       {uploader.is_verified && <BadgeCheck className="w-3 h-3 text-blue-400 shrink-0" />}
                     </div>
-                    <p className="text-[10px] text-muted-foreground truncate">{uploader.bio || "SchoraHub contributor"}</p>
+                    <p className="text-[13px] text-foreground/70 truncate">{uploader.bio || "SchoraHub contributor"}</p>
                   </div>
                 </div>
               )}
 
               {resource.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed">{resource.description}</p>
+                <p className="text-sm text-foreground/80 leading-relaxed">{resource.description}</p>
               )}
 
               <div className="flex flex-wrap gap-1.5">
@@ -643,8 +637,8 @@ export function ResourceDetailModal({
                   { icon: Calendar, label: new Date(resource.created_at).toLocaleDateString("en-MW", { day: "numeric", month: "short", year: "numeric" }) },
                 ].filter(Boolean).map((m: any) => (
                   <div key={m.label} className="flex items-center gap-1 bg-muted/40 rounded-lg px-2 py-1">
-                    <m.icon className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">{m.label}</span>
+                    <m.icon className="w-3 h-3 text-foreground/60" />
+                    <span className="text-xs text-foreground/70">{m.label}</span>
                   </div>
                 ))}
               </div>
@@ -653,8 +647,8 @@ export function ResourceDetailModal({
               {isPDF && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[10px] font-bold text-foreground uppercase tracking-wide">Preview</p>
-                    {!canAccess && <span className="text-[9px] text-muted-foreground">First 2 pages only</span>}
+                    <p className="text-xs font-bold text-foreground uppercase tracking-wide">Preview</p>
+                    {!canAccess && <span className="text-xs text-foreground/60">First 2 pages only</span>}
                   </div>
                   {previewLoading ? (
                     <div className="h-40 bg-muted/20 rounded-xl flex items-center justify-center">
@@ -664,7 +658,7 @@ export function ResourceDetailModal({
                     <PdfPreview signedUrl={previewUrl} canAccess={canAccess} />
                   ) : (
                     <div className="h-16 bg-muted/20 rounded-xl flex items-center justify-center">
-                      <p className="text-[10px] text-muted-foreground">Preview unavailable</p>
+                      <p className="text-xs text-foreground/60">Preview unavailable</p>
                     </div>
                   )}
                 </div>
@@ -672,10 +666,10 @@ export function ResourceDetailModal({
 
               {/* Reviews */}
               <div ref={reviewsRef}>
-                <p className="text-[10px] font-bold text-foreground uppercase tracking-wide mb-2">Reviews</p>
+                <p className="text-xs font-bold text-foreground uppercase tracking-wide mb-2">Reviews</p>
                 <div className="bg-muted/20 rounded-xl p-3 mb-3 flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-semibold text-foreground">
+                    <p className="text-[13px] font-semibold text-foreground">
                       {submitted ? "Your review" : "Rate this resource"}
                     </p>
                     {submitted && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
@@ -683,10 +677,10 @@ export function ResourceDetailModal({
                   <StarRating value={myRating} onChange={v => { setMyRating(v); setSubmitted(false); }} />
                   <textarea value={myReview} onChange={e => { setMyReview(e.target.value); setSubmitted(false); }}
                     rows={2} placeholder="Write a short review… (optional)"
-                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-sky-500/50 resize-none" />
+                    className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-sky-500/50 resize-none" />
                   {!submitted && (
                     <button onClick={submitRating} disabled={submitting || !myRating}
-                      className="self-end flex items-center gap-1 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">
+                      className="self-end flex items-center gap-1 bg-gradient-to-r from-sky-600 to-blue-600 text-white text-[13px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-50">
                       {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Star className="w-3 h-3" />}
                       {submitting ? "Saving…" : "Submit"}
                     </button>
@@ -694,7 +688,7 @@ export function ResourceDetailModal({
                 </div>
 
                 {ratings.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground text-center py-3">No reviews yet — be the first!</p>
+                  <p className="text-xs text-foreground/60 text-center py-3">No reviews yet — be the first!</p>
                 ) : (
                   <div className="flex flex-col gap-2.5">
                     {ratings.map((r: any) => (
@@ -704,12 +698,12 @@ export function ResourceDetailModal({
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1 mb-0.5">
-                            <span className="text-[11px] font-semibold text-foreground">
+                            <span className="text-[13px] font-semibold text-foreground">
                               {r.user_id === user?.id ? "You" : `User ${(r.user_id ?? "0000").slice(-4).toUpperCase()}`}
                             </span>
                           </div>
                           <StarRating value={r.rating} readonly />
-                          {r.review && <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{r.review}</p>}
+                          {r.review && <p className="text-[13px] text-foreground/80 mt-0.5 leading-relaxed">{r.review}</p>}
                         </div>
                       </div>
                     ))}
@@ -719,7 +713,7 @@ export function ResourceDetailModal({
 
               {similar.length > 0 && (
                 <div>
-                  <p className="text-xs font-bold text-foreground mb-2">📚 Similar to this book</p>
+                  <p className="text-sm font-bold text-foreground mb-2">📚 Similar to this book</p>
                   <div className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1">
                     {similar.map(r => (
                       <div
@@ -735,10 +729,10 @@ export function ResourceDetailModal({
                           )}
                         </div>
                         <div className="p-2">
-                          <span className={`inline-block text-[8px] font-bold px-1.5 py-0.5 rounded-full mb-1 ${CAT_COLORS[r.category] ?? CAT_COLORS["Other"]}`}>
+                          <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full mb-1 ${CAT_COLORS[r.category] ?? CAT_COLORS["Other"]}`}>
                             {r.category}
                           </span>
-                          <p className="text-[10.5px] font-semibold text-foreground leading-snug line-clamp-2">{r.title}</p>
+                          <p className="text-[12.5px] font-semibold text-foreground leading-snug line-clamp-2">{r.title}</p>
                         </div>
                       </div>
                     ))}
