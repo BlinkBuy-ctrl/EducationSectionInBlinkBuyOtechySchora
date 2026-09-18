@@ -433,13 +433,13 @@ export default function EducationPage() {
 
   const handleDownload = async (resource: any) => {
     try {
-      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
+      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: resource.file_name ?? true });
       if (error) throw error;
-      const blob = await (await fetch(data.signedUrl)).blob();
-      const url = URL.createObjectURL(blob);
-      const a = Object.assign(document.createElement("a"), { href: url, download: resource.file_name ?? "file" });
+      // Point the browser straight at the signed URL so it streams and shows
+      // native download progress immediately — no more waiting for the
+      // whole file to load into memory first before anything visibly starts.
+      const a = Object.assign(document.createElement("a"), { href: data.signedUrl, download: resource.file_name ?? "file" });
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
       try {
         await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
         const { data: fresh } = await activeResourcesClient
@@ -895,7 +895,7 @@ export default function EducationPage() {
       )}
       {tab === "aboutus"   && <AboutUs onBack={() => setTab("resources")} />}
 
-      {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={fetchAll} />}
+      {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={() => fetchResources(level)} />}
       {showAudioUpload && <AudioBookUploadModal userId={user.id} onClose={() => setShowAudioUpload(false)} onSuccess={fetchAll} />}
       {aiModeOpen && <AiModeChat onClose={() => setAiModeOpen(false)} />}
 
