@@ -25,6 +25,15 @@ export const SUBJECTS_BY_LEVEL: Record<EducationLevel, string[]> = {
   ],
 }
 
+// Years shown when uploading/filtering a resource — most recent first, with
+// an "Other" bucket for anything older than the recent window. Computed from
+// the real current year so it never needs updating by hand.
+const CURRENT_YEAR = new Date().getFullYear();
+export const RESOURCE_YEARS: string[] = [
+  ...Array.from({ length: 10 }, (_, i) => String(CURRENT_YEAR - i)),
+  "Other",
+];
+
 // Each level is its own separate Supabase project — this is the single
 // place that maps a level to its client, so every component that needs to
 // read/write resources for a given level goes through here instead of
