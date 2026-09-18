@@ -87,6 +87,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const menuBtnRef = useRef<HTMLButtonElement>(null);
 
+  // Which labeled groups are collapsed (minimized) inside the menu — every
+  // group starts open; tapping a group's header toggles it shut/open.
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (key: string) => setCollapsedGroups(p => ({ ...p, [key]: !p[key] }));
+
   const openMenu = () => {
     const rect = menuBtnRef.current?.getBoundingClientRect();
     if (rect) {
@@ -262,13 +267,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             style={{ top: menuPos.top, right: menuPos.right }}
           >
             <div className="p-2.5">
-              {MENU_GROUPS.map((group, gi) => (
+              {MENU_GROUPS.map((group, gi) => {
+                const isCollapsed = group.labelKey ? !!collapsedGroups[group.labelKey] : false;
+                return (
                 <div key={gi} className={gi > 0 ? "mt-3 pt-3 border-t border-white/[0.06]" : ""}>
                   {group.labelKey && (
-                    <p className="px-1.5 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/35">
-                      {t(group.labelKey)}
-                    </p>
+                    <button
+                      onClick={() => toggleGroup(group.labelKey!)}
+                      className="w-full flex items-center justify-between px-1.5 pb-1.5 active:opacity-70"
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-white/35">
+                        {t(group.labelKey)}
+                      </span>
+                      {isCollapsed
+                        ? <ChevronDown className="w-3.5 h-3.5 text-white/35" />
+                        : <ChevronUp className="w-3.5 h-3.5 text-white/35" />}
+                    </button>
                   )}
+                  {!isCollapsed && (
                   <div className={group.labelKey ? "flex flex-col gap-1.5" : ""}>
                     {group.items.map((item) => {
                       const Icon = item.icon;
@@ -291,8 +307,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       );
                     })}
                   </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </>,
