@@ -269,7 +269,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                       {t(group.labelKey)}
                     </p>
                   )}
-                  <div className={group.labelKey ? "grid grid-cols-2 gap-1.5" : ""}>
+                  <div className={group.labelKey ? "flex flex-col gap-1.5" : ""}>
                     {group.items.map((item) => {
                       const Icon = item.icon;
                       const active = item.action === "language"
@@ -279,9 +279,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         <button
                           key={item.labelKey + (item.lang ?? "")}
                           onClick={() => goMenuItem(item)}
-                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors active:scale-[0.97] ${
+                          className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors active:scale-[0.97] w-full ${
                             active ? "bg-sky-500/15" : "active:bg-white/5"
-                          } ${!group.labelKey ? "w-full" : ""}`}
+                          }`}
                         >
                           <Icon className={`w-4 h-4 shrink-0 ${active ? "text-sky-400" : "text-sky-400/80"}`} />
                           <span className={`text-[12.5px] font-semibold truncate ${active ? "text-white" : "text-white/85"}`}>
