@@ -89,7 +89,7 @@ async function renderPage(doc: any, pageNum: number, canvas: HTMLCanvasElement) 
 }
 
 // ── Full-screen reader ───────────────────────────────────────────────────────
-function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => void }) {
+function PdfReaderModal({ resource, onClose, client }: { resource: any; onClose: () => void; client: SupabaseClient }) {
   const [signedUrl,  setSignedUrl]  = useState<string | null>(null);
   const [doc,        setDoc]        = useState<any>(null);
   const [page,       setPage]       = useState(1);
@@ -124,7 +124,7 @@ function PdfReaderModal({ resource, onClose }: { resource: any; onClose: () => v
         if (e || !data) { setError(true); setRendering(false); setInitLoad(false); return; }
         setSignedUrl(data.signedUrl);
       });
-  }, [resource.file_url]);
+  }, [resource.file_url, client]);
 
   useEffect(() => {
     if (!signedUrl) return;
@@ -776,7 +776,7 @@ export function ResourceDetailModal({
         </div>
       </div>
 
-      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} />}
+      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} client={client} />}
     </>,
     document.body
   );
