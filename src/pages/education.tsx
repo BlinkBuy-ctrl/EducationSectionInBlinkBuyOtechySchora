@@ -53,6 +53,21 @@ const ONBOARDING_KEY = "otechy_onboarding_done";
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
 
+// Builds the filename a download gets saved as. Never trusts a resource's
+// stored file_name alone — if it's missing or blank (true for some older
+// uploads), the browser falls back to naming the file after its raw
+// storage path instead, which is a meaningless timestamp like
+// "1783xxxxxxxxx.pdf". Building from the resource's title instead
+// guarantees a real, human name every time, old uploads included.
+function sanitizeFilename(name: string) {
+  return name.replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function getDownloadFilename(resource: any) {
+  const ext = (resource.file_name?.split(".").pop() || resource.file_url?.split(".").pop() || "pdf").toLowerCase();
+  const base = sanitizeFilename(resource.title || resource.file_name?.replace(/\.[^.]+$/, "") || "download");
+  return `${base}.${ext}`;
+}
+
 function useScrollHintAnimation(ref: RefObject<HTMLDivElement>, enabled: boolean) {
   const pausedRef = useRef(false);
   useEffect(() => {
@@ -433,7 +448,7 @@ export default function EducationPage() {
 
   const handleDownload = async (resource: any) => {
     try {
-      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: resource.file_name ?? true });
+      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: getDownloadFilename(resource) });
       if (error) throw error;
       // Hands the URL to Layout's persistent hidden download iframe — no
       // new tab, and no manual document.body manipulation that could race
