@@ -5,12 +5,10 @@ import { createClient } from '@supabase/supabase-js'
 // Primary), instead of one shared Resources project. This is the MSCE one.
 // Same pattern as tutorsSupabase.ts, scholarshipsSupabase.ts, etc.
 //
-// ⚠️ PLACEHOLDER — you haven't created this Supabase project yet. Once you
-// do (Project Settings → API), replace the two values below with the real
-// ones. Until then this file safely falls back to a dummy project so the
-// app doesn't crash — MSCE resources just won't load any data.
-const MSCE_RESOURCES_SUPABASE_URL = 'https://placeholder.supabase.co'
-const MSCE_RESOURCES_SUPABASE_ANON_KEY = 'placeholder'
+// This is the MSCE Resources Supabase project — separate from the main
+// SchoraHub project and from the other two Resources levels (JCE/Primary).
+const MSCE_RESOURCES_SUPABASE_URL = 'https://hkevdlmiamffezaubzpl.supabase.co'
+const MSCE_RESOURCES_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrZXZkbG1pYW1mZmV6YXVienBsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2OTYyMzIsImV4cCI6MjEwNTI3MjIzMn0.Yh6zKDA_pWOYFqlgdl9_NJ1r--u4EX_-ohpY_U8EdXI'
 
 export const msceResourcesSupabase = createClient(MSCE_RESOURCES_SUPABASE_URL, MSCE_RESOURCES_SUPABASE_ANON_KEY, {
   auth: {
