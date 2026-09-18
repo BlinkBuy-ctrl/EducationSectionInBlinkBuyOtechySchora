@@ -440,19 +440,28 @@ export default function EducationPage() {
       // against this modal closing (that race was the actual cause of the
       // earlier freeze/crash from the Download button inside the detail page).
       window.dispatchEvent(new CustomEvent("otechy:trigger-download", { detail: { url: data.signedUrl } }));
-      try {
-        await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-        const { data: fresh } = await activeResourcesClient
-          .from("otechy_resources")
-          .select("download_count,avg_rating,review_count")
-          .eq("id", resource.id)
-          .single();
-        if (fresh) {
-          setResources(prev => prev.map(r => r.id === resource.id ? { ...r, ...fresh } : r));
-          if (detailRes?.id === resource.id) setDetailRes((d: any) => ({ ...d, ...fresh }));
-        }
-      } catch { /* non-critical — download already succeeded */ }
+      // Confirm immediately — the file is already downloading in the
+      // background iframe by this point. Don't make the person wait on the
+      // download-count bump + rating refetch below just to see this toast.
       toast({ title: t("toast_download_started") });
+
+      // Non-critical bookkeeping — runs in the background so it can never
+      // delay the toast above, and a failure here can't undo a download
+      // that's already started.
+      (async () => {
+        try {
+          await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
+          const { data: fresh } = await activeResourcesClient
+            .from("otechy_resources")
+            .select("download_count,avg_rating,review_count")
+            .eq("id", resource.id)
+            .single();
+          if (fresh) {
+            setResources(prev => prev.map(r => r.id === resource.id ? { ...r, ...fresh } : r));
+            if (detailRes?.id === resource.id) setDetailRes((d: any) => ({ ...d, ...fresh }));
+          }
+        } catch { /* non-critical — download already succeeded */ }
+      })();
     } catch (e: any) {
       toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" });
     }
@@ -490,19 +499,24 @@ export default function EducationPage() {
       const filename = `${audiobook.title}.${audiobook.audio_format ?? "mp3"}`;
       const url = await getSignedAudioUrl(audiobook.audio_url, 300, { download: filename });
       window.dispatchEvent(new CustomEvent("otechy:trigger-download", { detail: { url } }));
-      try {
-        await bookshopSupabase.rpc("increment_audiobook_download", { audiobook_id: audiobook.id, caller_id: user.id });
-        const { data: fresh } = await bookshopSupabase
-          .from(TABLE_AUDIOBOOKS)
-          .select("download_count,avg_rating,review_count")
-          .eq("id", audiobook.id)
-          .single();
-        if (fresh) {
-          setAudiobooks(prev => prev.map(a => a.id === audiobook.id ? { ...a, ...fresh } : a));
-          if (detailAudiobook?.id === audiobook.id) setDetailAudiobook(d => (d ? { ...d, ...fresh } : d));
-        }
-      } catch { /* non-critical — download already succeeded */ }
+      // Confirm immediately — same reasoning as handleDownload above: the
+      // file is already downloading, don't hold the toast on bookkeeping.
       toast({ title: t("toast_download_started") });
+
+      (async () => {
+        try {
+          await bookshopSupabase.rpc("increment_audiobook_download", { audiobook_id: audiobook.id, caller_id: user.id });
+          const { data: fresh } = await bookshopSupabase
+            .from(TABLE_AUDIOBOOKS)
+            .select("download_count,avg_rating,review_count")
+            .eq("id", audiobook.id)
+            .single();
+          if (fresh) {
+            setAudiobooks(prev => prev.map(a => a.id === audiobook.id ? { ...a, ...fresh } : a));
+            if (detailAudiobook?.id === audiobook.id) setDetailAudiobook(d => (d ? { ...d, ...fresh } : d));
+          }
+        } catch { /* non-critical — download already succeeded */ }
+      })();
     } catch (e: any) { toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" }); }
   };
 
