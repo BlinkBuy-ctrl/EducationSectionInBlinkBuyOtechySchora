@@ -432,14 +432,20 @@ export default function EducationPage() {
   const savedAudiobooks = audiobooks.filter(a => audiobookBookmarks.has(a.id));
 
   const handleDownload = async (resource: any) => {
+    // Open the tab synchronously, before any `await` — this is what keeps
+    // browsers from treating it as a blocked popup. We point it at the
+    // real file once the signed URL comes back.
+    const dlWindow = window.open("", "_blank");
     try {
       const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: resource.file_name ?? true });
       if (error) throw error;
-      // Point the browser straight at the signed URL so it streams and shows
-      // native download progress immediately — no more waiting for the
-      // whole file to load into memory first before anything visibly starts.
-      const a = Object.assign(document.createElement("a"), { href: data.signedUrl, download: resource.file_name ?? "file" });
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      // No manual document.body DOM manipulation here on purpose — doing
+      // that while a modal (also portaled onto document.body) closes at
+      // the same moment is exactly what caused the freeze/crash from the
+      // Download button inside the resource detail page. Just handing the
+      // browser a URL avoids touching the DOM at all.
+      if (dlWindow) dlWindow.location.href = data.signedUrl;
+      else window.location.href = data.signedUrl; // popup was blocked — fall back to same-tab
       try {
         await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
         const { data: fresh } = await activeResourcesClient
@@ -453,7 +459,10 @@ export default function EducationPage() {
         }
       } catch { /* non-critical — download already succeeded */ }
       toast({ title: t("toast_download_started") });
-    } catch (e: any) { toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" }); }
+    } catch (e: any) {
+      dlWindow?.close(); // don't leave a stray blank tab open if the signed URL failed
+      toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" });
+    }
   };
 
   const handleBuy = async (resource: any) => {
