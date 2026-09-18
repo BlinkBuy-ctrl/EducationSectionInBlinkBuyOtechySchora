@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Hardcoded per your instruction — Resources is now split into THREE
+// Hardcoded per your instruction — Resources is split into THREE
 // separate Supabase projects, one per education level (MSCE / JCE /
 // Primary), instead of one shared Resources project. This is the JCE one.
 // Same pattern as tutorsSupabase.ts, scholarshipsSupabase.ts, etc.
 //
-// ⚠️ PLACEHOLDER — you haven't created this Supabase project yet. Once you
-// do (Project Settings → API), replace the two values below with the real
-// ones. Until then this file safely falls back to a dummy project so the
-// app doesn't crash — JCE resources just won't load any data.
-const JCE_RESOURCES_SUPABASE_URL = 'https://placeholder.supabase.co'
-const JCE_RESOURCES_SUPABASE_ANON_KEY = 'placeholder'
+// This is the JCE Resources Supabase project — separate from the main
+// SchoraHub project and from the other two Resources levels (MSCE/Primary).
+const JCE_RESOURCES_SUPABASE_URL = 'https://ihvumdzfuxlqtxujsklf.supabase.co'
+const JCE_RESOURCES_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlodnVtZHpmdXhscXR4dWpza2xmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MDAyODIsImV4cCI6MjEwNTI3NjI4Mn0.Q5BCk6_NSaYtjkYz8zVDy-ay4O4BCJ92W4A1Q21e3dw'
 
 export const jceResourcesSupabase = createClient(JCE_RESOURCES_SUPABASE_URL, JCE_RESOURCES_SUPABASE_ANON_KEY, {
   auth: {
