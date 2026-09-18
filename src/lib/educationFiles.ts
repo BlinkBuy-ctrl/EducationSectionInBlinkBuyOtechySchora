@@ -28,7 +28,7 @@
 
 import JSZip from "jszip";
 import { jobsSupabase } from "./jobsSupabase";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 // ────────────────────────────────────────────────────────────
 // TYPES
@@ -126,7 +126,7 @@ async function extractCoverFromOfficeZip(file: File): Promise<Blob | null> {
 // cover, same technique already used for the paid Resources upload.
 export async function extractPdfCoverBlob(file: File): Promise<Blob | null> {
   try {
-    const pdfjsLib = await import("pdfjs-dist");
+    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
     pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
