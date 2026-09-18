@@ -4,7 +4,7 @@ import { BookOpen, Upload, FileText, Bookmark, Megaphone, Headphones, Sparkles, 
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
-import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, RESOURCE_YEARS, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { AuthContext } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
@@ -142,6 +142,7 @@ export default function EducationPage() {
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [level,        setLevel]        = useState<EducationLevel>("MSCE");
   const [subject,      setSubject]      = useState<string>("All");
+  const [yearFilter,   setYearFilter]   = useState<string>("All");
   const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [tab,          setTab]          = useState<Tab>("resources");
   const [aiModeOpen,   setAiModeOpen]   = useState(false);
@@ -271,7 +272,7 @@ export default function EducationPage() {
 
     const [rRes, pRes, bRes] = await Promise.allSettled([
       client.from("otechy_resources")
-        .select("id,title,description,category,subject,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
+        .select("id,title,description,category,subject,year,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
         .order("created_at", { ascending: false }),
       client.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
       client.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
@@ -416,7 +417,8 @@ export default function EducationPage() {
     const mS = !q || r.title?.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q);
     const mC = cat === "All" || r.category === cat;
     const mSub = subject === "All" || r.subject === subject;
-    return mS && mC && mSub;
+    const mY = yearFilter === "All" || r.year === yearFilter;
+    return mS && mC && mSub && mY;
   });
 
   const filteredAudiobooks = audiobooks.filter(a => {
@@ -697,16 +699,28 @@ export default function EducationPage() {
           {filtersOpen && (
             <>
               {contentType === "documents" ? (
-                <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
-                  <button onClick={() => setSubject("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                    {t("filter_all_subjects")}
-                  </button>
-                  {SUBJECTS_BY_LEVEL[level].map(s => (
-                    <button key={s} onClick={() => setSubject(s)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === s ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                      {s}
+                <>
+                  <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                    <button onClick={() => setSubject("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                      {t("filter_all_subjects")}
                     </button>
-                  ))}
-                </div>
+                    {SUBJECTS_BY_LEVEL[level].map(s => (
+                      <button key={s} onClick={() => setSubject(s)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === s ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                    <button onClick={() => setYearFilter("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${yearFilter === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                      {t("filter_all")}
+                    </button>
+                    {RESOURCE_YEARS.map(y => (
+                      <button key={y} onClick={() => setYearFilter(y)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${yearFilter === y ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                        {y}
+                      </button>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
                   {(["all","free","paid"] as PriceFilter[]).map(f => (
