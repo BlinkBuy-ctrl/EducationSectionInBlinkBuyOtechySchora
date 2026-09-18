@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Eye, Share2, Trash2, Building2,
 } from "lucide-react";
 import type { EducationFile } from "@/lib/educationFiles";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 function formatSize(bytes?: number) {
   if (!bytes) return null;
@@ -17,7 +17,7 @@ function formatSize(bytes?: number) {
 let pdfjsLib: any = null;
 async function getPdf() {
   if (pdfjsLib) return pdfjsLib;
-  const lib = await import("pdfjs-dist");
+  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   pdfjsLib = lib;
   return lib;

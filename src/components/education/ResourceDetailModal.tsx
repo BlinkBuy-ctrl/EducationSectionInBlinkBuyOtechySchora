@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-400",
@@ -48,7 +48,7 @@ function StarRating({ value, onChange, readonly = false }: {
 let pdfjsInstance: any = null;
 async function getPdfjsLib() {
   if (pdfjsInstance) return pdfjsInstance;
-  const lib = await import("pdfjs-dist");
+  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   pdfjsInstance = lib;
   return lib;

@@ -24,7 +24,7 @@ import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 import { AuthContext } from "@/hooks/useAuth";
 import { getCache, setCache } from "@/lib/offlineCache";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 const UNI_SEARCH_PHRASES = [
   "Search LUANAR…",
@@ -47,7 +47,7 @@ const FILE_TYPE_ICON: Record<EducationFileType, typeof FileText> = {
 let pdfjsLib: any = null;
 async function getPdf() {
   if (pdfjsLib) return pdfjsLib;
-  const lib = await import("pdfjs-dist");
+  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   pdfjsLib = lib;
   return lib;

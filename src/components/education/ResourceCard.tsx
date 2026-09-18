@@ -4,7 +4,7 @@ import {
   Eye, X, Loader2, ChevronLeft, ChevronRight, BookOpen
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-500 dark:text-blue-400",
@@ -32,7 +32,7 @@ function formatSize(bytes?: number) {
 let pdfjsLib: any = null;
 async function getPdf() {
   if (pdfjsLib) return pdfjsLib;
-  const lib = await import("pdfjs-dist");
+  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   pdfjsLib = lib;
   return lib;
