@@ -120,6 +120,11 @@ const en = {
   filters_show: "Show Filters",
   filters_hide: "Hide Filters",
   aria_toggle_filters: "Show or hide filters",
+
+  // ── Continue Reading / New Books (Browse home strip) ──
+  section_continue_reading: "Continue Reading",
+  section_new_books: "New Books",
+  toast_book_unavailable: "That book is no longer available",
 } as const;
 
 // Chichewa — best-effort draft, flagged above for your review.
@@ -215,6 +220,11 @@ const ny: Record<keyof typeof en, string> = {
   filters_show: "Onetsani Zosefera",
   filters_hide: "Bisani Zosefera",
   aria_toggle_filters: "Onetsani kapena bisani zosefera",
+
+  // ── Continue Reading / New Books (Browse home strip) ──
+  section_continue_reading: "Pitirizani Kuwerenga",
+  section_new_books: "Mabuku Atsopano",
+  toast_book_unavailable: "Bukuli silipezekanso",
 };
 
 export const translations = { en, ny };
