@@ -18,6 +18,7 @@ import { generateUUID } from "@/lib/utils";
 const EducationPage         = lazy(() => import("@/pages/education"));
 const NotificationsPage     = lazy(() => import("@/pages/notifications"));
 const BookRequestCenterPage = lazy(() => import("@/pages/BookRequestCenter"));
+const SharedPdfViewerPage   = lazy(() => import("@/pages/SharedPdfViewer"));
 const NotFound              = lazy(() => import("@/pages/not-found"));
 
 const queryClient = new QueryClient({
@@ -76,6 +77,9 @@ function AppInner() {
         </Route>
         <Route path="/book-request-center">
           <Layout><Suspense fallback={<PageLoader />}><BookRequestCenterPage /></Suspense></Layout>
+        </Route>
+        <Route path="/shared-pdf">
+          <Suspense fallback={<PageLoader />}><SharedPdfViewerPage /></Suspense>
         </Route>
         <Route>
           <Layout><Suspense fallback={<PageLoader />}><NotFound /></Suspense></Layout>
