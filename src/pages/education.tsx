@@ -1,10 +1,10 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { BookOpen, Upload, FileText, Bookmark, Megaphone, Headphones, Sparkles, Briefcase, ChevronUp, ChevronDown } from "lucide-react";
+import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase, ChevronUp, ChevronDown, History } from "lucide-react";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
-import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, RESOURCE_YEARS, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { AuthContext } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
@@ -37,6 +37,10 @@ import {
   TABLE_AUDIOBOOK_PURCHASES, TABLE_AUDIOBOOK_BOOKMARKS,
   getSignedAudioUrl,
 } from "@/lib/audiobooks";
+import {
+  listReadingProgress, onReadingProgressChange, removeReadingProgress,
+  type ReadingProgressEntry,
+} from "@/lib/readingProgress";
 
 const CATS = ["All", "Past Papers", "Textbooks", "Notes", "Research", "Other"] as const;
 const ACATS = ["All", ...AUDIOBOOK_CATEGORIES] as const;
@@ -142,11 +146,11 @@ export default function EducationPage() {
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [level,        setLevel]        = useState<EducationLevel>("MSCE");
   const [subject,      setSubject]      = useState<string>("All");
-  const [yearFilter,   setYearFilter]   = useState<string>("All");
   const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [tab,          setTab]          = useState<Tab>("resources");
   const [aiModeOpen,   setAiModeOpen]   = useState(false);
   const [showOnboard,  setShowOnboard]  = useState(false);
+  const [activeShortcutIndex, setActiveShortcutIndex] = useState(0);
 
   const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
   const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
@@ -156,6 +160,13 @@ export default function EducationPage() {
   const [showAudioUpload,    setShowAudioUpload]    = useState(false);
   const [detailAudiobook,    setDetailAudiobook]    = useState<AudioBook | null>(null);
   const [detailScholarship,  setDetailScholarship]  = useState<any>(null);
+
+  // "Continue Reading" strip — reactive to progress saved from inside
+  // either reader (ResourceCard's or ResourceDetailModal's), via the
+  // change-event readingProgress.ts fires on every save/clear.
+  const [continueReading, setContinueReading] = useState<ReadingProgressEntry[]>(() => listReadingProgress());
+  useEffect(() => onReadingProgressChange(() => setContinueReading(listReadingProgress())), []);
+  const [autoOpenReaderId, setAutoOpenReaderId] = useState<string | null>(null);
 
   const handleUploadClickRef = useRef<() => Promise<void>>(async () => {});
 
@@ -272,7 +283,7 @@ export default function EducationPage() {
 
     const [rRes, pRes, bRes] = await Promise.allSettled([
       client.from("otechy_resources")
-        .select("id,title,description,category,subject,year,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
+        .select("id,title,description,category,subject,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
         .order("created_at", { ascending: false }),
       client.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
       client.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
@@ -311,6 +322,27 @@ export default function EducationPage() {
   const handleLevelChange = (l: EducationLevel) => {
     setLevel(l);
     setSubject("All"); // subject list changes with level, so reset the old pick
+  };
+
+  // Tapping a "Continue Reading" card: the book may belong to a different
+  // level than the one currently selected, so refetch it fresh from its
+  // own level's backend, switch to that level, and jump straight into the
+  // reader (which resumes at the saved page on its own).
+  const resumeReading = async (entry: ReadingProgressEntry) => {
+    const targetClient = resourcesClientForLevel(entry.level as EducationLevel);
+    const { data, error } = await targetClient
+      .from("otechy_resources")
+      .select("id,uploader_id,title,description,category,subject,price,file_url,file_name,file_size,download_count,avg_rating,review_count,thumbnail_url,created_at")
+      .eq("id", entry.resourceId)
+      .single();
+    if (error || !data) {
+      toast({ title: t("toast_book_unavailable"), variant: "destructive" });
+      removeReadingProgress(entry.resourceId);
+      return;
+    }
+    if (level !== entry.level) handleLevelChange(entry.level as EducationLevel);
+    setAutoOpenReaderId(data.id);
+    setDetailRes(data);
   };
 
   // Whichever level's backend is currently active — used everywhere a
@@ -417,8 +449,7 @@ export default function EducationPage() {
     const mS = !q || r.title?.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q);
     const mC = cat === "All" || r.category === cat;
     const mSub = subject === "All" || r.subject === subject;
-    const mY = yearFilter === "All" || r.year === yearFilter;
-    return mS && mC && mSub && mY;
+    return mS && mC && mSub;
   });
 
   const filteredAudiobooks = audiobooks.filter(a => {
@@ -578,12 +609,27 @@ export default function EducationPage() {
   };
   handleUploadClickRef.current = handleUploadClick;
 
+  const rotatingShortcuts = [
+    { icon: GraduationCap, label: t("shortcut_higher_education"), onClick: () => setTab("universities") },
+    { icon: BookOpen,      label: t("menu_bookstore"),            onClick: () => setTab("bookshops") },
+    { icon: Users,         label: t("menu_tutors"),                onClick: () => setTab("tutors") },
+    { icon: Headphones,    label: t("menu_audio_books"),           onClick: () => { setTab("resources"); setContentType("audio"); } },
+    { icon: Award,         label: t("menu_scholarships"),          onClick: () => setTab("scholarships") },
+  ];
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActiveShortcutIndex(i => (i + 1) % rotatingShortcuts.length);
+    }, 50000);
+    return () => clearInterval(id);
+  }, []);
+
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: resources.length + audiobooks.length },
-    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: null            },
+    { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
     { key: "tutors",       emoji: "👨‍🏫", label: t("menu_tutors"),       count: tutors.length       },
     { key: "jobs",         emoji: "💼", label: t("menu_jobs"),          count: jobs.length         },
-    { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
+    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: null            },
     { key: "bookshops",    emoji: "📖", label: t("menu_bookstore"),     count: null            },
     { key: "adverts",      emoji: "📢", label: t("menu_adverts"),      count: null                },
     { key: "bookmarks",    emoji: "🔖", label: t("menu_saved"),        count: saved.length + savedAudiobooks.length },
@@ -601,6 +647,31 @@ export default function EducationPage() {
         />
       )}
 
+      <p className="text-sm font-black text-foreground mb-3">{t("did_you_know")}</p>
+
+      <style>{`
+        @keyframes shortcutFadeIn {
+          0% { opacity: 0; transform: translateY(4px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      {(() => {
+        const item = rotatingShortcuts[activeShortcutIndex];
+        const Icon = item.icon;
+        return (
+          <button
+            key={activeShortcutIndex}
+            onClick={item.onClick}
+            style={{ animation: "shortcutFadeIn 0.5s ease-out" }}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 mb-5 active:scale-[0.98] transition-transform border border-border bg-card shadow-sm"
+          >
+            <Icon className="w-5 h-5 text-sky-500 shrink-0" />
+            <span className="text-sm font-black text-foreground">{item.label}</span>
+          </button>
+        );
+      })()}
+
       <div
         data-tour="tabs"
         ref={tabsScrollRef}
@@ -610,9 +681,9 @@ export default function EducationPage() {
       >
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`shrink-0 flex items-center gap-1.5 text-sm font-bold py-2.5 px-3.5 rounded-lg transition-all ${tab === t.key ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-sm" : "text-muted-foreground"}`}>
+            className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold py-2 px-2.5 rounded-lg transition-all ${tab === t.key ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-sm" : "text-muted-foreground"}`}>
             {t.emoji} {t.label}
-            {t.count !== null && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === t.key ? "bg-white/20" : "bg-muted"}`}>{t.count}</span>}
+            {t.count !== null && <span className={`text-[9px] px-1 py-0.5 rounded-full font-bold ${tab === t.key ? "bg-white/20" : "bg-muted"}`}>{t.count}</span>}
           </button>
         ))}
       </div>
@@ -637,6 +708,78 @@ export default function EducationPage() {
               <Sparkles className="w-4 h-4" />
             </button>
           </div>
+
+          {/* "Continue Reading" + "New Books" — an in-app home-screen-style
+              strip, since a real OS home-screen widget isn't something a
+              PWA can register. Hidden while actively searching or on the
+              Audio Books side, so it doesn't crowd either of those. */}
+          {contentType === "documents" && !search && (
+            <>
+              {continueReading.length > 0 && (
+                <div className="mb-4">
+                  <h2 className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
+                    <History className="w-3.5 h-3.5" /> {t("section_continue_reading")}
+                  </h2>
+                  <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+                    {continueReading.map(entry => {
+                      const pct = Math.round((entry.page / entry.numPages) * 100);
+                      return (
+                        <button
+                          key={entry.resourceId}
+                          onClick={() => resumeReading(entry)}
+                          className="shrink-0 w-32 flex flex-col gap-1.5 text-left active:scale-[0.97] transition-transform"
+                        >
+                          <div className="relative w-32 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center">
+                            {entry.thumbnailUrl ? (
+                              <img src={entry.thumbnailUrl} alt={entry.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <FileText className="w-6 h-6 text-white/80" />
+                            )}
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+                              <div className="h-full bg-sky-400" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                          <p className="text-[10px] font-semibold text-foreground line-clamp-2 leading-snug">{entry.title}</p>
+                          <p className="text-[9px] text-muted-foreground">
+                            {entry.level === "MSCE" ? t("level_msce") : entry.level === "JCE" ? t("level_jce") : t("level_primary")} · {pct}%
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {resources.length > 0 && (
+                <div className="mb-4">
+                  <h2 className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
+                    <Sparkles className="w-3.5 h-3.5" /> {t("section_new_books")}
+                  </h2>
+                  <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+                    {[...resources]
+                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .slice(0, 8)
+                      .map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => setDetailRes(r)}
+                          className="shrink-0 w-28 flex flex-col gap-1.5 text-left active:scale-[0.97] transition-transform"
+                        >
+                          <div className="relative w-28 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-sky-600 to-blue-600 flex items-center justify-center">
+                            {r.thumbnail_url ? (
+                              <img src={r.thumbnail_url} alt={r.title} className="w-full h-full object-cover" />
+                            ) : (
+                              <FileText className="w-6 h-6 text-white/80" />
+                            )}
+                          </div>
+                          <p className="text-[10px] font-semibold text-foreground line-clamp-2 leading-snug">{r.title}</p>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Content type switch — Documents vs Audio Books. Made a full-width,
               impossible-to-miss segmented control (previously a small pill
@@ -699,28 +842,16 @@ export default function EducationPage() {
           {filtersOpen && (
             <>
               {contentType === "documents" ? (
-                <>
-                  <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
-                    <button onClick={() => setSubject("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                      {t("filter_all_subjects")}
+                <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                  <button onClick={() => setSubject("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                    {t("filter_all_subjects")}
+                  </button>
+                  {SUBJECTS_BY_LEVEL[level].map(s => (
+                    <button key={s} onClick={() => setSubject(s)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === s ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                      {s}
                     </button>
-                    {SUBJECTS_BY_LEVEL[level].map(s => (
-                      <button key={s} onClick={() => setSubject(s)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === s ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
-                    <button onClick={() => setYearFilter("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${yearFilter === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                      {t("filter_all")}
-                    </button>
-                    {RESOURCE_YEARS.map(y => (
-                      <button key={y} onClick={() => setYearFilter(y)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${yearFilter === y ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
-                        {y}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                  ))}
+                </div>
               ) : (
                 <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
                   {(["all","free","paid"] as PriceFilter[]).map(f => (
@@ -806,7 +937,7 @@ export default function EducationPage() {
             ) : (
               <>
                 <div data-tour="resource-grid" className="grid grid-cols-2 gap-3">
-                  {filtered.slice(0, Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
+                  {filtered.slice(0, Math.ceil(filtered.length / 2)).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} level={level} />)}
                 </div>
 
                 {/* Embedded horizontal scholarships carousel — Facebook "People You May
@@ -818,7 +949,7 @@ export default function EducationPage() {
                 />
 
                 <div className="grid grid-cols-2 gap-3">
-                  {filtered.slice(Math.ceil(filtered.length / 2), Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
+                  {filtered.slice(Math.ceil(filtered.length / 2), Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} level={level} />)}
                 </div>
 
                 {/* Second carousel — identical component/style — reappears after
@@ -833,7 +964,7 @@ export default function EducationPage() {
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                  {filtered.slice(Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
+                  {filtered.slice(Math.ceil(filtered.length / 2) + 8).map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} level={level} />)}
                 </div>
               </>
             )
@@ -861,7 +992,7 @@ export default function EducationPage() {
               <div>
                 <h2 className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">{t("section_resources")}</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} />)}
+                  {saved.map(r => <ResourceCard key={r.id} resource={r} isPurchased={purchases.has(r.id)} onBuy={handleBuy} onDownload={handleDownload} onOpen={setDetailRes} client={activeResourcesClient} level={level} />)}
                 </div>
               </div>
             )}
@@ -907,13 +1038,15 @@ export default function EducationPage() {
           resource={detailRes}
           isPurchased={purchases.has(detailRes.id)}
           isBookmarked={bookmarks.has(detailRes.id)}
-          onClose={() => setDetailRes(null)}
+          onClose={() => { setDetailRes(null); setAutoOpenReaderId(null); }}
           onBuy={handleBuy}
           onDownload={handleDownload}
           onBookmarkToggle={handleBookmark}
           allResources={resources}
           onOpenSimilar={setDetailRes}
           client={activeResourcesClient}
+          level={level}
+          autoOpenReader={autoOpenReaderId === detailRes.id}
           onRatingSubmit={async (resourceId: string) => {
             const { data: fresh } = await activeResourcesClient
               .from("otechy_resources")
