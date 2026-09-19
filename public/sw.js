@@ -7,6 +7,55 @@ const BUILD_ID = "BUILD_ID_PLACEHOLDER";
 const CACHE = `schorahub-${BUILD_ID}`;
 const API_CACHE = `schorahub-api-${BUILD_ID}`;
 
+// ── PDF share target ─────────────────────────────────────────────────────
+// Matches manifest.json's share_target.action. The OS share sheet POSTs the
+// file here as multipart form data; a static host (Vercel) can't process
+// that, so the service worker itself captures it, stashes it in IndexedDB
+// for src/lib/sharedFileStore.ts to pick up, then hands back a redirect —
+// which turns it into a normal GET navigation the SPA can route (see
+// src/pages/SharedPdfViewer.tsx).
+const SHARE_TARGET_PATH = "/shared-pdf";
+const SHARE_DB_NAME = "schorahub-shared-files";
+const SHARE_STORE_NAME = "shared";
+
+function openShareDb() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(SHARE_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(SHARE_STORE_NAME)) {
+        req.result.createObjectStore(SHARE_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function storeSharedFile(file) {
+  const db = await openShareDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(SHARE_STORE_NAME, "readwrite");
+    tx.objectStore(SHARE_STORE_NAME).put(
+      { file, name: file.name || "shared.pdf", type: file.type || "application/pdf", sharedAt: Date.now() },
+      "pending"
+    );
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function handleShareTarget(event) {
+  try {
+    const formData = await event.request.formData();
+    const file = formData.get("pdf");
+    if (file && file.size > 0) await storeSharedFile(file);
+  } catch {
+    // Fall through regardless — the viewer page shows an empty state if
+    // nothing ended up in IndexedDB, rather than failing the navigation.
+  }
+  return Response.redirect(SHARE_TARGET_PATH, 303);
+}
+
 const PRECACHE_ASSETS = [
   "/",
   "/index.html",
@@ -34,41 +83,45 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
+  const url = new URL(request.url);
+
+  if (request.method === "POST" && url.pathname === SHARE_TARGET_PATH) {
+    event.respondWith(handleShareTarget(event));
+    return;
+  }
+
   if (request.method !== "GET") return;
 
-  const url = new URL(request.url);
   const isSameOrigin = url.origin === self.location.origin;
   const isNavigation = request.mode === "navigate";
 
   // ── Supabase REST API reads (any *.supabase.co /rest/v1/... GET) ──────
-  // Network-first, cache as fallback: always try to get the freshest data
-  // (e.g. a book someone just uploaded) instead of serving a stale cached
-  // list first. Raced against a 3s timeout so a slow/flaky/offline
-  // connection still falls back to cache almost instantly instead of the
-  // screen getting stuck — this is what makes Higher Education /
-  // E-BookStore / Adverts tabs work even if the app's own IndexedDB cache
-  // were ever unavailable, and offline still works, it's just no longer
-  // preferred over a live network response.
+  // Stale-while-revalidate: serve the cached response instantly if we have
+  // one, refresh it in the background from the network. This is what makes
+  // Higher Education / E-BookStore / Adverts tabs work even if the app's own
+  // IndexedDB cache were ever unavailable — a second, SW-level safety net.
   const isSupabaseRest = url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/rest/v1/");
   if (isSupabaseRest) {
     event.respondWith(
       caches.open(API_CACHE).then(async (cache) => {
-        try {
-          const response = await Promise.race([
-            fetch(request),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 3000)),
-          ]);
-          if (response && response.status === 200) {
-            cache.put(request, response.clone());
-          }
-          return response;
-        } catch {
-          const cached = await cache.match(request);
-          return cached || new Response("[]", {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
+        const cached = await cache.match(request);
+        const networkFetch = fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              cache.put(request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => undefined);
+
+        if (cached) {
+          networkFetch.catch(() => {});
+          return cached;
         }
+        return networkFetch.then((response) => response || new Response("[]", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }));
       })
     );
     return;
