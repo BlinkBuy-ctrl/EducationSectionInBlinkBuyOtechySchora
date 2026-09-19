@@ -9,7 +9,8 @@ import { supabase } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getReadingProgress, saveReadingProgress, removeReadingProgress } from "@/lib/readingProgress";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-400",
@@ -48,7 +49,7 @@ function StarRating({ value, onChange, readonly = false }: {
 let pdfjsInstance: any = null;
 async function getPdfjsLib() {
   if (pdfjsInstance) return pdfjsInstance;
-  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const lib = await import("pdfjs-dist");
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   pdfjsInstance = lib;
   return lib;
@@ -89,10 +90,14 @@ async function renderPage(doc: any, pageNum: number, canvas: HTMLCanvasElement) 
 }
 
 // ── Full-screen reader ───────────────────────────────────────────────────────
-function PdfReaderModal({ resource, onClose, client }: { resource: any; onClose: () => void; client: SupabaseClient }) {
+function PdfReaderModal({ resource, onClose, client, level }: { resource: any; onClose: () => void; client: SupabaseClient; level: string }) {
   const [signedUrl,  setSignedUrl]  = useState<string | null>(null);
   const [doc,        setDoc]        = useState<any>(null);
-  const [page,       setPage]       = useState(1);
+  // Resume where they left off, if we have a saved position for this book.
+  const [page,       setPage]       = useState(() => {
+    const saved = getReadingProgress(resource.id);
+    return saved && saved.page > 1 && saved.page < saved.numPages ? saved.page : 1;
+  });
   const [total,      setTotal]      = useState(0);
   const [rendering,  setRendering]  = useState(true);
   const [initLoad,   setInitLoad]   = useState(true);
@@ -147,6 +152,18 @@ function PdfReaderModal({ resource, onClose, client }: { resource: any; onClose:
         setFlipDir(null);
       });
   }, [doc, page]);
+
+  // Persist reading position so Browse's "Continue Reading" strip can pick
+  // it back up — and clear it once they've actually finished the book.
+  useEffect(() => {
+    if (!total) return;
+    if (page >= total) { removeReadingProgress(resource.id); return; }
+    saveReadingProgress({
+      resourceId: resource.id, level, title: resource.title,
+      category: resource.category, thumbnailUrl: resource.thumbnail_url,
+      page, numPages: total, updatedAt: Date.now(),
+    });
+  }, [page, total]);
 
   const goTo = (p: number, dir?: "left"|"right") => {
     if (!total || p < 1 || p > total || renderingRef.current) return;
@@ -422,12 +439,14 @@ interface Props {
   allResources?: any[];
   onOpenSimilar?: (r: any) => void;
   client: SupabaseClient; // which level's backend this resource lives in
+  level: string;          // "MSCE" | "JCE" | "Primary" — for reading-progress tracking
+  autoOpenReader?: boolean; // jump straight into the reader — used by the "Continue Reading" strip
 }
 
 export function ResourceDetailModal({
   resource, isPurchased, isBookmarked,
   onClose, onBuy, onDownload, onBookmarkToggle, onRatingSubmit,
-  allResources, onOpenSimilar, client,
+  allResources, onOpenSimilar, client, level, autoOpenReader,
 }: Props) {
   const { user } = useContext(AuthContext);
   const { toast } = useToast();
@@ -443,6 +462,12 @@ export function ResourceDetailModal({
   const [showReader,     setShowReader]     = useState(false);
   const scrollRef   = useRef<HTMLDivElement>(null);
   const reviewsRef  = useRef<HTMLDivElement>(null);
+
+  // "Continue Reading" hands us a resource and asks to skip straight past
+  // the detail page into the reader itself — one tap, not two.
+  useEffect(() => {
+    if (autoOpenReader) setShowReader(true);
+  }, [autoOpenReader, resource.id]);
 
   const isFree    = !resource.price || Number(resource.price) === 0;
   const canAccess = isFree || isPurchased;
@@ -561,11 +586,6 @@ export function ResourceDetailModal({
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${CAT_COLORS[resource.category] ?? CAT_COLORS["Other"]}`}>
                   {resource.category}
                 </span>
-                {resource.year && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-muted text-foreground">
-                    {resource.year}
-                  </span>
-                )}
                 {isFree
                   ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">FREE</span>
                   : isPurchased
@@ -781,7 +801,7 @@ export function ResourceDetailModal({
         </div>
       </div>
 
-      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} client={client} />}
+      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} client={client} level={level} />}
     </>,
     document.body
   );

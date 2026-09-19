@@ -4,7 +4,8 @@ import {
   Eye, X, Loader2, ChevronLeft, ChevronRight, BookOpen
 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
+import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getReadingProgress, saveReadingProgress, removeReadingProgress } from "@/lib/readingProgress";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-500 dark:text-blue-400",
@@ -32,7 +33,7 @@ function formatSize(bytes?: number) {
 let pdfjsLib: any = null;
 async function getPdf() {
   if (pdfjsLib) return pdfjsLib;
-  const lib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const lib = await import("pdfjs-dist");
   lib.GlobalWorkerOptions.workerSrc = workerUrl;
   pdfjsLib = lib;
   return lib;
@@ -61,10 +62,14 @@ async function renderPage(doc: any, pageNum: number, canvas: HTMLCanvasElement) 
 }
 
 // ── Full-screen PDF reader (same quality as ResourceDetailModal) ─────────────
-function PdfReaderModal({ resource, onClose, client }: { resource: any; onClose: () => void; client: SupabaseClient }) {
+function PdfReaderModal({ resource, onClose, client, level }: { resource: any; onClose: () => void; client: SupabaseClient; level: string }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [doc,       setDoc]       = useState<any>(null);
-  const [page,      setPage]      = useState(1);
+  // Resume where they left off, if we have a saved position for this book.
+  const [page,      setPage]      = useState(() => {
+    const saved = getReadingProgress(resource.id);
+    return saved && saved.page > 1 && saved.page < saved.numPages ? saved.page : 1;
+  });
   const [total,     setTotal]     = useState(0);
   const [rendering, setRendering] = useState(true);
   const [initLoad,  setInitLoad]  = useState(true);
@@ -113,6 +118,18 @@ function PdfReaderModal({ resource, onClose, client }: { resource: any; onClose:
       .catch(() => setError(true))
       .finally(() => { setRendering(false); setInitLoad(false); renderingRef.current = false; });
   }, [doc, page]);
+
+  // Persist reading position so Browse's "Continue Reading" strip can pick
+  // it back up — and clear it once they've actually finished the book.
+  useEffect(() => {
+    if (!total) return;
+    if (page >= total) { removeReadingProgress(resource.id); return; }
+    saveReadingProgress({
+      resourceId: resource.id, level, title: resource.title,
+      category: resource.category, thumbnailUrl: resource.thumbnail_url,
+      page, numPages: total, updatedAt: Date.now(),
+    });
+  }, [page, total]);
 
   const goTo = (p: number) => {
     if (!total || p < 1 || p > total || renderingRef.current) return;
@@ -274,9 +291,10 @@ interface Props {
   onDownload: (r: any) => void;
   onOpen: (r: any) => void;
   client: SupabaseClient; // which level's backend this resource lives in
+  level: string;          // "MSCE" | "JCE" | "Primary" — for reading-progress tracking
 }
 
-export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen, client }: Props) {
+export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen, client, level }: Props) {
   const [showReader,  setShowReader]  = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
 
@@ -319,16 +337,9 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen,
 
           {/* Top badges */}
           <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
-            <div className="flex items-center gap-1 min-w-0">
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 ${CAT_COLORS[resource.category] ?? CAT_COLORS["Other"]}`}>
-                {resource.category}
-              </span>
-              {resource.year && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 text-foreground shrink-0">
-                  {resource.year}
-                </span>
-              )}
-            </div>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full backdrop-blur-sm bg-white/90 dark:bg-black/60 ${CAT_COLORS[resource.category] ?? CAT_COLORS["Other"]}`}>
+              {resource.category}
+            </span>
             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
               isFree
                 ? "bg-emerald-500 text-white"
@@ -409,7 +420,7 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen,
         </div>
       </div>
 
-      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} client={client} />}
+      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} client={client} level={level} />}
     </>
   );
 }
