@@ -1,6 +1,6 @@
 import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
-import { GraduationCap, BookOpen, Upload, Award, FileText, Bookmark, Users, Megaphone, Headphones, Sparkles, Briefcase, ChevronUp, ChevronDown, History } from "lucide-react";
+import { BookOpen, Upload, FileText, Bookmark, Megaphone, Headphones, Sparkles, Briefcase, ChevronUp, ChevronDown, History } from "lucide-react";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
@@ -150,7 +150,6 @@ export default function EducationPage() {
   const [tab,          setTab]          = useState<Tab>("resources");
   const [aiModeOpen,   setAiModeOpen]   = useState(false);
   const [showOnboard,  setShowOnboard]  = useState(false);
-  const [activeShortcutIndex, setActiveShortcutIndex] = useState(0);
 
   const [audiobooks,         setAudiobooks]         = useState<AudioBook[]>([]);
   const [audiobookPurchases, setAudiobookPurchases] = useState<Set<string>>(new Set());
@@ -609,21 +608,6 @@ export default function EducationPage() {
   };
   handleUploadClickRef.current = handleUploadClick;
 
-  const rotatingShortcuts = [
-    { icon: GraduationCap, label: t("shortcut_higher_education"), onClick: () => setTab("universities") },
-    { icon: BookOpen,      label: t("menu_bookstore"),            onClick: () => setTab("bookshops") },
-    { icon: Users,         label: t("menu_tutors"),                onClick: () => setTab("tutors") },
-    { icon: Headphones,    label: t("menu_audio_books"),           onClick: () => { setTab("resources"); setContentType("audio"); } },
-    { icon: Award,         label: t("menu_scholarships"),          onClick: () => setTab("scholarships") },
-  ];
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setActiveShortcutIndex(i => (i + 1) % rotatingShortcuts.length);
-    }, 50000);
-    return () => clearInterval(id);
-  }, []);
-
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: resources.length + audiobooks.length },
     { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
@@ -646,31 +630,6 @@ export default function EducationPage() {
           onUpload={() => { safeSetItem(ONBOARDING_KEY, "1"); setShowOnboard(false); handleUploadClick(); }}
         />
       )}
-
-      <p className="text-sm font-black text-foreground mb-3">{t("did_you_know")}</p>
-
-      <style>{`
-        @keyframes shortcutFadeIn {
-          0% { opacity: 0; transform: translateY(4px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
-      {(() => {
-        const item = rotatingShortcuts[activeShortcutIndex];
-        const Icon = item.icon;
-        return (
-          <button
-            key={activeShortcutIndex}
-            onClick={item.onClick}
-            style={{ animation: "shortcutFadeIn 0.5s ease-out" }}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 mb-5 active:scale-[0.98] transition-transform border border-border bg-card shadow-sm"
-          >
-            <Icon className="w-5 h-5 text-sky-500 shrink-0" />
-            <span className="text-sm font-black text-foreground">{item.label}</span>
-          </button>
-        );
-      })()}
 
       <div
         data-tour="tabs"
