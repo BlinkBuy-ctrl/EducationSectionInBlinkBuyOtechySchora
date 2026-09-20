@@ -14,6 +14,7 @@ import {
   Rocket, Languages,
 } from "lucide-react";
 import OtechyAcademyModal from "@/components/education/OtechyAcademyModal";
+import FocusPlayer, { useFocusPlayer } from "@/components/FocusPlayer";
 
 /** Hand-drawn to match the exact dot + bar icon supplied for this menu —
  *  no icon set ships this glyph, so it's custom rather than approximated. */
@@ -77,6 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
+  const focus = useFocusPlayer();
   const [loc, navigate] = useLocation();
   const [unread, setUnread] = useState(0);
   // Track active tab via state so nav buttons never go stale
@@ -249,7 +251,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-black text-white text-sm">SchoraHub</span>
           </button>
-          <div className="flex items-center gap-1">
+          <div id="mrs-header-slot" className="flex items-center gap-1">
+            {/* Mrs SchoraHub tucked away — tap to bring her back */}
+            {focus.hidden && (
+              <button
+                onClick={() => focus.setHidden(false)}
+                aria-label="Show Mrs SchoraHub focus audio"
+                className="relative w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors animate-in zoom-in-50 fade-in duration-300"
+              >
+                <Headphones className="w-4 h-4" />
+                {focus.playing && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </button>
+            )}
             <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 transition-colors">
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -410,6 +425,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <OtechyAcademyModal />
+
+      {/* Floating focus-audio player — lives here so it follows people to every screen */}
+      <FocusPlayer
+        hidden={focus.hidden}
+        onHide={() => focus.setHidden(true)}
+        onPlayingChange={focus.setPlaying}
+      />
     </div>
   );
 }
