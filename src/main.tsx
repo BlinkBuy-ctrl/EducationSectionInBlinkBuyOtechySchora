@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { getFontScale, applyFontScale } from "@/lib/fontScale";
 
 // ── Viewport height fix (iOS Safari / Android Chrome with browser chrome) ─────
 // 100vh in a browser tab includes the URL bar on some browsers, which causes
@@ -12,6 +13,11 @@ function setVhVar() {
   document.documentElement.style.setProperty("--vh", `${vh}px`);
 }
 setVhVar();
+
+// ── Saved text size ───────────────────────────────────────────────────────────
+// Apply the person's saved text size before React renders, so the app never
+// flashes at the wrong size on launch.
+applyFontScale(getFontScale());
 window.addEventListener("resize", setVhVar);
 window.addEventListener("orientationchange", () => setTimeout(setVhVar, 200));
 
