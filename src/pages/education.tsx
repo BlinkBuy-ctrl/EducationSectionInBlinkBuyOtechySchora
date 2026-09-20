@@ -10,6 +10,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { smartFilter } from "@/lib/smartSearch";
 import { AiModeChat } from "@/components/education/AiModeChat";
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
@@ -443,24 +444,29 @@ export default function EducationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id]);
 
-  const filtered = resources.filter(r => {
-    const q = search.toLowerCase();
-    const mS = !q || r.title?.toLowerCase().includes(q) || (r.description ?? "").toLowerCase().includes(q);
+  // Smart search: any word order, typo-forgiving, best matches first
+  const filtered = smartFilter(resources, search, (r: any) => [
+    { text: r.title,       weight: 3 },
+    { text: r.subject,     weight: 2 },
+    { text: r.category,    weight: 2 },
+    { text: r.description, weight: 1 },
+    { text: r.file_name,   weight: 1 },
+  ]).filter((r: any) => {
     const mC = cat === "All" || r.category === cat;
     const mSub = subject === "All" || r.subject === subject;
-    return mS && mC && mSub;
+    return mC && mSub;
   });
 
-  const filteredAudiobooks = audiobooks.filter(a => {
-    const q = search.toLowerCase();
-    const mS = !q
-      || a.title?.toLowerCase().includes(q)
-      || (a.description ?? "").toLowerCase().includes(q)
-      || (a.author ?? "").toLowerCase().includes(q)
-      || (a.narrator ?? "").toLowerCase().includes(q);
+  const filteredAudiobooks = smartFilter(audiobooks, search, (a: any) => [
+    { text: a.title,       weight: 3 },
+    { text: a.author,      weight: 2 },
+    { text: a.narrator,    weight: 2 },
+    { text: a.category,    weight: 2 },
+    { text: a.description, weight: 1 },
+  ]).filter((a: any) => {
     const mC = audiobookCat === "All" || a.category === audiobookCat;
     const mP = price === "all" || (price === "free" ? Number(a.price) === 0 : Number(a.price) > 0);
-    return mS && mC && mP;
+    return mC && mP;
   });
 
   const searchSuggestions = useMemo(() => {
