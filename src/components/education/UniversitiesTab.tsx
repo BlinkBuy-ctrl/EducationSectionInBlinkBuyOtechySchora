@@ -19,6 +19,7 @@ import {
 import { UniversityCarousel } from "@/components/education/UniversityCarousel";
 import { EducationFileDetailModal } from "@/components/education/EducationFileDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { smartFilter } from "@/lib/smartSearch";
 import { UniversityDetailModal } from "@/components/education/UniversityDetailModal";
 import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
@@ -665,7 +666,7 @@ export function UniversitiesTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = universities.filter(u => u.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = smartFilter(universities, search, u => [{ text: u.name, weight: 3 }]);
   const suggestionPool = useMemo(() => universities.map(u => u.name), [universities]);
 
   const universityNameById = useMemo(() => {

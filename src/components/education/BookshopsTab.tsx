@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2, Store, ArrowRight, MapPin, Star, UserCircle2 } from "lucide-react";
 import { getApprovedBookshops, getShopStats, subscribeToPush, type Bookshop, type ShopStats } from "@/lib/bookshops";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { smartFilter } from "@/lib/smartSearch";
 import { BookshopDetailModal } from "@/components/education/BookshopDetailModal";
 import { BookshopApplyModal } from "@/components/education/BookshopApplyModal";
 import { BookshopOwnerPanel } from "@/components/education/BookshopOwnerPanel";
@@ -138,7 +139,13 @@ export function BookshopsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const filtered = shops.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = smartFilter(shops, search, s => [
+    { text: s.name,                        weight: 3 },
+    { text: (s.categories ?? []).join(" "), weight: 2 },
+    { text: s.location,                    weight: 2 },
+    { text: s.motto,                       weight: 1 },
+    { text: s.about,                       weight: 1 },
+  ]);
   const suggestionPool = useMemo(() => shops.map(s => s.name), [shops]);
 
   return (

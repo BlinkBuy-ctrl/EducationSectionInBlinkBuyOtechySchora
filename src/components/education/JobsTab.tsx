@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { jobsSupabase, isJobOpen, type Job } from "@/lib/jobsSupabase";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { smartFilter } from "@/lib/smartSearch";
 import { JobDetailModal } from "@/components/education/JobDetailModal";
 import { JobPlaceholderIcon } from "@/components/education/JobPlaceholderIcon";
 import { FetchingState } from "@/components/education/FetchingState";
@@ -189,14 +190,14 @@ export function JobsTab({ jobs, loading, user, onRefresh, isOnline = true }: Pro
   };
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return jobs.filter(j => {
-      const matchQ = !q ||
-        j.title.toLowerCase().includes(q) ||
-        j.company.toLowerCase().includes(q) ||
-        (j.location ?? "").toLowerCase().includes(q) ||
-        j.description.toLowerCase().includes(q);
-      if (!matchQ) return false;
+    const matched = smartFilter(jobs, search, j => [
+      { text: j.title,                          weight: 3 },
+      { text: j.company,                        weight: 2 },
+      { text: j.location,                       weight: 2 },
+      { text: (j.job_type ?? "").replace(/_/g, " "), weight: 2 },
+      { text: j.description,                    weight: 1 },
+    ]);
+    return matched.filter(j => {
       if (filter === "all") return true;
       if (filter === "saved") return savedIds.has(j.id);
       if (filter === "open") return isJobOpen(j);

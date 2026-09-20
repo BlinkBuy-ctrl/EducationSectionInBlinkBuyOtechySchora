@@ -8,6 +8,7 @@ import {
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
 import { ScholarshipDetailModal } from "@/components/education/ScholarshipDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { smartFilter } from "@/lib/smartSearch";
 import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 
@@ -383,18 +384,14 @@ export function ScholarshipsTab({ scholarships, loading, user, onRefresh, ensure
   const [selected, setSelected] = useState<any>(null);
   const [search,   setSearch]   = useState("");
 
-  const filtered = scholarships.filter(s => {
-    const q = search.toLowerCase();
-    if (!q) return true;
-    return (
-      s.title?.toLowerCase().includes(q) ||
-      s.provider?.toLowerCase().includes(q) ||
-      s.description?.toLowerCase().includes(q) ||
-      s.country?.toLowerCase().includes(q) ||
-      s.study_level?.toLowerCase().includes(q) ||
-      (s.tags ?? []).some((tag: string) => tag.toLowerCase().includes(q))
-    );
-  });
+  const filtered = smartFilter(scholarships, search, (s: any) => [
+    { text: s.title,                     weight: 3 },
+    { text: s.provider,                  weight: 2 },
+    { text: (s.tags ?? []).join(" "),    weight: 2 },
+    { text: s.country,                   weight: 2 },
+    { text: s.study_level,               weight: 2 },
+    { text: s.description,               weight: 1 },
+  ]);
 
   // Client-side autocomplete pool — built from data already loaded, no extra fetch.
   const searchSuggestions = useMemo(() => {

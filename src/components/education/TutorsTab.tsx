@@ -8,6 +8,7 @@ import {
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { TutorDetailModal } from "@/components/education/TutorDetailModal";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
+import { smartFilter } from "@/lib/smartSearch";
 import { FetchingState } from "@/components/education/FetchingState";
 import { useToast } from "@/hooks/use-toast";
 
@@ -337,19 +338,18 @@ export function TutorsTab({ tutors, loading, user, onRefresh, ensureProfile }: P
   const [selected, setSelected] = useState<any>(null);
   const [filter,   setFilter]   = useState<"all" | "online" | "offline" | "verified">("all");
 
-  const filtered = tutors.filter(t => {
-    const q = search.toLowerCase();
-    const matchQ = !q ||
-      t.name?.toLowerCase().includes(q) ||
-      (t.subjects ?? []).some((s: string) => s.toLowerCase().includes(q)) ||
-      t.bio?.toLowerCase().includes(q) ||
-      t.location?.toLowerCase().includes(q);
-    const matchF =
+  const filtered = smartFilter(tutors, search, (t: any) => [
+    { text: t.name,                      weight: 3 },
+    { text: (t.subjects ?? []).join(" "), weight: 3 },
+    { text: t.location,                  weight: 2 },
+    { text: t.bio,                       weight: 1 },
+  ]).filter((t: any) => {
+    return (
       filter === "all" ? true :
       filter === "online" ? t.is_online :
       filter === "offline" ? !t.is_online :
-      !!t.is_verified;
-    return matchQ && matchF;
+      !!t.is_verified
+    );
   });
 
   const onlineCount   = tutors.filter(t => t.is_online).length;
