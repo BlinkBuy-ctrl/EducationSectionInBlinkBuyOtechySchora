@@ -73,6 +73,18 @@ export default {
           ring: "hsl(var(--sidebar-ring))",
         },
       },
+      // Text sizes follow --font-scale (set by the Text size slider in My Stats).
+      // At the default of 1 these are identical to Tailwind's normal sizes.
+      fontSize: {
+        xs:   ["calc(0.75rem * var(--font-scale, 1))",  { lineHeight: "calc(1rem * var(--font-scale, 1))" }],
+        sm:   ["calc(0.875rem * var(--font-scale, 1))", { lineHeight: "calc(1.25rem * var(--font-scale, 1))" }],
+        base: ["calc(1rem * var(--font-scale, 1))",     { lineHeight: "calc(1.5rem * var(--font-scale, 1))" }],
+        lg:   ["calc(1.125rem * var(--font-scale, 1))", { lineHeight: "calc(1.75rem * var(--font-scale, 1))" }],
+        xl:   ["calc(1.25rem * var(--font-scale, 1))",  { lineHeight: "calc(1.75rem * var(--font-scale, 1))" }],
+        "2xl": ["calc(1.5rem * var(--font-scale, 1))",  { lineHeight: "calc(2rem * var(--font-scale, 1))" }],
+        "3xl": ["calc(1.875rem * var(--font-scale, 1))", { lineHeight: "calc(2.25rem * var(--font-scale, 1))" }],
+        "4xl": ["calc(2.25rem * var(--font-scale, 1))", { lineHeight: "calc(2.5rem * var(--font-scale, 1))" }],
+      },
       fontFamily: {
         sans: ["var(--app-font-sans)"],
         serif: ["var(--app-font-serif)"],
