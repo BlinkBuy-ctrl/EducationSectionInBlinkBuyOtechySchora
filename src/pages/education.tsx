@@ -753,7 +753,7 @@ export default function EducationPage() {
               {resources.length > 0 && (
                 <div className="mb-4">
                   <h2 className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wide">
-                    <Sparkles className="w-3.5 h-3.5" /> {t("section_new_books")}
+                    {t("section_new_books")}
                   </h2>
                   <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
                     {[...resources]
