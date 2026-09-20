@@ -6,7 +6,7 @@ import {
   FileText, Loader2, Trash2,
   Users, Edit3, Check, X, ChevronRight, BookOpen,
   BadgeCheck, BarChart2, Sun, Moon, Bell, Bookmark,
-  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones, Rocket, Upload,
+  Info, LifeBuoy, Mail, RotateCcw, Settings2, ChevronDown, ChevronUp, Hand, Compass, Headphones, Rocket, Upload, Type,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
@@ -15,6 +15,10 @@ import { EDUCATION_LEVELS, resourcesClientForLevel, type EducationLevel } from "
 import { TABLE_AUDIOBOOKS, deleteOwnedAudiobook, formatDuration } from "@/lib/audiobooks";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/hooks/useTheme";
+import {
+  getFontScale, applyFontScale, saveFontScale, resetFontScale, clampFontScale,
+  FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, FONT_SCALE_DEFAULT,
+} from "@/lib/fontScale";
 import { safeGetItem, safeSetItem, safeRemoveItem } from "@/lib/storage";
 import { triggerInstallPrompt, isAppInstalled } from "@/components/InstallPrompt";
 import { VersionTapTrigger } from "@/components/admin/VersionTapTrigger";
@@ -195,6 +199,7 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
   const { toast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const [, navigate] = useLocation();
+  const [fontScale, setFontScale] = useState<number>(() => getFontScale());
   const [stats,      setStats]      = useState<any>(null);
   const [resources,  setResources]  = useState<any[]>([]);
   const [tutors,     setTutors]     = useState<any[]>([]);
@@ -657,6 +662,46 @@ export function SellerDashboard({ userId, onRefresh, onUploadClick, onAudioUploa
                 <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${theme === "dark" ? "translate-x-4" : "translate-x-0"}`} />
               </div>
             </button>
+
+            {/* Text size — changes text on this phone only, instantly */}
+            <div className="px-4 py-3 border-t border-border/60">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-sky-500/15 flex items-center justify-center shrink-0">
+                  <Type className="w-4 h-4 text-sky-400" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-xs font-bold text-foreground">Text size</p>
+                  <p className="text-[10px] text-muted-foreground">{Math.round(fontScale * 100)}% — drag to make text bigger or smaller</p>
+                </div>
+                {fontScale !== FONT_SCALE_DEFAULT && (
+                  <button
+                    onClick={() => setFontScale(resetFontScale())}
+                    className="text-[10px] font-bold text-sky-400 px-2 py-1 rounded-lg active:bg-muted/40"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-bold text-muted-foreground" style={{ fontSize: 11 }}>A</span>
+                <input
+                  type="range"
+                  aria-label="Text size"
+                  min={FONT_SCALE_MIN}
+                  max={FONT_SCALE_MAX}
+                  step={FONT_SCALE_STEP}
+                  value={fontScale}
+                  onChange={(e) => {
+                    const v = clampFontScale(parseFloat(e.target.value));
+                    setFontScale(v);
+                    applyFontScale(v);
+                    saveFontScale(v);
+                  }}
+                  className="flex-1 accent-sky-500"
+                />
+                <span className="font-bold text-muted-foreground" style={{ fontSize: 18 }}>A</span>
+              </div>
+            </div>
           </div>
 
           {/* Notifications */}
