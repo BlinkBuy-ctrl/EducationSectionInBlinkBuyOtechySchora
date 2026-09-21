@@ -11,6 +11,7 @@ import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
 import { AnimatedSearchInput } from "@/components/education/AnimatedSearchInput";
 import { smartFilter } from "@/lib/smartSearch";
+import { isTabLocked } from "@/lib/lockedTabs";
 import { AiModeChat } from "@/components/education/AiModeChat";
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
@@ -148,7 +149,17 @@ export default function EducationPage() {
   const [level,        setLevel]        = useState<EducationLevel>("MSCE");
   const [subject,      setSubject]      = useState<string>("All");
   const [filtersOpen,  setFiltersOpen]  = useState(false);
-  const [tab,          setTab]          = useState<Tab>("resources");
+  const [tab,          setTabRaw]       = useState<Tab>("resources");
+  // Sections whose backend isn't built yet (see src/lib/lockedTabs.ts) stay
+  // visible but can't be opened — tapping one just shows a small message.
+  const setTab = (next: Tab) => {
+    if (isTabLocked(next)) {
+      const name = next === "jobs" ? "Jobs" : next === "scholarships" ? "Scholarships" : next === "universities" ? "Higher Education" : "This section";
+      toast({ title: `🛠️ ${name} is under maintenance` });
+      return;
+    }
+    setTabRaw(next);
+  };
   const [aiModeOpen,   setAiModeOpen]   = useState(false);
   const [showOnboard,  setShowOnboard]  = useState(false);
 
@@ -644,13 +655,18 @@ export default function EducationPage() {
         onTouchEnd={handleTabBarTap}
         className="flex gap-1 bg-muted/50 p-1 rounded-xl mb-4 overflow-x-auto scrollbar-hide scroll-smooth"
       >
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold py-2 px-2.5 rounded-lg transition-all ${tab === t.key ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-sm" : "text-muted-foreground"}`}>
-            {t.emoji} {t.label}
-            {t.count !== null && <span className={`text-[9px] px-1 py-0.5 rounded-full font-bold ${tab === t.key ? "bg-white/20" : "bg-muted"}`}>{t.count}</span>}
-          </button>
-        ))}
+        {TABS.map(t => {
+          const locked = isTabLocked(t.key);
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)} aria-disabled={locked}
+              className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold py-2 px-2.5 rounded-lg transition-all ${locked ? "text-muted-foreground opacity-50" : tab === t.key ? "bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-sm" : "text-muted-foreground"}`}>
+              {t.emoji} {t.label}
+              {locked
+                ? <span className="text-[9px]">🛠️</span>
+                : t.count !== null && <span className={`text-[9px] px-1 py-0.5 rounded-full font-bold ${tab === t.key ? "bg-white/20" : "bg-muted"}`}>{t.count}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {tab === "resources" && (
