@@ -4,6 +4,8 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useToast } from "@/hooks/use-toast";
+import { isTabLocked } from "@/lib/lockedTabs";
 import { LANGUAGES, type Language, type TranslationKey } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase";
 import {
@@ -79,6 +81,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const focus = useFocusPlayer();
+  const { toast } = useToast();
   const [loc, navigate] = useLocation();
   const [unread, setUnread] = useState(0);
   // Track active tab via state so nav buttons never go stale
@@ -103,6 +106,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   };
 
   const goMenuItem = (item: MenuItem) => {
+    // Sections whose backend isn't built yet: visible, but not openable.
+    if (isTabLocked(item.tab)) {
+      setMenuOpen(false);
+      toast({ title: `🛠️ ${t(item.labelKey)} is under maintenance` });
+      return;
+    }
     if (item.action === "academy") { setMenuOpen(false); window.dispatchEvent(new CustomEvent("otechy:open-academy")); return; }
     if (item.action === "language" && item.lang) { setLanguage(item.lang); setMenuOpen(false); return; }
     setMenuOpen(false);
@@ -326,6 +335,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <div className={group.labelKey ? "flex flex-col gap-1.5" : ""}>
                     {group.items.map((item) => {
                       const Icon = item.icon;
+                      const locked = isTabLocked(item.tab);
                       const active = item.action === "language"
                         ? item.lang === language
                         : item.action ? false : item.route ? loc === item.route : (loc === "/" && activeTab === (item.tab ?? ""));
@@ -333,14 +343,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         <button
                           key={item.labelKey + (item.lang ?? "")}
                           onClick={() => goMenuItem(item)}
+                          aria-disabled={locked}
                           className={`flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-left transition-colors active:scale-[0.97] w-full ${
                             active ? "bg-sky-500/15" : "active:bg-white/5"
-                          }`}
+                          } ${locked ? "opacity-50" : ""}`}
                         >
                           <Icon className={`w-4 h-4 shrink-0 ${active ? "text-sky-400" : "text-sky-400/80"}`} />
                           <span className={`text-[12.5px] font-semibold truncate ${active ? "text-white" : "text-white/85"}`}>
                             {t(item.labelKey)}
                           </span>
+                          {locked && <span className="ml-auto text-[10px]">🛠️</span>}
                         </button>
                       );
                     })}
