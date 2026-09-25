@@ -40,6 +40,10 @@ export interface StudyGoals {
 export interface ResourceStudyData {
   resourceId: string;
   goals?: StudyGoals;
+  /** Every goal-set the learner has ever written for this book — the "study
+   *  journal" of questions they've asked themselves, kept on their own
+   *  phone. Newest first, capped so it doesn't grow forever. */
+  goalHistory: StudyGoals[];
   highlights: Highlight[];
   notes: CornellNotes;
   pomodorosCompleted: number;
@@ -49,10 +53,12 @@ export interface ResourceStudyData {
 const STORAGE_KEY = "otechy_study_sessions";
 const EVENT_NAME = "otechy:study-session-updated";
 const MAX_ENTRIES = 50; // mirrors readingProgress.ts — bound localStorage growth
+const MAX_GOAL_HISTORY = 20; // per resource — a book someone reopens often shouldn't grow this file forever
 
 function emptyEntry(resourceId: string): ResourceStudyData {
   return {
     resourceId,
+    goalHistory: [],
     highlights: [],
     notes: { cues: "", main: "", summary: "" },
     pomodorosCompleted: 0,
@@ -85,19 +91,30 @@ function writeAll(all: Record<string, ResourceStudyData>) {
 }
 
 export function getStudyData(resourceId: string): ResourceStudyData {
-  return readAll()[resourceId] ?? emptyEntry(resourceId);
+  const entry = readAll()[resourceId];
+  if (!entry) return emptyEntry(resourceId);
+  return { ...emptyEntry(resourceId), ...entry, goalHistory: entry.goalHistory ?? [] };
 }
 
 function patch(resourceId: string, fn: (entry: ResourceStudyData) => ResourceStudyData) {
   const all = readAll();
-  const current = all[resourceId] ?? emptyEntry(resourceId);
+  const current = all[resourceId] ? { ...emptyEntry(resourceId), ...all[resourceId], goalHistory: all[resourceId].goalHistory ?? [] } : emptyEntry(resourceId);
   all[resourceId] = { ...fn(current), updatedAt: Date.now() };
   writeAll(all);
   return all[resourceId];
 }
 
 export function saveGoals(resourceId: string, goals: Omit<StudyGoals, "setAt">) {
-  return patch(resourceId, entry => ({ ...entry, goals: { ...goals, setAt: Date.now() } }));
+  return patch(resourceId, entry => {
+    const entered: StudyGoals = { ...goals, setAt: Date.now() };
+    const history = [entered, ...entry.goalHistory].slice(0, MAX_GOAL_HISTORY);
+    return { ...entry, goals: entered, goalHistory: history };
+  });
+}
+
+/** The learner's past study-goal entries for this book, newest first — their own saved study journal. */
+export function getGoalHistory(resourceId: string): StudyGoals[] {
+  return getStudyData(resourceId).goalHistory;
 }
 
 export function addHighlight(resourceId: string, highlight: Omit<Highlight, "id" | "createdAt">) {
