@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useContext, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useContext, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Download, Lock, Star, FileText,
@@ -9,8 +9,8 @@ import { supabase } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AuthContext } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { getReadingProgress, saveReadingProgress, removeReadingProgress } from "@/lib/readingProgress";
+import { getPdfDocument, renderPage } from "@/lib/pdfEngine";
+import { ReadSession } from "./read/ReadSession";
 
 const CAT_COLORS: Record<string, string> = {
   "Past Papers": "bg-blue-500/15 text-blue-400",
@@ -45,325 +45,6 @@ function StarRating({ value, onChange, readonly = false }: {
   );
 }
 
-// ── Global PDF.js singleton — init once, reuse everywhere ───────────────────
-let pdfjsInstance: any = null;
-async function getPdfjsLib() {
-  if (pdfjsInstance) return pdfjsInstance;
-  const lib = await import("pdfjs-dist");
-  lib.GlobalWorkerOptions.workerSrc = workerUrl;
-  pdfjsInstance = lib;
-  return lib;
-}
-
-// ── Cache loaded PDF docs by URL so re-opens are instant ───────────────────
-const docCache = new Map<string, any>();
-async function getDoc(url: string) {
-  if (docCache.has(url)) return docCache.get(url);
-  const lib = await getPdfjsLib();
-  const doc = await lib.getDocument({ url, withCredentials: false }).promise;
-  docCache.set(url, doc);
-  return doc;
-}
-
-// ── Render a page onto a canvas, returns height ─────────────────────────────
-async function renderPage(doc: any, pageNum: number, canvas: HTMLCanvasElement) {
-  const page = await doc.getPage(pageNum);
-  const w = canvas.parentElement?.clientWidth || window.innerWidth;
-  const vp = page.getViewport({ scale: 1 });
-  const cssScale = w / vp.width;
-
-  // Render at device pixel ratio so text is crisp on retina/high-DPI phones,
-  // while keeping the on-screen CSS size unchanged.
-  const dpr = Math.min(window.devicePixelRatio || 1, 3); // cap at 3x to bound memory/perf
-  const renderScale = cssScale * dpr;
-  const scaled = page.getViewport({ scale: renderScale });
-
-  canvas.width  = scaled.width;
-  canvas.height = scaled.height;
-  canvas.style.width  = `${cssScale * vp.width}px`;
-  canvas.style.height = `${scaled.height / dpr}px`;
-
-  const ctx = canvas.getContext("2d")!;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const task = page.render({ canvasContext: ctx, viewport: scaled });
-  await task.promise;
-}
-
-// ── Full-screen reader ───────────────────────────────────────────────────────
-function PdfReaderModal({ resource, onClose, client, level }: { resource: any; onClose: () => void; client: SupabaseClient; level: string }) {
-  const [signedUrl,  setSignedUrl]  = useState<string | null>(null);
-  const [doc,        setDoc]        = useState<any>(null);
-  // Resume where they left off, if we have a saved position for this book.
-  const [page,       setPage]       = useState(() => {
-    const saved = getReadingProgress(resource.id);
-    return saved && saved.page > 1 && saved.page < saved.numPages ? saved.page : 1;
-  });
-  const [total,      setTotal]      = useState(0);
-  const [rendering,  setRendering]  = useState(true);
-  const [initLoad,   setInitLoad]   = useState(true);
-  const [error,      setError]      = useState(false);
-  const [showNav,    setShowNav]    = useState(true);
-  const [flipDir,    setFlipDir]    = useState<"left"|"right"|null>(null);
-
-  const canvasRef    = useRef<HTMLCanvasElement>(null);
-  const renderingRef = useRef(false);
-  const navTimerRef  = useRef<any>(null);
-  const touchStartX  = useRef(0);
-  const touchStartY  = useRef(0);
-
-  const resetNavTimer = useCallback(() => {
-    setShowNav(true);
-    clearTimeout(navTimerRef.current);
-    navTimerRef.current = setTimeout(() => setShowNav(false), 3500);
-  }, []);
-
-  useEffect(() => {
-    resetNavTimer();
-    return () => clearTimeout(navTimerRef.current);
-  }, []);
-
-  useEffect(() => {
-    client.storage.from("otechy-docs")
-      .createSignedUrl(resource.file_url, 3600)
-      .then(({ data, error: e }) => {
-        if (e || !data) { setError(true); setRendering(false); setInitLoad(false); return; }
-        setSignedUrl(data.signedUrl);
-      });
-  }, [resource.file_url, client]);
-
-  useEffect(() => {
-    if (!signedUrl) return;
-    getDoc(signedUrl)
-      .then(d => { setDoc(d); setTotal(d.numPages); })
-      .catch(() => { setError(true); setRendering(false); setInitLoad(false); });
-  }, [signedUrl]);
-
-  useEffect(() => {
-    if (!doc || !canvasRef.current) return;
-    if (renderingRef.current) return;
-    renderingRef.current = true;
-    setRendering(true);
-    renderPage(doc, page, canvasRef.current)
-      .catch(() => setError(true))
-      .finally(() => {
-        setRendering(false);
-        setInitLoad(false);
-        renderingRef.current = false;
-        setFlipDir(null);
-      });
-  }, [doc, page]);
-
-  // Persist reading position so Browse's "Continue Reading" strip can pick
-  // it back up — and clear it once they've actually finished the book.
-  useEffect(() => {
-    if (!total) return;
-    if (page >= total) { removeReadingProgress(resource.id); return; }
-    saveReadingProgress({
-      resourceId: resource.id, level, title: resource.title,
-      category: resource.category, thumbnailUrl: resource.thumbnail_url,
-      page, numPages: total, updatedAt: Date.now(),
-    });
-  }, [page, total]);
-
-  const goTo = (p: number, dir?: "left"|"right") => {
-    if (!total || p < 1 || p > total || renderingRef.current) return;
-    setFlipDir(dir ?? null);
-    setPage(p);
-    resetNavTimer();
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(dx) < Math.abs(dy) || Math.abs(dx) < 45) return;
-    if (dx < 0) goTo(page + 1, "left");
-    else         goTo(page - 1, "right");
-  };
-
-  const onTap = (e: React.MouseEvent<HTMLDivElement>) => {
-    const x = e.clientX;
-    const w = window.innerWidth;
-    resetNavTimer();
-    if (x < w * 0.33)       goTo(page - 1, "right");
-    else if (x > w * 0.67)  goTo(page + 1, "left");
-    else { setShowNav(v => !v); clearTimeout(navTimerRef.current); }
-  };
-
-  const progress = total ? (page / total) * 100 : 0;
-
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col select-none"
-      style={{ background: "linear-gradient(160deg, #0d0d1a 0%, #111128 60%, #0a0a14 100%)", touchAction: "pan-y" }}>
-
-      {/* ── Top bar (auto-hides) ── */}
-      <div className={`absolute top-0 left-0 right-0 z-20 transition-all duration-300 ease-in-out ${showNav ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}`}>
-        <div className="flex items-center gap-2.5 px-3 pt-10 pb-5"
-          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%)" }}>
-          <button onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/12 backdrop-blur-md border border-white/10 flex items-center justify-center active:scale-90 transition-transform shrink-0 shadow-lg">
-            <X className="w-3.5 h-3.5 text-white" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-xs text-white/90 truncate leading-tight">{resource.title}</p>
-            <p className="text-[9px] text-white/35 mt-0.5">{resource.category}</p>
-          </div>
-          {total > 0 && (
-            <div className="shrink-0 bg-white/10 backdrop-blur-md border border-white/10 rounded-full px-2.5 py-1">
-              <span className="text-[10px] text-white/70 font-mono">{page}<span className="text-white/30">/{total}</span></span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Canvas / content area ── */}
-      <div className="flex-1 overflow-hidden relative"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        onClick={onTap}>
-
-        {/* Initial loading state */}
-        {initLoad && !error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-10 gap-4">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                <FileText className="w-7 h-7 text-sky-400" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-sky-600 flex items-center justify-center">
-                <Loader2 className="w-3 h-3 animate-spin text-white" />
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-white/60 font-medium">Opening document</p>
-              <p className="text-[10px] text-white/25 mt-1">{resource.file_name}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Page-turning loading overlay */}
-        {rendering && !initLoad && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/40 backdrop-blur-sm rounded-2xl px-5 py-3 flex items-center gap-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
-              <span className="text-xs text-white/60">Page {page}</span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8">
-            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
-              <FileText className="w-7 h-7 text-red-400/60" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-white/50 font-medium">Could not load document</p>
-              <p className="text-[10px] text-white/25 mt-1">Check your connection and try again</p>
-            </div>
-            <button onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-white/10 border border-white/10 text-white/70 text-xs font-semibold active:scale-95 transition-transform">
-              Go Back
-            </button>
-          </div>
-        )}
-
-        {/* Tap zone hints */}
-        {showNav && doc && !rendering && !initLoad && (
-          <>
-            {page > 1 && (
-              <div className="absolute left-0 top-0 bottom-0 w-14 flex items-center justify-start pl-2 pointer-events-none">
-                <div className="w-7 h-14 rounded-r-xl bg-white/5 border-r border-y border-white/8 flex items-center justify-center">
-                  <ChevronLeft className="w-4 h-4 text-white/30" />
-                </div>
-              </div>
-            )}
-            {page < total && (
-              <div className="absolute right-0 top-0 bottom-0 w-14 flex items-center justify-end pr-2 pointer-events-none">
-                <div className="w-7 h-14 rounded-l-xl bg-white/5 border-l border-y border-white/8 flex items-center justify-center">
-                  <ChevronRight className="w-4 h-4 text-white/30" />
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Page canvas */}
-        <div className="w-full h-full overflow-y-auto">
-          <div className="px-1 py-2">
-            <div className="rounded-xl overflow-hidden shadow-2xl"
-              style={{
-                boxShadow: "0 25px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
-                opacity: initLoad ? 0 : rendering ? 0.4 : 1,
-                transition: "opacity 0.2s ease",
-              }}>
-              <canvas ref={canvasRef} className="w-full block bg-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Bottom bar (auto-hides) ── */}
-      <div className={`absolute bottom-0 left-0 right-0 z-20 transition-all duration-300 ease-in-out ${showNav ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}>
-        <div className="px-4 pt-6 pb-8"
-          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.90) 0%, transparent 100%)" }}>
-
-          {/* Progress bar */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-[9px] text-white/30 font-mono w-4 text-right shrink-0">1</span>
-            <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${progress}%`,
-                  background: "linear-gradient(to right, #0284c7, #3b82f6)",
-                }} />
-            </div>
-            <span className="text-[9px] text-white/30 font-mono shrink-0">{total}</span>
-          </div>
-
-          {/* Page dots (≤10 pages) or prev/next buttons */}
-          {total > 0 && total <= 10 ? (
-            <div className="flex items-center justify-center gap-2">
-              {Array.from({ length: total }, (_, i) => i + 1).map(p => (
-                <button key={p}
-                  onClick={e => { e.stopPropagation(); goTo(p); }}
-                  className={`rounded-full transition-all duration-200 active:scale-90 ${
-                    p === page
-                      ? "w-5 h-2.5 bg-sky-400 shadow-sm shadow-sky-500/50"
-                      : "w-2 h-2 bg-white/20 hover:bg-white/35"
-                  }`} />
-              ))}
-            </div>
-          ) : total > 10 ? (
-            <div className="flex items-center justify-between">
-              <button
-                onClick={e => { e.stopPropagation(); goTo(page - 1, "right"); }}
-                disabled={page <= 1}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 text-white/70 text-xs font-semibold disabled:opacity-25 active:scale-95 transition-all shadow-sm">
-                <ChevronLeft className="w-3.5 h-3.5" /> Prev
-              </button>
-
-              <div className="flex flex-col items-center">
-                <span className="text-white font-bold text-sm">{page}</span>
-                <span className="text-white/30 text-[9px]">of {total}</span>
-              </div>
-
-              <button
-                onClick={e => { e.stopPropagation(); goTo(page + 1, "left"); }}
-                disabled={page >= total}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold disabled:opacity-25 active:scale-95 transition-all shadow-md"
-                style={{ background: "linear-gradient(135deg, #0284c7, #3b82f6)" }}>
-                Next <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Compact PDF preview thumbnail ────────────────────────────────────────────
 function PdfPreview({ signedUrl, canAccess }: { signedUrl: string; canAccess: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -377,7 +58,7 @@ function PdfPreview({ signedUrl, canAccess }: { signedUrl: string; canAccess: bo
   const locked  = !canAccess && page >= 2;
 
   useEffect(() => {
-    getDoc(signedUrl)
+    getPdfDocument(signedUrl)
       .then(d => { setDoc(d); setTotal(d.numPages); })
       .catch(() => { setError(true); setLoading(false); });
   }, [signedUrl]);
@@ -385,10 +66,10 @@ function PdfPreview({ signedUrl, canAccess }: { signedUrl: string; canAccess: bo
   useEffect(() => {
     if (!doc || !canvasRef.current) return;
     setLoading(true);
-    renderPage(doc, page, canvasRef.current)
+    renderPage(doc, page, canvasRef.current, { docUrl: signedUrl })
       .then(() => setLoading(false))
       .catch(() => { setError(true); setLoading(false); });
-  }, [doc, page]);
+  }, [doc, page, signedUrl]);
 
   if (error) return (
     <div className="h-28 bg-muted/20 rounded-xl flex flex-col items-center justify-center gap-1.5">
@@ -801,7 +482,7 @@ export function ResourceDetailModal({
         </div>
       </div>
 
-      {showReader && <PdfReaderModal resource={resource} onClose={() => setShowReader(false)} client={client} level={level} />}
+      {showReader && <ReadSession resource={resource} onClose={() => setShowReader(false)} client={client} level={level} />}
     </>,
     document.body
   );
