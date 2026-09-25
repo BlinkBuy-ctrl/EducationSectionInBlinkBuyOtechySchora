@@ -3,8 +3,9 @@
 // Triggers after two completed 25-minute focus blocks (50 minutes total).
 
 import { useState } from "react";
-import { Star, Sparkles } from "lucide-react";
+import { Star } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { CompanionFace } from "./CompanionFace";
 
 interface Props {
   onContinue: () => void;
@@ -23,9 +24,7 @@ export function ReflectionModal({ onContinue, onFinish }: Props) {
       style={{ background: "linear-gradient(160deg, #0d0d1a 0%, #111128 60%, #0a0a14 100%)" }}>
       <div className="w-full max-w-md flex flex-col items-center gap-5">
 
-        <div className="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
-          <Sparkles className="w-7 h-7 text-sky-400" />
-        </div>
+        <CompanionFace size={52} bob />
 
         <div className="text-center">
           <p className="text-lg font-bold text-white">{t("reflection_title")}</p>

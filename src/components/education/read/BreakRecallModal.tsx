@@ -4,8 +4,9 @@
 // and re-displays the learner's own Step-1 goals as Active Recall prompts.
 
 import { useEffect, useState } from "react";
-import { Coffee, Play } from "lucide-react";
+import { Play } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { CompanionFace } from "./CompanionFace";
 import type { StudyGoals } from "@/lib/studySession";
 
 const BREAK_SECONDS = 5 * 60;
@@ -37,9 +38,7 @@ export function BreakRecallModal({ goals, onResume }: Props) {
       style={{ background: "linear-gradient(160deg, #0d0d1a 0%, #111128 60%, #0a0a14 100%)" }}>
       <div className="w-full max-w-md flex flex-col items-center gap-5">
 
-        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-          <Coffee className="w-7 h-7 text-emerald-400" />
-        </div>
+        <CompanionFace size={52} bob />
 
         <div className="text-center">
           <p className="text-lg font-bold text-white">{t("break_title")}</p>
