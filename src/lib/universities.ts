@@ -1,10 +1,20 @@
 // ============================================================
 // lib/universities.ts
 // SchoraHub — Higher Education Feature
-// All Supabase calls for universities and university_links.
+//
+// Reads go straight to the Higher Education Supabase project
+// (higherEducationSupabase.ts) — public RLS select policy.
+//
+// Writes (create/update/delete university or link) go through
+// api/manage-higher-education.ts instead of hitting the table
+// directly. That endpoint checks the caller's session against your
+// MAIN project's `profiles.is_admin`, then uses the Higher
+// Education project's SERVICE ROLE key to actually write — same
+// split-project admin pattern as Jobs (see JobsAdmin.tsx / manage-jobs.ts).
 // ============================================================
 
 import { supabase } from "./supabase";
+import { higherEdSupabase } from "./higherEducationSupabase";
 
 // ────────────────────────────────────────────────────────────
 // TYPES
@@ -41,68 +51,59 @@ export interface CreateLinkPayload {
   sort_order?: number;
 }
 
+const API_ENDPOINT = "/api/manage-higher-education";
+
 // ────────────────────────────────────────────────────────────
-// STORAGE — upload a university logo
-// Returns the public URL string, or null if no file provided.
+// Admin API helper — attaches the caller's own main-project
+// session token so the server can verify is_admin.
 // ────────────────────────────────────────────────────────────
 
-export async function uploadUniversityLogo(
-  file: File,
-  universityName: string
-): Promise<string> {
-  // Sanitize name for use as a filename
-  const safeName = universityName
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
+async function callAdminApi<T>(body: Record<string, unknown>): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
 
-  const ext = file.name.split(".").pop();
-  const fileName = `${safeName}-${Date.now()}.${ext}`;
+  const res = await fetch(API_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
 
-  const { error } = await supabase.storage
-    .from("university-logos")
-    .upload(fileName, file, {
-      cacheControl: "3600",
-      upsert: false,
-    });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error ?? "Request failed");
+  return json as T;
+}
 
-  if (error) throw new Error(`Logo upload failed: ${error.message}`);
-
-  const { data } = supabase.storage
-    .from("university-logos")
-    .getPublicUrl(fileName);
-
-  return data.publicUrl;
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Could not read the logo file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 // ────────────────────────────────────────────────────────────
 // UNIVERSITIES — create
-// Uploads logo first (if provided), then inserts the row.
+// Logo (if any) goes up as base64; the server uploads it with the
+// service role and inserts the row.
 // ────────────────────────────────────────────────────────────
 
 export async function createUniversity(
   payload: CreateUniversityPayload
 ): Promise<University> {
-  let logo_url: string | null = null;
+  const logoBase64 = payload.logoFile ? await fileToBase64(payload.logoFile) : null;
 
-  if (payload.logoFile) {
-    logo_url = await uploadUniversityLogo(payload.logoFile, payload.name);
-  }
+  const { university } = await callAdminApi<{ university: University }>({
+    action: "create_university",
+    name: payload.name.trim(),
+    logoBase64,
+    logoFileName: payload.logoFile?.name ?? null,
+  });
 
-  const { data, error } = await supabase
-    .from("universities")
-    .insert([
-      {
-        name: payload.name.trim(),
-        logo_url,
-      },
-    ])
-    .select()
-    .single();
-
-  if (error) throw new Error(`Failed to create university: ${error.message}`);
-
-  return data as University;
+  return university;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export async function createUniversity(
 // ────────────────────────────────────────────────────────────
 
 export async function getUniversities(): Promise<University[]> {
-  const { data, error } = await supabase
+  const { data, error } = await higherEdSupabase
     .from("universities")
     .select("*")
     .order("name", { ascending: true });
@@ -125,7 +126,7 @@ export async function getUniversities(): Promise<University[]> {
 // ────────────────────────────────────────────────────────────
 
 export async function getUniversityById(id: string): Promise<University> {
-  const { data, error } = await supabase
+  const { data, error } = await higherEdSupabase
     .from("universities")
     .select("*")
     .eq("id", id)
@@ -137,62 +138,47 @@ export async function getUniversityById(id: string): Promise<University> {
 }
 
 // ────────────────────────────────────────────────────────────
-// UNIVERSITIES — update name or logo (admin only via frontend)
+// UNIVERSITIES — update name or logo (admin only, via API)
 // ────────────────────────────────────────────────────────────
 
 export async function updateUniversity(
   id: string,
   updates: { name?: string; logo_url?: string }
 ): Promise<University> {
-  const { data, error } = await supabase
-    .from("universities")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+  const { university } = await callAdminApi<{ university: University }>({
+    action: "update_university",
+    id,
+    updates,
+  });
 
-  if (error) throw new Error(`Failed to update university: ${error.message}`);
-
-  return data as University;
+  return university;
 }
 
 // ────────────────────────────────────────────────────────────
-// UNIVERSITIES — delete (cascades to all its links)
+// UNIVERSITIES — delete (cascades to all its links, admin only)
 // ────────────────────────────────────────────────────────────
 
 export async function deleteUniversity(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("universities")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw new Error(`Failed to delete university: ${error.message}`);
+  await callAdminApi({ action: "delete_university", id });
 }
 
 // ────────────────────────────────────────────────────────────
-// UNIVERSITY LINKS — create a link inside a university
+// UNIVERSITY LINKS — create a link inside a university (admin only)
 // ────────────────────────────────────────────────────────────
 
 export async function createUniversityLink(
   payload: CreateLinkPayload
 ): Promise<UniversityLink> {
-  const { data, error } = await supabase
-    .from("university_links")
-    .insert([
-      {
-        university_id: payload.university_id,
-        platform_type: payload.platform_type.trim(),
-        url: payload.url.trim(),
-        description: payload.description.trim(),
-        sort_order: payload.sort_order ?? 0,
-      },
-    ])
-    .select()
-    .single();
+  const { link } = await callAdminApi<{ link: UniversityLink }>({
+    action: "create_link",
+    university_id: payload.university_id,
+    platform_type: payload.platform_type.trim(),
+    url: payload.url.trim(),
+    description: payload.description.trim(),
+    sort_order: payload.sort_order ?? 0,
+  });
 
-  if (error) throw new Error(`Failed to create link: ${error.message}`);
-
-  return data as UniversityLink;
+  return link;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -203,7 +189,7 @@ export async function createUniversityLink(
 export async function getUniversityLinks(
   universityId: string
 ): Promise<UniversityLink[]> {
-  const { data, error } = await supabase
+  const { data, error } = await higherEdSupabase
     .from("university_links")
     .select("*")
     .eq("university_id", universityId)
@@ -216,34 +202,26 @@ export async function getUniversityLinks(
 }
 
 // ────────────────────────────────────────────────────────────
-// UNIVERSITY LINKS — delete a single link
+// UNIVERSITY LINKS — delete a single link (admin only)
 // ────────────────────────────────────────────────────────────
 
 export async function deleteUniversityLink(linkId: string): Promise<void> {
-  const { error } = await supabase
-    .from("university_links")
-    .delete()
-    .eq("id", linkId);
-
-  if (error) throw new Error(`Failed to delete link: ${error.message}`);
+  await callAdminApi({ action: "delete_link", id: linkId });
 }
 
 // ────────────────────────────────────────────────────────────
-// UNIVERSITY LINKS — update a link (edit url, description etc)
+// UNIVERSITY LINKS — update a link (admin only)
 // ────────────────────────────────────────────────────────────
 
 export async function updateUniversityLink(
   linkId: string,
   updates: Partial<Pick<UniversityLink, "platform_type" | "url" | "description" | "sort_order">>
 ): Promise<UniversityLink> {
-  const { data, error } = await supabase
-    .from("university_links")
-    .update(updates)
-    .eq("id", linkId)
-    .select()
-    .single();
+  const { link } = await callAdminApi<{ link: UniversityLink }>({
+    action: "update_link",
+    id: linkId,
+    updates,
+  });
 
-  if (error) throw new Error(`Failed to update link: ${error.message}`);
-
-  return data as UniversityLink;
+  return link;
 }

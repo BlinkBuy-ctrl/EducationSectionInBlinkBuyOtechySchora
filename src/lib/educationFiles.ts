@@ -2,12 +2,12 @@
 // lib/educationFiles.ts
 // SchoraHub — Higher Education Files feature
 //
-// Reads: straight to the Jobs Supabase project (public RLS select
-// policy on education_files).
+// Reads: straight to the Higher Education Supabase project (public RLS
+// select policy on education_files) — see higherEducationSupabase.ts.
 //
 // Uploads: the raw file goes DIRECTLY from the browser to the
 // education-files storage bucket (public insert policy — see
-// education_schema_v4.sql), bypassing the serverless function
+// higher_education_schema.sql), bypassing the serverless function
 // entirely so file size isn't capped by Vercel's ~4.5MB request
 // limit. Only the resulting small JSON (title, urls, etc.) goes
 // through api/manage-education-files.ts, which uses the service
@@ -27,7 +27,7 @@
 // ============================================================
 
 import JSZip from "jszip";
-import { jobsSupabase } from "./jobsSupabase";
+import { higherEdSupabase } from "./higherEducationSupabase";
 import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 // ────────────────────────────────────────────────────────────
@@ -163,12 +163,12 @@ async function buildCoverBlob(file: File, fileType: EducationFileType): Promise<
 // ────────────────────────────────────────────────────────────
 
 async function uploadToStorage(blob: Blob, path: string, contentType: string): Promise<string> {
-  const { error } = await jobsSupabase.storage.from(BUCKET).upload(path, blob, {
+  const { error } = await higherEdSupabase.storage.from(BUCKET).upload(path, blob, {
     contentType,
     upsert: false,
   });
   if (error) throw new Error(`Upload failed: ${error.message}`);
-  return jobsSupabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  return higherEdSupabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -176,7 +176,7 @@ async function uploadToStorage(blob: Blob, path: string, contentType: string): P
 // ────────────────────────────────────────────────────────────
 
 export async function getEducationFiles(filters: EducationFileFilters = {}): Promise<EducationFile[]> {
-  let query = jobsSupabase.from("education_files").select("*").order("created_at", { ascending: false });
+  let query = higherEdSupabase.from("education_files").select("*").order("created_at", { ascending: false });
 
   if (filters.universityId) query = query.eq("university_id", filters.universityId);
   if (filters.program) query = query.eq("program", filters.program);
