@@ -1,19 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
-// ── Jobs project (service role — bypasses RLS, server-only) ───────────────
-// Same project as manage-jobs.ts. Education files live here too, per
-// instruction: reuse the Jobs Supabase project, don't spin up a 4th one.
-const JOBS_SUPABASE_URL = 'https://mgsdzardxtaiuczfarsi.supabase.co';
-const JOBS_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1nc2R6YXJkeHRhaXVjemZhcnNpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4ODI0OTE2OSwiZXhwIjoyMTAzODI1MTY5fQ.b01Dxt9KTV61DMyDRPeL0xn4EYfraBX7thu37403HEk';
-const jobsDb = createClient(JOBS_SUPABASE_URL, JOBS_SUPABASE_SERVICE_ROLE_KEY);
+// ── Higher Education project (service role — bypasses RLS, server-only) ──
+// Same project as manage-higher-education.ts (universities/links) —
+// education files live in the same dedicated Higher Education project.
+const HIGHER_ED_SUPABASE_URL = 'https://miceczfibiewvijryzhe.supabase.co';
+const HIGHER_ED_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pY2VjemZpYmlld3ZpanJ5emhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDI0ODA1NywiZXhwIjoyMTA1ODI0MDU3fQ.H5tOLtAMJ-4TfLNE95uDah5AjC6rljaIOo7LiRUX1Uw';
+const jobsDb = createClient(HIGHER_ED_SUPABASE_URL, HIGHER_ED_SUPABASE_SERVICE_ROLE_KEY);
 
 const BUCKET = 'education-files';
 
 // NOTE: this endpoint never receives raw file bytes. The browser uploads
 // files directly to Supabase Storage (public insert policy on the
-// education-files bucket — see education_schema_v4.sql), then calls this
-// endpoint with just the resulting URLs + metadata. That split is what
+// education-files bucket — see higher_education_schema.sql), then calls
+// this endpoint with just the resulting URLs + metadata. That split is what
 // lets big files bypass Vercel's ~4.5MB serverless body-size cap.
 
 interface EducationFileInput {
