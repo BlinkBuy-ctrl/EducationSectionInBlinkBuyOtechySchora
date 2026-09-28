@@ -10,7 +10,7 @@
 // higher_education_schema.sql), bypassing the serverless function
 // entirely so file size isn't capped by Vercel's ~4.5MB request
 // limit. Only the resulting small JSON (title, urls, etc.) goes
-// through api/manage-education-files.ts, which uses the service
+// through api/manage-higher-education.ts, which uses the service
 // role to write the row — that's what keeps deletes/edits from
 // being wide open even though uploads are.
 //
@@ -83,7 +83,7 @@ export const ACCEPTED_FILE_EXTENSIONS =
   ".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.jpg,.jpeg,.png,.webp,.gif";
 
 const BUCKET = "education-files";
-const API_ENDPOINT = "/api/manage-education-files";
+const API_ENDPOINT = "/api/manage-higher-education";
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB — matches the bucket's file_size_limit
 
 // ────────────────────────────────────────────────────────────
