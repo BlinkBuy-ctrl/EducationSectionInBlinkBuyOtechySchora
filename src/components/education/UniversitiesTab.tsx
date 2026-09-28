@@ -716,9 +716,18 @@ export function UniversitiesTab() {
           <FileText className="w-4 h-4 text-sky-500" /> Files Library
         </p>
         <button
-          onClick={() => setShowUpload(true)}
-          disabled={universities.length === 0}
-          className="flex items-center gap-1 text-xs font-bold text-sky-500 disabled:opacity-40 active:scale-95 transition-transform"
+          type="button"
+          onClick={() => {
+            if (universities.length === 0) {
+              toast({
+                title: "No universities yet",
+                description: "Files are uploaded under a university — one needs to be added first.",
+              });
+              return;
+            }
+            setShowUpload(true);
+          }}
+          className="flex items-center gap-1.5 text-xs font-bold text-white bg-sky-500 hover:bg-sky-600 rounded-full px-4 py-2 min-h-[40px] shadow-sm shadow-sky-500/30 active:scale-95 transition-transform"
         >
           <Upload className="w-3.5 h-3.5" /> Upload File
         </button>
