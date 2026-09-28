@@ -627,10 +627,10 @@ export default function EducationPage() {
 
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: resources.length + audiobooks.length },
-    { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
+    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: null            },
     { key: "tutors",       emoji: "👨‍🏫", label: t("menu_tutors"),       count: tutors.length       },
     { key: "jobs",         emoji: "💼", label: t("menu_jobs"),          count: jobs.length         },
-    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: null            },
+    { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
     { key: "bookshops",    emoji: "📖", label: t("menu_bookstore"),     count: null            },
     { key: "adverts",      emoji: "📢", label: t("menu_adverts"),      count: null                },
     { key: "bookmarks",    emoji: "🔖", label: t("menu_saved"),        count: saved.length + savedAudiobooks.length },
