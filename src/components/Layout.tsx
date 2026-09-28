@@ -50,10 +50,10 @@ const MENU_GROUPS: MenuGroup[] = [
   { labelKey: "menu_section_sections", items: [
     { icon: Search,     labelKey: "menu_browse",       tab: "resources" },
     { icon: Headphones, labelKey: "menu_audio_books",  tab: "resources" },
-    { icon: Award,      labelKey: "menu_scholarships", tab: "scholarships" },
+    { icon: Building2,  labelKey: "menu_universities", tab: "universities" },
     { icon: Users,      labelKey: "menu_tutors",       tab: "tutors" },
     { icon: Briefcase,  labelKey: "menu_jobs",         tab: "jobs" },
-    { icon: Building2,  labelKey: "menu_universities", tab: "universities" },
+    { icon: Award,      labelKey: "menu_scholarships", tab: "scholarships" },
     { icon: BookText,   labelKey: "menu_bookstore",    tab: "bookshops" },
     { icon: Megaphone,  labelKey: "menu_adverts",      tab: "adverts" },
   ]},
