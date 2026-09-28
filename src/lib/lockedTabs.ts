@@ -10,7 +10,7 @@
  * The names are the tab keys: "scholarships", "jobs", "universities"
  * (universities = Higher Education).
  */
-export const LOCKED_TABS: readonly string[] = ["jobs", "scholarships"];
+export const LOCKED_TABS: readonly string[] = ["scholarships"];
 
 export function isTabLocked(tab: string | null | undefined): boolean {
   return !!tab && LOCKED_TABS.indexOf(tab) !== -1;
