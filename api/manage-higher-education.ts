@@ -51,13 +51,95 @@ async function uploadLogo(logoBase64: string, fileName: string, universityName: 
   return higherEdDb.storage.from(LOGO_BUCKET).getPublicUrl(path).data.publicUrl;
 }
 
+
+// ── Education files (Files Library) — merged in from manage-education-files.ts
+// so we stay under Vercel Hobby's 12-serverless-function limit. These actions
+// are PUBLIC (any visitor can upload); only university/link actions need admin.
+const FILES_BUCKET = 'education-files';
+
+function pathFromPublicUrl(fileUrl: string): string | null {
+  const marker = `/object/public/${FILES_BUCKET}/`;
+  const idx = fileUrl.indexOf(marker);
+  if (idx === -1) return null;
+  return fileUrl.slice(idx + marker.length);
+}
+
+async function handleFileAction(action: string, body: any, res: VercelResponse): Promise<VercelResponse | null> {
+  if (action === 'list') {
+    const { university_id, program, category } = body ?? {};
+    let query = higherEdDb.from('education_files').select('*').order('created_at', { ascending: false });
+    if (university_id) query = query.eq('university_id', university_id);
+    if (program) query = query.eq('program', program);
+    if (category) query = query.eq('category', category);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.status(200).json({ files: data });
+  }
+
+  if (action === 'create') {
+    const file = body?.file;
+    if (!file?.university_id || !file?.program || !file?.category || !file?.title || !file?.file_url || !file?.file_type) {
+      return res.status(400).json({ error: 'university_id, program, category, title, file_url and file_type are required' });
+    }
+    const { data, error } = await higherEdDb
+      .from('education_files')
+      .insert({
+        university_id: file.university_id,
+        program: String(file.program).trim(),
+        category: String(file.category).trim(),
+        title: String(file.title).trim(),
+        uploaded_by: file.uploaded_by ? String(file.uploaded_by).trim() : null,
+        file_url: file.file_url,
+        cover_url: file.cover_url || null,
+        file_type: file.file_type,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return res.status(200).json({ file: data });
+  }
+
+  if (action === 'delete') {
+    const { fileId } = body ?? {};
+    if (!fileId) return res.status(400).json({ error: 'fileId required' });
+
+    const { data: existing, error: fetchErr } = await higherEdDb
+      .from('education_files')
+      .select('file_url, cover_url')
+      .eq('id', fileId)
+      .maybeSingle();
+    if (fetchErr) throw fetchErr;
+
+    const pathsToRemove: string[] = [];
+    if (existing?.file_url) { const p = pathFromPublicUrl(existing.file_url); if (p) pathsToRemove.push(p); }
+    if (existing?.cover_url) { const p = pathFromPublicUrl(existing.cover_url); if (p) pathsToRemove.push(p); }
+    if (pathsToRemove.length) await higherEdDb.storage.from(FILES_BUCKET).remove(pathsToRemove);
+
+    const { error } = await higherEdDb.from('education_files').delete().eq('id', fileId);
+    if (error) throw error;
+    return res.status(200).json({ ok: true });
+  }
+
+  return null;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).end();
 
+  const { action } = req.body ?? {};
+
+  // Public Files Library actions (no admin needed) — same behavior as before.
+  if (action === 'list' || action === 'create' || action === 'delete') {
+    try {
+      const handled = await handleFileAction(action, req.body, res);
+      if (handled) return handled;
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message ?? 'Something went wrong' });
+    }
+  }
+
   const admin = await verifyAdmin(req);
   if (!admin) return res.status(401).json({ error: 'Admin login required' });
-
-  const { action } = req.body ?? {};
 
   try {
     // ── Universities ──────────────────────────────────────────
