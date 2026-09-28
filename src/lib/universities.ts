@@ -71,7 +71,16 @@ async function callAdminApi<T>(body: Record<string, unknown>): Promise<T> {
     body: JSON.stringify(body),
   });
 
-  const json = await res.json();
+  let json: any;
+  try {
+    json = await res.json();
+  } catch {
+    throw new Error(
+      res.status === 404
+        ? "Admin service not found (404) — the latest deploy may not be live yet."
+        : `Server returned an unexpected response (${res.status}).`
+    );
+  }
   if (!res.ok) throw new Error(json.error ?? "Request failed");
   return json as T;
 }

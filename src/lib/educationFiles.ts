@@ -84,7 +84,20 @@ export const ACCEPTED_FILE_EXTENSIONS =
 
 const BUCKET = "education-files";
 const API_ENDPOINT = "/api/manage-higher-education";
+
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB — matches the bucket's file_size_limit
+
+async function readJson(res: Response): Promise<any> {
+  try {
+    return await res.json();
+  } catch {
+    throw new Error(
+      res.status === 404
+        ? "Upload service not found (404) — the latest deploy may not be live yet."
+        : `Server returned an unexpected response (${res.status}).`
+    );
+  }
+}
 
 // ────────────────────────────────────────────────────────────
 // FILE TYPE DETECTION
@@ -238,7 +251,7 @@ export async function uploadEducationFile(payload: UploadEducationFilePayload): 
     }),
   });
 
-  const json = await res.json();
+  const json = await readJson(res);
   if (!res.ok) throw new Error(json.error ?? "Upload failed");
 
   return json.file as EducationFile;
@@ -255,6 +268,6 @@ export async function deleteEducationFile(fileId: string): Promise<void> {
     body: JSON.stringify({ action: "delete", fileId }),
   });
 
-  const json = await res.json();
+  const json = await readJson(res);
   if (!res.ok) throw new Error(json.error ?? "Delete failed");
 }
