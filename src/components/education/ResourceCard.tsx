@@ -29,6 +29,155 @@ function formatSize(bytes?: number) {
   return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
 }
 
+// ── Idle showcase animation (human figure walks in, sits by Read → cover ────
+//    shows pages flipping, like someone is sitting there leafing through it) ─
+// After a card sits on screen a while untouched, a small human silhouette
+// walks in from the left, crosses to where the Read button sits, and settles
+// into a seated pose there. Once seated, the whole cover image gets an
+// overlay of pages flipping, looping, as if the seated figure is flipping
+// through the book. Leaves the viewport → everything resets, so it replays
+// fresh next time it scrolls back into view. Purely decorative: the whole
+// thing is pointer-events-none and never sits above the real Read button.
+const IDLE_DELAY_MS = 5000;
+const WALK_DURATION_MS = 2200;
+
+let idleAnimStylesInjected = false;
+function ensureIdleAnimStyles() {
+  if (idleAnimStylesInjected || typeof document === "undefined") return;
+  idleAnimStylesInjected = true;
+  const style = document.createElement("style");
+  style.id = "otc-idle-anim-styles";
+  style.textContent = `
+    @keyframes otcWalkAcross {
+      0%   { left: -8%; }
+      100% { left: 76%; }
+    }
+    @keyframes otcLegSwingL { 0%,100% { transform: rotate(-22deg); } 50% { transform: rotate(22deg); } }
+    @keyframes otcLegSwingR { 0%,100% { transform: rotate(22deg); }  50% { transform: rotate(-22deg); } }
+    @keyframes otcArmSwingL { 0%,100% { transform: rotate(18deg); }  50% { transform: rotate(-18deg); } }
+    @keyframes otcArmSwingR { 0%,100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }
+    @keyframes otcBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+
+    .otc-human-wrap {
+      position: absolute; bottom: 0; width: 16px; height: 26px;
+      animation: otcWalkAcross ${WALK_DURATION_MS}ms ease-in-out forwards;
+    }
+    .otc-human { position: relative; width: 100%; height: 100%; animation: otcBob 0.4s ease-in-out infinite; }
+    .otc-human.otc-sit { animation: none; }
+    .otc-h-head {
+      position: absolute; top: 0; left: 5px; width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.95); box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+    }
+    .otc-h-body {
+      position: absolute; top: 6px; left: 5.5px; width: 5px; height: 9px; border-radius: 2px;
+      background: rgba(255,255,255,0.95); box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+    }
+    .otc-h-arm {
+      position: absolute; top: 7px; width: 2px; height: 7px; border-radius: 1px;
+      background: rgba(255,255,255,0.9); transform-origin: top center;
+    }
+    .otc-h-arm-l { left: 3.5px; animation: otcArmSwingL 0.4s ease-in-out infinite; }
+    .otc-h-arm-r { left: 10.5px; animation: otcArmSwingR 0.4s ease-in-out infinite; }
+    .otc-h-leg {
+      position: absolute; top: 14px; width: 2.2px; height: 9px; border-radius: 1px;
+      background: rgba(255,255,255,0.95); transform-origin: top center;
+    }
+    .otc-h-leg-l { left: 5.5px; animation: otcLegSwingL 0.4s ease-in-out infinite; }
+    .otc-h-leg-r { left: 8.5px; animation: otcLegSwingR 0.4s ease-in-out infinite; }
+    /* Seated pose: legs bent forward, arms resting, no swing */
+    .otc-sit .otc-h-arm-l { animation: none; transform: rotate(24deg); top: 7.5px; }
+    .otc-sit .otc-h-arm-r { animation: none; transform: rotate(-24deg); top: 7.5px; }
+    .otc-sit .otc-h-leg-l { animation: none; transform: rotate(60deg); height: 6px; top: 14px; }
+    .otc-sit .otc-h-leg-r { animation: none; transform: rotate(-60deg); height: 6px; top: 14px; }
+
+    .otc-cover-flip-wrap {
+      position: absolute; inset: 0; overflow: hidden; perspective: 900px; pointer-events: none;
+    }
+    .otc-cover-leaf {
+      position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+      background: linear-gradient(120deg, rgba(255,255,255,0.65), rgba(255,255,255,0.15) 70%);
+      border-right: 1px solid rgba(255,255,255,0.3);
+      transform-origin: left center; backface-visibility: hidden;
+      animation: otcCoverFlip 2.6s ease-in-out infinite;
+      opacity: 0;
+    }
+    .otc-cover-leaf:nth-child(2) { animation-delay: 0.9s; }
+    .otc-cover-leaf:nth-child(3) { animation-delay: 1.8s; }
+    @keyframes otcCoverFlip {
+      0%   { transform: rotateY(0deg);    opacity: 0; }
+      6%   { opacity: 0.9; }
+      45%  { transform: rotateY(-175deg); opacity: 0.9; }
+      52%  { opacity: 0; }
+      100% { transform: rotateY(-175deg); opacity: 0; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function useInView<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold: 0.4 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, inView };
+}
+
+function IdleShowcase({ active }: { active: boolean }) {
+  const [phase, setPhase] = useState<"none" | "walk" | "sit">("none");
+
+  useEffect(() => { ensureIdleAnimStyles(); }, []);
+
+  useEffect(() => {
+    if (!active) { setPhase("none"); return; }
+    const t = setTimeout(() => setPhase("walk"), IDLE_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [active]);
+
+  useEffect(() => {
+    if (phase !== "walk") return;
+    const t = setTimeout(() => setPhase("sit"), WALK_DURATION_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
+
+  if (phase === "none") return null;
+
+  return (
+    <>
+      {/* Human figure: walks in, then settles into a seated pose by Read */}
+      <div
+        className="otc-human-wrap"
+        style={phase === "sit" ? { left: "76%", animation: "none" } : undefined}
+      >
+        <div className={`otc-human ${phase === "sit" ? "otc-sit" : ""}`}>
+          <div className="otc-h-head" />
+          <div className="otc-h-body" />
+          <div className="otc-h-arm otc-h-arm-l" />
+          <div className="otc-h-arm otc-h-arm-r" />
+          <div className="otc-h-leg otc-h-leg-l" />
+          <div className="otc-h-leg otc-h-leg-r" />
+        </div>
+      </div>
+
+      {/* Once seated, the cover itself looks like it's being paged through */}
+      {phase === "sit" && (
+        <div className="otc-cover-flip-wrap">
+          <div className="otc-cover-leaf" />
+          <div className="otc-cover-leaf" />
+          <div className="otc-cover-leaf" />
+        </div>
+      )}
+    </>
+  );
+}
+
 // ── Shared PDF.js singleton ──────────────────────────────────────────────────
 let pdfjsLib: any = null;
 async function getPdf() {
@@ -297,6 +446,7 @@ interface Props {
 export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen, client, level }: Props) {
   const [showReader,  setShowReader]  = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
+  const { ref: coverRef, inView } = useInView<HTMLDivElement>();
 
   const isFree    = !resource.price || Number(resource.price) === 0;
   const canAccess = isFree || isPurchased;
@@ -314,7 +464,7 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen,
         style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
       >
         {/* ── Cover area ── */}
-        <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: 200 }}>
+        <div ref={coverRef} className="relative w-full overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: 200 }}>
 
           {showThumb ? (
             <img
@@ -334,6 +484,8 @@ export function ResourceCard({ resource, isPurchased, onBuy, onDownload, onOpen,
               </p>
             </div>
           )}
+
+          <IdleShowcase active={inView && !showReader} />
 
           {/* Top badges */}
           <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
