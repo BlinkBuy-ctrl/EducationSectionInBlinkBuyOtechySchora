@@ -13,6 +13,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { supabase } from "@/lib/supabase";
 import { generateUUID } from "@/lib/utils";
+import { safeGetItem, safeSetItem } from "@/lib/storage";
 
 const EducationPage         = lazy(() => import("@/pages/education"));
 const NotificationsPage     = lazy(() => import("@/pages/notifications"));
@@ -40,30 +41,54 @@ function PageLoader() {
 }
 
 function getVisitorId(): string {
+  // Same key as before, so existing visitors are not double-counted.
+  // safeGetItem/safeSetItem never throw (memory fallback in restricted WebViews).
   const KEY = "otechy_visitor_id";
-  try {
-    let id = localStorage.getItem(KEY);
-    if (!id) {
-      id = generateUUID();
-      localStorage.setItem(KEY, id);
-    }
-    return id;
-  } catch {
-    return generateUUID();
+  let id = safeGetItem(KEY);
+  if (!id) {
+    id = generateUUID();
+    safeSetItem(KEY, id);
   }
+  return id;
 }
 
-function logPageView() {
-  supabase.from("otechy_page_views").insert({ visitor_id: getVisitorId() }).then(({ error }) => {
-    if (error) console.warn("[SchoraHub] view log failed:", error.message);
-  });
+// A "view" = someone opening the website/app. We log it:
+//   1) when the app first loads, and
+//   2) when an installed app/tab is brought back to the front after 30+ min
+//      (installed apps stay alive in the background, so without this a person
+//      who reopens the app daily would never be counted again).
+const VIEW_GAP_MS = 30 * 60 * 1000;
+let lastViewLoggedAt = 0;
+
+async function logPageView(force = false) {
+  const now = Date.now();
+  if (!force && now - lastViewLoggedAt < VIEW_GAP_MS) return;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+  lastViewLoggedAt = now;
+
+  const row = { visitor_id: getVisitorId() };
+  let { error } = await supabase.from("otechy_page_views").insert(row);
+  if (error) {
+    // one quick retry (flaky mobile networks), then give up quietly
+    await new Promise(r => setTimeout(r, 1500));
+    ({ error } = await supabase.from("otechy_page_views").insert(row));
+  }
+  if (error) {
+    lastViewLoggedAt = 0; // allow another attempt next time
+    console.warn("[SchoraHub] view log failed:", error.message);
+  }
 }
 
 function AppInner() {
   const authState = useAuthState();
   useScrollToTop();
 
-  useEffect(() => { logPageView(); }, []);
+  useEffect(() => {
+    logPageView(true);
+    const onVisible = () => { if (document.visibilityState === "visible") logPageView(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   return (
     <AuthContext.Provider value={authState}>
