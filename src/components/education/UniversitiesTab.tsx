@@ -611,10 +611,10 @@ export function UniversitiesTab() {
       const blob = await res.blob();
       const ext = file.file_url.split(".").pop()?.split("?")[0] || "";
       // Every PDF is saved with the SchoraHub tag at the end of its name,
-      // e.g. "BIO PRACTICAL PAPER 1(Download More @ SchoraHub).pdf".
+      // e.g. "BIO PRACTICAL PAPER 1 (Download More On SchoraHub).pdf".
       const isPdf = ext.toLowerCase() === "pdf";
-      const baseName = isPdf && !/Download More @ SchoraHub/i.test(file.title)
-        ? `${file.title}(Download More @ SchoraHub)`
+      const baseName = isPdf && !/Download More (On|@) SchoraHub/i.test(file.title)
+        ? `${file.title} (Download More On SchoraHub)`
         : file.title;
       const filename = `${baseName}${ext ? `.${ext}` : ""}`;
       const url = URL.createObjectURL(blob);
