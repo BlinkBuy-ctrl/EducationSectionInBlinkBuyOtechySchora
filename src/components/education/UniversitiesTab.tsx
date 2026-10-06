@@ -610,7 +610,13 @@ export function UniversitiesTab() {
       if (!res.ok) throw new Error("Could not reach the file");
       const blob = await res.blob();
       const ext = file.file_url.split(".").pop()?.split("?")[0] || "";
-      const filename = `${file.title}${ext ? `.${ext}` : ""}`;
+      // Every PDF is saved with the SchoraHub tag at the end of its name,
+      // e.g. "BIO PRACTICAL PAPER 1(Download More @ SchoraHub).pdf".
+      const isPdf = ext.toLowerCase() === "pdf";
+      const baseName = isPdf && !/Download More @ SchoraHub/i.test(file.title)
+        ? `${file.title}(Download More @ SchoraHub)`
+        : file.title;
+      const filename = `${baseName}${ext ? `.${ext}` : ""}`;
       const url = URL.createObjectURL(blob);
       const a = Object.assign(document.createElement("a"), { href: url, download: filename });
       document.body.appendChild(a);
