@@ -5,13 +5,55 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  createUniversity, getUniversities, deleteUniversity,
+  createUniversity, getUniversities, deleteUniversity, updateUniversity,
   createUniversityLink, getUniversityLinks, deleteUniversityLink,
   type University, type UniversityLink,
 } from "@/lib/universities";
 
-const EMPTY_UNI_DRAFT = { name: "" };
+const EMPTY_UNI_DRAFT = { name: "", description: "" };
 const EMPTY_LINK_DRAFT = { platform_type: "", url: "", description: "" };
+
+// ── Description editor for one expanded university ─────────────────
+function UniversityDescriptionEditor({
+  university, onSaved,
+}: { university: University; onSaved: (u: University) => void }) {
+  const { toast } = useToast();
+  const [text, setText] = useState(university.description ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updated = await updateUniversity(university.id, { description: text.trim() || null });
+      onSaved(updated);
+      toast({ title: "✅ Description saved" });
+    } catch (e: any) {
+      toast({ title: "Failed to save description", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border space-y-2">
+      <p className="text-[11px] font-semibold text-muted-foreground">Description (shown at the top of the university page)</p>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        rows={5}
+        placeholder="Write a short description of this university…"
+        className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-y"
+      />
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full flex items-center justify-center gap-2 font-semibold py-2 rounded-lg bg-sky-600 text-white text-xs active:scale-[0.98] disabled:opacity-60"
+      >
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save description"}
+      </button>
+    </div>
+  );
+}
 
 // ── Links manager for one expanded university ──────────────────────
 function UniversityLinksManager({ university }: { university: University }) {
@@ -167,7 +209,19 @@ export function UniversitiesAdmin() {
     }
     setSaving(true);
     try {
-      const uni = await createUniversity({ name, logoFile });
+      let uni = await createUniversity({ name, logoFile });
+      const description = draft.description.trim();
+      if (description) {
+        try {
+          uni = await updateUniversity(uni.id, { description });
+        } catch (e: any) {
+          toast({
+            title: "University created, but description wasn't saved",
+            description: e.message,
+            variant: "destructive",
+          });
+        }
+      }
       setUniversities(prev => [...prev, uni].sort((a, b) => a.name.localeCompare(b.name)));
       setDraft(EMPTY_UNI_DRAFT);
       setLogoFile(null);
@@ -215,9 +269,17 @@ export function UniversitiesAdmin() {
 
         <input
           value={draft.name}
-          onChange={e => setDraft({ name: e.target.value })}
+          onChange={e => setDraft(p => ({ ...p, name: e.target.value }))}
           placeholder="University name (e.g. LUANAR)"
           className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+        />
+
+        <textarea
+          value={draft.description}
+          onChange={e => setDraft(p => ({ ...p, description: e.target.value }))}
+          rows={4}
+          placeholder="Short description (optional) — shown at the top of the university page"
+          className="w-full bg-background border border-border rounded-lg px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-y"
         />
 
         <button
@@ -258,7 +320,15 @@ export function UniversitiesAdmin() {
                     </button>
                   </div>
 
-                  {expanded && <UniversityLinksManager university={uni} />}
+                  {expanded && (
+                    <>
+                      <UniversityDescriptionEditor
+                        university={uni}
+                        onSaved={(u) => setUniversities(prev => prev.map(x => (x.id === u.id ? u : x)))}
+                      />
+                      <UniversityLinksManager university={uni} />
+                    </>
+                  )}
                 </div>
               );
             })}
