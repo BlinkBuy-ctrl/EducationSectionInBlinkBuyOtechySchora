@@ -2,9 +2,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   X, Download, FileText, Calendar, BookOpen, Loader2,
-  ChevronLeft, ChevronRight, Eye, Share2, Trash2, Building2,
+  ChevronLeft, ChevronRight, Eye, Share2, Trash2, Building2, Pencil, Check, Fingerprint,
 } from "lucide-react";
-import type { EducationFile } from "@/lib/educationFiles";
+import {
+  updateEducationFile, deleteEducationFile, shortUid, EDUCATION_FILE_CATEGORIES,
+  type EducationFile,
+} from "@/lib/educationFiles";
 import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 function formatSize(bytes?: number) {
@@ -274,14 +277,19 @@ interface Props {
   onClose: () => void;
   onDownload: (file: EducationFile) => void;
   onDelete: (id: string) => void;
+  onUpdate?: (file: EducationFile) => void;
 }
 
-export function EducationFileDetailModal({ file, universityName, currentUserId, onClose, onDownload, onDelete }: Props) {
+export function EducationFileDetailModal({ file, universityName, currentUserId, onClose, onDownload, onDelete, onUpdate }: Props) {
   const [showReader, setShowReader] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [draft, setDraft] = useState({ title: file.title, program: file.program, category: file.category });
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const isPdf = file.file_type === "pdf";
-  const size = formatSize((file as any).file_size);
+  const size = formatSize(file.file_size ?? undefined);
 
   const handleDownloadClick = async () => {
     setDownloading(true);
@@ -292,16 +300,42 @@ export function EducationFileDetailModal({ file, universityName, currentUserId, 
     }
   };
 
-  // Same assumption as EducationFileCard: needs an `uploader_id` column set to
-  // the uploader's auth user id. Falls back to "no one can delete" if absent.
-  const isOwner = !!currentUserId && !!(file as any).uploader_id && (file as any).uploader_id === currentUserId;
+  // Owner = the device UID saved on the file when it was uploaded.
+  const isOwner = !!currentUserId && !!file.uploader_id && file.uploader_id === currentUserId;
+
+  const startEdit = () => {
+    setDraft({ title: file.title, program: file.program, category: file.category });
+    setEditError("");
+    setEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!draft.title.trim() || !draft.program.trim()) {
+      setEditError("Title and program can't be empty.");
+      return;
+    }
+    setSaving(true);
+    setEditError("");
+    try {
+      const updated = await updateEducationFile(file.id, currentUserId, {
+        title: draft.title,
+        program: draft.program,
+        category: draft.category,
+      });
+      onUpdate?.({ ...file, ...updated });
+      setEditing(false);
+    } catch (err: any) {
+      setEditError(err?.message ?? "Could not save your changes");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!confirm(`Remove "${file.title}"?`)) return;
     setDeleting(true);
     try {
-      const { deleteEducationFile } = await import("@/lib/educationFiles");
-      await deleteEducationFile(file.id);
+      await deleteEducationFile(file.id, currentUserId);
       onDelete(file.id);
     } catch (err: any) {
       alert(err.message ?? "Failed to delete");
@@ -312,7 +346,7 @@ export function EducationFileDetailModal({ file, universityName, currentUserId, 
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
+        className="fixed inset-0 z-[75] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <div
@@ -340,8 +374,14 @@ export function EducationFileDetailModal({ file, universityName, currentUserId, 
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
                 <Share2 className="w-3.5 h-3.5" />
               </button>
+              {isOwner && !editing && (
+                <button onClick={startEdit} aria-label="Edit file"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
               {isOwner && (
-                <button onClick={handleDelete} disabled={deleting}
+                <button onClick={handleDelete} disabled={deleting} aria-label="Delete file"
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors">
                   {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 </button>
@@ -366,11 +406,57 @@ export function EducationFileDetailModal({ file, universityName, currentUserId, 
                 </div>
               </div>
 
-              {(file as any).uploaded_by && (
-                <p className="text-[10px] text-muted-foreground">
-                  Uploaded by <span className="font-semibold text-foreground">{(file as any).uploaded_by}</span>
-                </p>
+              {editing && (
+                <div className="flex flex-col gap-2.5 bg-sky-500/5 border border-sky-500/20 rounded-xl p-3">
+                  <p className="text-[11px] font-bold text-sky-500">Edit details</p>
+                  <input
+                    value={draft.title}
+                    onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
+                    placeholder="Title"
+                    className="w-full bg-card border border-border rounded-lg p-2 text-sm text-foreground"
+                  />
+                  <input
+                    value={draft.program}
+                    onChange={e => setDraft(d => ({ ...d, program: e.target.value }))}
+                    placeholder="Program / Course"
+                    className="w-full bg-card border border-border rounded-lg p-2 text-sm text-foreground"
+                  />
+                  <select
+                    value={draft.category}
+                    onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}
+                    className="w-full bg-card border border-border rounded-lg p-2 text-sm text-foreground"
+                  >
+                    {EDUCATION_FILE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    {!(EDUCATION_FILE_CATEGORIES as readonly string[]).includes(draft.category) && (
+                      <option value={draft.category}>{draft.category}</option>
+                    )}
+                  </select>
+                  {editError && <p className="text-xs text-red-500">{editError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={handleSave} disabled={saving}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-sky-500 text-white text-xs font-bold py-2 rounded-lg disabled:opacity-60 active:scale-[0.98]">
+                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      {saving ? "Saving…" : "Save"}
+                    </button>
+                    <button onClick={() => { setEditing(false); setEditError(""); }} disabled={saving}
+                      className="flex-1 text-xs font-semibold py-2 rounded-lg border border-border text-muted-foreground">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
+
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {file.uploaded_by && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Uploaded by <span className="font-semibold text-foreground">{file.uploaded_by}</span>
+                  </p>
+                )}
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-500 bg-sky-500/10 rounded-full px-2 py-0.5">
+                  <Fingerprint className="w-3 h-3" />
+                  UID {shortUid(file.uploader_id)}{isOwner ? " · You" : ""}
+                </span>
+              </div>
 
               <div className="flex flex-wrap gap-1.5">
                 {size ? (
@@ -379,11 +465,11 @@ export function EducationFileDetailModal({ file, universityName, currentUserId, 
                     <span className="text-[10px] text-muted-foreground">{size}</span>
                   </div>
                 ) : null}
-                {(file as any).created_at && (
+                {file.created_at && (
                   <div className="flex items-center gap-1 bg-muted/40 rounded-lg px-2 py-1">
                     <Calendar className="w-3 h-3 text-muted-foreground" />
                     <span className="text-[10px] text-muted-foreground">
-                      {new Date((file as any).created_at).toLocaleDateString("en-MW", { day: "numeric", month: "short", year: "numeric" })}
+                      {new Date(file.created_at).toLocaleDateString("en-MW", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
                   </div>
                 )}

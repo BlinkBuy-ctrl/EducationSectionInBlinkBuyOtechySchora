@@ -11,6 +11,7 @@ import {
   deleteEducationFile,
   detectFileType,
   extractPdfCoverBlob,
+  shortUid,
   EDUCATION_FILE_CATEGORIES,
   ACCEPTED_FILE_EXTENSIONS,
   type EducationFile,
@@ -284,7 +285,7 @@ function EducationFileCard({
   const [coverFailed, setCoverFailed] = useState(false);
   const [showReader, setShowReader] = useState(false);
   const Icon = FILE_TYPE_ICON[file.file_type] ?? FileIcon;
-  const showCover = !!(file as any).cover_url && !coverFailed;
+  const showCover = !!file.cover_url && !coverFailed;
   const isPdf = file.file_type === "pdf";
 
   const handleDownloadClick = async (e: React.MouseEvent) => {
@@ -297,10 +298,8 @@ function EducationFileCard({
     }
   };
 
-  // NOTE: gating delete to the uploader requires an `uploader_id` (auth user id)
-  // column on education_files, set at upload time. Until that column exists this
-  // reads as undefined and the delete button simply won't show for anyone.
-  const isOwner = !!currentUserId && !!(file as any).uploader_id && (file as any).uploader_id === currentUserId;
+  // Owner = the device UID saved on the file at upload time (uploader_id).
+  const isOwner = !!currentUserId && !!file.uploader_id && file.uploader_id === currentUserId;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -308,7 +307,7 @@ function EducationFileCard({
     if (!confirm(`Remove "${file.title}"?`)) return;
     setDeleting(true);
     try {
-      await deleteEducationFile(file.id);
+      await deleteEducationFile(file.id, currentUserId);
       onDelete(file.id);
     } catch (err: any) {
       alert(err.message ?? "Failed to delete");
@@ -326,7 +325,7 @@ function EducationFileCard({
         <div className="relative w-full overflow-hidden" style={{ aspectRatio: "3/4", maxHeight: 200 }}>
           {showCover ? (
             <img
-              src={(file as any).cover_url}
+              src={file.cover_url}
               alt={file.title}
               className="w-full h-full object-cover object-top"
               onError={() => setCoverFailed(true)}
@@ -395,10 +394,12 @@ function EducationFileCard({
 
 function UploadFileModal({
   universities,
+  userId,
   onClose,
   onUploaded,
 }: {
   universities: University[];
+  userId: string | null;
   onClose: () => void;
   onUploaded: (file: EducationFile) => void;
 }) {
@@ -448,6 +449,7 @@ function UploadFileModal({
         category,
         title: title.trim(),
         uploaded_by: uploadedBy.trim() || undefined,
+        uploader_id: userId,
         // Only PDFs get a pre-extracted cover here (from the live preview);
         // for other types, leave this out so uploadEducationFile() still runs
         // its own extraction (embedded image for docx/xlsx/pptx, or the image
@@ -567,6 +569,10 @@ function UploadFileModal({
               <p className="mt-1.5 text-[10px] text-amber-500">Couldn't read a cover from this PDF — it'll show a plain icon instead.</p>
             )}
           </div>
+
+          <p className="text-[10px] text-muted-foreground text-center">
+            Your UID: <span className="font-bold text-sky-500">{shortUid(userId)}</span> — saved with this file so only you can edit or delete it.
+          </p>
 
           <button
             onClick={handleSubmit}
@@ -804,11 +810,13 @@ export function UniversitiesTab() {
           onClose={() => setSelectedFile(null)}
           onDownload={handleDownloadFile}
           onDelete={(id) => { setFiles(prev => prev.filter(x => x.id !== id)); setSelectedFile(null); }}
+          onUpdate={(f) => { setFiles(prev => prev.map(x => (x.id === f.id ? f : x))); setSelectedFile(f); }}
         />
       )}
       {showUpload && (
         <UploadFileModal
           universities={universities}
+          userId={currentUserId}
           onClose={() => setShowUpload(false)}
           onUploaded={(f) => setFiles(prev => [f, ...prev])}
         />
