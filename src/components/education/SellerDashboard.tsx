@@ -125,9 +125,12 @@ function ProfileNameEditor({ userId }: { userId: string }) {
     if (!draft.trim()) { toast({ title: "Name can't be empty", variant: "destructive" }); return; }
     setSaving(true);
     try {
-      const { error } = await supabase.from("profiles").upsert({ id: userId, name: draft.trim() });
+      // Goes through a small database function (see profile_name_fix.sql) because
+      // the app uses an anonymous device UID, not a Supabase login, so a direct
+      // write to "profiles" is blocked by row-level security.
+      const { data, error } = await supabase.rpc("set_public_name", { p_id: userId, p_name: draft.trim() });
       if (error) throw error;
-      setName(draft.trim());
+      setName(typeof data === "string" && data ? data : draft.trim());
       setEditing(false);
       toast({ title: "✅ Name updated!" });
     } catch (e: any) {
