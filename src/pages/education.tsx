@@ -72,10 +72,10 @@ function getDownloadFilename(resource: any) {
   const ext = (resource.file_name?.split(".").pop() || resource.file_url?.split(".").pop() || "pdf").toLowerCase();
   let base = sanitizeFilename(resource.title || resource.file_name?.replace(/\.[^.]+$/, "") || "download");
   // Every PDF is saved with the SchoraHub tag at the end of its name,
-  // e.g. "BIO PRACTICAL PAPER 1(Download More @ SchoraHub).pdf".
-  // Filename only — the file itself is untouched, so downloads stay just as fast.
-  if (ext === "pdf" && !/Download More @ SchoraHub/i.test(base)) {
-    base = `${base}(Download More @ SchoraHub)`;
+  // e.g. "BIO PRACTICAL PAPER 1 (Download More On SchoraHub).pdf".
+  // Filename only — the file itself is untouched.
+  if (ext === "pdf" && !/Download More (On|@) SchoraHub/i.test(base)) {
+    base = `${base} (Download More On SchoraHub)`;
   }
   return `${base}.${ext}`;
 }
@@ -502,7 +502,24 @@ export default function EducationPage() {
 
   const handleDownload = async (resource: any) => {
     try {
-      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: getDownloadFilename(resource) });
+      const filename = getDownloadFilename(resource);
+      const isPdf = filename.toLowerCase().endsWith(".pdf");
+
+      if (isPdf) {
+        // PDFs: fetch the file and save it under the exact clean name. (Letting the
+        // server name it turns "(" "@" "," into "%28" "%40" "%2C" in the file name.)
+        const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
+        if (error) throw error;
+        toast({ title: t("toast_download_started") });
+        const res = await fetch(data.signedUrl);
+        if (!res.ok) throw new Error("Could not reach the file");
+        const blob = await res.blob();
+        window.dispatchEvent(new CustomEvent("otechy:trigger-download", { detail: { blobUrl: URL.createObjectURL(blob), filename } }));
+        bumpDownloadCount(resource);
+        return;
+      }
+
+      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: filename });
       if (error) throw error;
       // Hands the URL to Layout's persistent hidden download iframe — no
       // new tab, and no manual document.body manipulation that could race
@@ -514,26 +531,29 @@ export default function EducationPage() {
       // download-count bump + rating refetch below just to see this toast.
       toast({ title: t("toast_download_started") });
 
-      // Non-critical bookkeeping — runs in the background so it can never
-      // delay the toast above, and a failure here can't undo a download
-      // that's already started.
-      (async () => {
-        try {
-          await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-          const { data: fresh } = await activeResourcesClient
-            .from("otechy_resources")
-            .select("download_count,avg_rating,review_count")
-            .eq("id", resource.id)
-            .single();
-          if (fresh) {
-            setResources(prev => prev.map(r => r.id === resource.id ? { ...r, ...fresh } : r));
-            if (detailRes?.id === resource.id) setDetailRes((d: any) => ({ ...d, ...fresh }));
-          }
-        } catch { /* non-critical — download already succeeded */ }
-      })();
+      bumpDownloadCount(resource);
     } catch (e: any) {
       toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" });
     }
+  };
+
+  // Non-critical bookkeeping — runs in the background so it can never delay
+  // the toast, and a failure here can't undo a download that's already started.
+  const bumpDownloadCount = (resource: any) => {
+    (async () => {
+      try {
+        await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
+        const { data: fresh } = await activeResourcesClient
+          .from("otechy_resources")
+          .select("download_count,avg_rating,review_count")
+          .eq("id", resource.id)
+          .single();
+        if (fresh) {
+          setResources(prev => prev.map(r => r.id === resource.id ? { ...r, ...fresh } : r));
+          if (detailRes?.id === resource.id) setDetailRes((d: any) => ({ ...d, ...fresh }));
+        }
+      } catch { /* non-critical — download already succeeded */ }
+    })();
   };
 
   const handleBuy = async (resource: any) => {
