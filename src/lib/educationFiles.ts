@@ -28,6 +28,7 @@
 
 import JSZip from "jszip";
 import { higherEdSupabase } from "./higherEducationSupabase";
+import { supabase } from "./supabase";
 import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 
 // ────────────────────────────────────────────────────────────
@@ -46,6 +47,9 @@ export interface EducationFile {
   file_type: EducationFileType;
   title: string;
   uploaded_by: string | null;
+  /** The uploader's anonymous device UID (otechyschora_anon_id). Used to decide who may edit/delete. */
+  uploader_id?: string | null;
+  file_size?: number | null;
   created_at: string;
 }
 
@@ -62,6 +66,8 @@ export interface UploadEducationFilePayload {
   category: string;
   title: string;
   uploaded_by?: string;
+  /** The uploader's UID — saved with the file so only they can edit/delete it later. */
+  uploader_id?: string | null;
   /** Pre-extracted cover (e.g. already shown as a live preview in the upload UI).
    *  Pass `null` if extraction was attempted and found nothing. Omit to let
    *  uploadEducationFile() extract it itself. */
@@ -96,6 +102,24 @@ async function readJson(res: Response): Promise<any> {
         ? "Upload service not found (404) — the latest deploy may not be live yet."
         : `Server returned an unexpected response (${res.status}).`
     );
+  }
+}
+
+/** Short, human-friendly version of a UID for display (e.g. "A1B2C3D4"). */
+export function shortUid(id: string | null | undefined): string {
+  if (!id) return "—";
+  return id.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+// If an admin happens to be signed in, pass their token so the server lets
+// them manage any file. Normal visitors have no session → header is omitted.
+async function maybeAdminHeader(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
   }
 }
 
@@ -244,6 +268,8 @@ export async function uploadEducationFile(payload: UploadEducationFilePayload): 
         category: payload.category,
         title: payload.title,
         uploaded_by: payload.uploaded_by,
+        uploader_id: payload.uploader_id ?? null,
+        file_size: payload.file.size,
         file_url,
         cover_url,
         file_type: fileType,
@@ -258,14 +284,35 @@ export async function uploadEducationFile(payload: UploadEducationFilePayload): 
 }
 
 // ────────────────────────────────────────────────────────────
-// DELETE — remove a file (row + underlying storage objects)
+// UPDATE — edit a file's text details (owner only; checked server-side)
 // ────────────────────────────────────────────────────────────
 
-export async function deleteEducationFile(fileId: string): Promise<void> {
+export async function updateEducationFile(
+  fileId: string,
+  uploaderId: string | null,
+  updates: { title?: string; program?: string; category?: string }
+): Promise<EducationFile> {
   const res = await fetch(API_ENDPOINT, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "delete", fileId }),
+    headers: { "Content-Type": "application/json", ...(await maybeAdminHeader()) },
+    body: JSON.stringify({ action: "update", fileId, uploaderId, updates }),
+  });
+
+  const json = await readJson(res);
+  if (!res.ok) throw new Error(json.error ?? "Could not save your changes");
+
+  return json.file as EducationFile;
+}
+
+// ────────────────────────────────────────────────────────────
+// DELETE — remove a file (row + underlying storage objects). Owner only.
+// ────────────────────────────────────────────────────────────
+
+export async function deleteEducationFile(fileId: string, uploaderId?: string | null): Promise<void> {
+  const res = await fetch(API_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await maybeAdminHeader()) },
+    body: JSON.stringify({ action: "delete", fileId, uploaderId: uploaderId ?? null }),
   });
 
   const json = await readJson(res);

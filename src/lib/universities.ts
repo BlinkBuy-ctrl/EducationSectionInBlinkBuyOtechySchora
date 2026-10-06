@@ -63,11 +63,18 @@ async function callAdminApi<T>(body: Record<string, unknown>): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
 
+  // Every action routed through here is admin-only. If there is no session
+  // (it expired or the panel was reopened), say so clearly instead of
+  // sending a doomed request.
+  if (!token) {
+    throw new Error("Admin session expired — close the admin panel and log in again.");
+  }
+
   const res = await fetch(API_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
   });
