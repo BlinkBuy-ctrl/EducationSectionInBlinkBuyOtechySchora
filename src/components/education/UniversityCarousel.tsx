@@ -34,7 +34,7 @@ function MiniUniversityCard({ u, onOpen }: { u: University; onOpen: (u: Universi
   );
 }
 
-export function UniversityCarousel({ universities, onOpen, title = "Reliable University Links" }: Props) {
+export function UniversityCarousel({ universities, onOpen, title = "Sector Links" }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pausedRef = useRef(false);
   const resumeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

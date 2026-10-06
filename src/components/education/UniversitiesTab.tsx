@@ -707,7 +707,7 @@ export function UniversitiesTab() {
       ) : filtered.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No universities match "{search}".</p>
       ) : (
-        <UniversityCarousel universities={filtered} onOpen={setSelected} title="Reliable University Links" />
+        <UniversityCarousel universities={filtered} onOpen={setSelected} title="Sector Links" />
       )}
 
       {/* ── Files Library ───────────────────────────────────── */}
@@ -787,7 +787,15 @@ export function UniversitiesTab() {
         <Link2 className="w-3.5 h-3.5" /> Want To Help Add Link? Click Here
       </a>
 
-      {selected && <UniversityDetailModal university={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <UniversityDetailModal
+          university={selected}
+          onClose={() => setSelected(null)}
+          files={files.filter(f => f.university_id === selected.id)}
+          filesLoading={filesLoading}
+          onOpenFile={setSelectedFile}
+        />
+      )}
       {selectedFile && (
         <EducationFileDetailModal
           file={selectedFile}
