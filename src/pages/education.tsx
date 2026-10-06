@@ -70,7 +70,13 @@ function sanitizeFilename(name: string) {
 }
 function getDownloadFilename(resource: any) {
   const ext = (resource.file_name?.split(".").pop() || resource.file_url?.split(".").pop() || "pdf").toLowerCase();
-  const base = sanitizeFilename(resource.title || resource.file_name?.replace(/\.[^.]+$/, "") || "download");
+  let base = sanitizeFilename(resource.title || resource.file_name?.replace(/\.[^.]+$/, "") || "download");
+  // Every PDF is saved with the SchoraHub tag at the end of its name,
+  // e.g. "BIO PRACTICAL PAPER 1(Download More @ SchoraHub).pdf".
+  // Filename only — the file itself is untouched, so downloads stay just as fast.
+  if (ext === "pdf" && !/Download More @ SchoraHub/i.test(base)) {
+    base = `${base}(Download More @ SchoraHub)`;
+  }
   return `${base}.${ext}`;
 }
 
