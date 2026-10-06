@@ -24,6 +24,7 @@ export interface University {
   id: string;
   name: string;
   logo_url: string | null;
+  description?: string | null; // admin-written intro shown at the top of the university page
   created_at: string;
   created_by: string | null;
 }
@@ -152,7 +153,7 @@ export async function getUniversityById(id: string): Promise<University> {
 
 export async function updateUniversity(
   id: string,
-  updates: { name?: string; logo_url?: string }
+  updates: { name?: string; logo_url?: string; description?: string | null }
 ): Promise<University> {
   const { university } = await callAdminApi<{ university: University }>({
     action: "update_university",
