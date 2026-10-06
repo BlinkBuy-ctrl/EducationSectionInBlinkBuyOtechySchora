@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 // ── Higher Education project (service role — bypasses RLS, server-only) ──
 const HIGHER_ED_SUPABASE_URL = 'https://miceczfibiewvijryzhe.supabase.co';
-const HIGHER_ED_SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pY2VjemZpYmlld3ZpanJ5emhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDI0ODA1NywiZXhwIjoyMTA1ODI0MDU3fQ.H5tOLtAMJ-4TfLNE95uDah5AjC6rljaIOo7LiRUX1Uw';
+const HIGHER_ED_SUPABASE_SERVICE_ROLE_KEY = process.env.HIGHER_ED_SERVICE_ROLE_KEY ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pY2VjemZpYmlld3ZpanJ5emhlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDI0ODA1NywiZXhwIjoyMTA1ODI0MDU3fQ.H5tOLtAMJ-4TfLNE95uDah5AjC6rljaIOo7LiRUX1Uw';
 const higherEdDb = createClient(HIGHER_ED_SUPABASE_URL, HIGHER_ED_SUPABASE_SERVICE_ROLE_KEY);
 
 const LOGO_BUCKET = 'university-logos';
@@ -11,20 +11,31 @@ const LOGO_BUCKET = 'university-logos';
 // ── Main project (anon key only — used just to verify the admin's own
 // session token, same pattern as manage-jobs.ts). Reads from the same
 // env vars the app itself needs to run.
-const MAIN_SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? '';
-const MAIN_SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY ?? '';
+const MAIN_SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
+const MAIN_SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '';
 
-async function verifyAdmin(req: VercelRequest): Promise<{ id: string; name: string } | null> {
+type AdminCheck =
+  | { ok: true; admin: { id: string; name: string } }
+  | { ok: false; status: number; error: string };
+
+async function checkAdmin(req: VercelRequest): Promise<AdminCheck> {
+  if (!MAIN_SUPABASE_URL || !MAIN_SUPABASE_ANON_KEY) {
+    return { ok: false, status: 500, error: 'Server is missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (add them in Vercel → Settings → Environment Variables, then redeploy).' };
+  }
   const authHeader = req.headers.authorization ?? '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  if (!token || !MAIN_SUPABASE_URL || !MAIN_SUPABASE_ANON_KEY) return null;
+  if (!token) {
+    return { ok: false, status: 401, error: 'Admin session missing or expired — close the admin panel and log in again.' };
+  }
 
   const asUser = createClient(MAIN_SUPABASE_URL, MAIN_SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
 
   const { data: userData, error: userErr } = await asUser.auth.getUser(token);
-  if (userErr || !userData.user) return null;
+  if (userErr || !userData.user) {
+    return { ok: false, status: 401, error: 'Admin session expired — close the admin panel and log in again.' };
+  }
 
   const { data: profile, error: profileErr } = await asUser
     .from('profiles')
@@ -32,8 +43,16 @@ async function verifyAdmin(req: VercelRequest): Promise<{ id: string; name: stri
     .eq('id', userData.user.id)
     .maybeSingle();
 
-  if (profileErr || !profile || !profile.is_admin) return null;
-  return { id: profile.id, name: profile.name };
+  if (profileErr || !profile || !profile.is_admin) {
+    return { ok: false, status: 403, error: 'This account is not an admin.' };
+  }
+  return { ok: true, admin: { id: profile.id, name: profile.name } };
+}
+
+// Missing-column errors from PostgREST/Postgres (schema not migrated yet).
+function isMissingColumn(err: any): boolean {
+  const m = String(err?.message ?? '');
+  return err?.code === 'PGRST204' || err?.code === '42703' || /column .* (does not exist|of .*schema cache)|Could not find the .* column/i.test(m);
 }
 
 async function uploadLogo(logoBase64: string, fileName: string, universityName: string): Promise<string> {
@@ -64,7 +83,7 @@ function pathFromPublicUrl(fileUrl: string): string | null {
   return fileUrl.slice(idx + marker.length);
 }
 
-async function handleFileAction(action: string, body: any, res: VercelResponse): Promise<VercelResponse | null> {
+async function handleFileAction(action: string, body: any, req: VercelRequest, res: VercelResponse): Promise<VercelResponse | null> {
   if (action === 'list') {
     const { university_id, program, category } = body ?? {};
     let query = higherEdDb.from('education_files').select('*').order('created_at', { ascending: false });
@@ -81,38 +100,70 @@ async function handleFileAction(action: string, body: any, res: VercelResponse):
     if (!file?.university_id || !file?.program || !file?.category || !file?.title || !file?.file_url || !file?.file_type) {
       return res.status(400).json({ error: 'university_id, program, category, title, file_url and file_type are required' });
     }
-    const { data, error } = await higherEdDb
-      .from('education_files')
-      .insert({
-        university_id: file.university_id,
-        program: String(file.program).trim(),
-        category: String(file.category).trim(),
-        title: String(file.title).trim(),
-        uploaded_by: file.uploaded_by ? String(file.uploaded_by).trim() : null,
-        file_url: file.file_url,
-        cover_url: file.cover_url || null,
-        file_type: file.file_type,
-      })
-      .select()
-      .single();
+    const base = {
+      university_id: file.university_id,
+      program: String(file.program).trim(),
+      category: String(file.category).trim(),
+      title: String(file.title).trim(),
+      uploaded_by: file.uploaded_by ? String(file.uploaded_by).trim() : null,
+      file_url: file.file_url,
+      cover_url: file.cover_url || null,
+      file_type: file.file_type,
+    };
+    const extra = {
+      uploader_id: file.uploader_id ? String(file.uploader_id) : null,
+      file_size: typeof file.file_size === 'number' ? file.file_size : null,
+    };
+
+    // Try with the UID/size columns; if the DB hasn't been migrated yet, still
+    // save the file (without them) instead of failing the upload.
+    let { data, error } = await higherEdDb.from('education_files').insert({ ...base, ...extra }).select().single();
+    if (error && isMissingColumn(error)) {
+      ({ data, error } = await higherEdDb.from('education_files').insert(base).select().single());
+    }
     if (error) throw error;
     return res.status(200).json({ file: data });
   }
 
-  if (action === 'delete') {
-    const { fileId } = body ?? {};
+  if (action === 'update' || action === 'delete') {
+    const { fileId, uploaderId } = body ?? {};
     if (!fileId) return res.status(400).json({ error: 'fileId required' });
 
     const { data: existing, error: fetchErr } = await higherEdDb
       .from('education_files')
-      .select('file_url, cover_url')
+      .select('*')
       .eq('id', fileId)
       .maybeSingle();
     if (fetchErr) throw fetchErr;
+    if (!existing) return res.status(404).json({ error: 'File not found (it may already be deleted).' });
+
+    // Allowed: an admin, or the person whose UID is saved on the file.
+    const adminCheck = await checkAdmin(req);
+    const isOwner = !!existing.uploader_id && !!uploaderId && existing.uploader_id === uploaderId;
+    if (!adminCheck.ok && !isOwner) {
+      return res.status(403).json({
+        error: existing.uploader_id
+          ? 'Only the person who uploaded this file can change it.'
+          : 'This file was uploaded before uploader IDs existed, so only an admin can change it.',
+      });
+    }
+
+    if (action === 'update') {
+      const u = body?.updates ?? {};
+      const patch: Record<string, string> = {};
+      if (typeof u.title === 'string' && u.title.trim()) patch.title = u.title.trim();
+      if (typeof u.program === 'string' && u.program.trim()) patch.program = u.program.trim();
+      if (typeof u.category === 'string' && u.category.trim()) patch.category = u.category.trim();
+      if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Nothing to update — title, program and category cannot be empty.' });
+
+      const { data, error } = await higherEdDb.from('education_files').update(patch).eq('id', fileId).select().single();
+      if (error) throw error;
+      return res.status(200).json({ file: data });
+    }
 
     const pathsToRemove: string[] = [];
-    if (existing?.file_url) { const p = pathFromPublicUrl(existing.file_url); if (p) pathsToRemove.push(p); }
-    if (existing?.cover_url) { const p = pathFromPublicUrl(existing.cover_url); if (p) pathsToRemove.push(p); }
+    if (existing.file_url) { const p = pathFromPublicUrl(existing.file_url); if (p) pathsToRemove.push(p); }
+    if (existing.cover_url) { const p = pathFromPublicUrl(existing.cover_url); if (p) pathsToRemove.push(p); }
     if (pathsToRemove.length) await higherEdDb.storage.from(FILES_BUCKET).remove(pathsToRemove);
 
     const { error } = await higherEdDb.from('education_files').delete().eq('id', fileId);
@@ -129,17 +180,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { action } = req.body ?? {};
 
   // Public Files Library actions (no admin needed) — same behavior as before.
-  if (action === 'list' || action === 'create' || action === 'delete') {
+  if (action === 'list' || action === 'create' || action === 'update' || action === 'delete') {
     try {
-      const handled = await handleFileAction(action, req.body, res);
+      const handled = await handleFileAction(action, req.body, req, res);
       if (handled) return handled;
     } catch (e: any) {
       return res.status(500).json({ error: e.message ?? 'Something went wrong' });
     }
   }
 
-  const admin = await verifyAdmin(req);
-  if (!admin) return res.status(401).json({ error: 'Admin login required' });
+  const adminCheck = await checkAdmin(req);
+  if (!adminCheck.ok) return res.status(adminCheck.status).json({ error: adminCheck.error });
+  const admin = adminCheck.admin;
 
   try {
     // ── Universities ──────────────────────────────────────────
@@ -172,7 +224,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('id', id)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (isMissingColumn(error)) {
+          return res.status(400).json({ error: "The universities table is missing a column (probably 'description'). Run higher_ed_migration.sql in the Higher Education Supabase project." });
+        }
+        throw error;
+      }
 
       return res.status(200).json({ university: data });
     }
