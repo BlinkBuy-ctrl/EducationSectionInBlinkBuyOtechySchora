@@ -195,10 +195,23 @@ export default function Layout({ children }: { children: React.ReactNode }) {
      `download` option) turns that into a native file save, nothing visibly
      navigates. ── */
   const downloadFrameRef = useRef<HTMLIFrameElement>(null);
+  // Persistent hidden link used when a download needs an EXACT file name
+  // (e.g. PDFs tagged "(Download More On SchoraHub)"). A server-sent name gets
+  // percent-encoded ("%28", "%40"...), so for those we save the blob ourselves.
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
     const handler = (e: Event) => {
-      const url = (e as CustomEvent<{ url: string }>).detail?.url;
-      if (url && downloadFrameRef.current) downloadFrameRef.current.src = url;
+      const d = (e as CustomEvent<{ url?: string; blobUrl?: string; filename?: string }>).detail;
+      if (d?.blobUrl && downloadLinkRef.current) {
+        const a = downloadLinkRef.current;
+        a.href = d.blobUrl;
+        a.download = d.filename || "download";
+        a.click();
+        const blobUrl = d.blobUrl;
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        return;
+      }
+      if (d?.url && downloadFrameRef.current) downloadFrameRef.current.src = d.url;
     };
     window.addEventListener("otechy:trigger-download", handler);
     return () => window.removeEventListener("otechy:trigger-download", handler);
@@ -250,6 +263,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           display:none intentionally, not visually hidden-but-present, since
           it never needs to be seen. */}
       <iframe ref={downloadFrameRef} title="downloads" style={{ display: "none" }} />
+      <a ref={downloadLinkRef} aria-hidden="true" tabIndex={-1} style={{ display: "none" }} />
 
       {/* ── Top bar ── */}
       <header className="shrink-0 bg-sidebar border-b border-sidebar-border z-40">
