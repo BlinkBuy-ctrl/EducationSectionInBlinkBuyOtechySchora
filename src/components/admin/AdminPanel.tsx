@@ -114,23 +114,53 @@ export function AdminPanel({ profile, onClose }: AdminPanelProps) {
 }
 
 // ── View stats ──────────────────────────────────────────────────────
+// Numbers come from two admin-only database functions (see
+// main_project_stats.sql). Days are counted in Malawi time (Africa/Blantyre).
+type Stats = {
+  total_views: number; unique_visitors: number;
+  views_today: number; visitors_today: number;
+  views_7d: number; visitors_7d: number;
+};
+type DayRow = { stat_day: string; view_count: number; visitor_count: number; new_visitor_count: number };
+
 function ViewStats() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<{ total_views: number; unique_visitors: number; views_today: number } | null>(null);
+  const [error, setError] = useState("");
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [days, setDays] = useState<DayRow[]>([]);
 
   const load = async () => {
     setLoading(true);
-    const { data, error } = await supabase.rpc("otechy_page_views_stats").single();
-    if (error) {
-      toast({ title: "Failed to load stats", description: error.message, variant: "destructive" });
-    } else if (data) {
-      setStats({
-        total_views: Number((data as any).total_views) || 0,
-        unique_visitors: Number((data as any).unique_visitors) || 0,
-        views_today: Number((data as any).views_today) || 0,
-      });
+    setError("");
+    const [s, d] = await Promise.all([
+      supabase.rpc("otechy_page_views_stats"),
+      supabase.rpc("otechy_page_views_daily", { p_days: 14 }),
+    ]);
+
+    if (s.error || d.error) {
+      const msg = (s.error ?? d.error)!.message;
+      setError(msg);
+      toast({ title: "Failed to load stats", description: msg, variant: "destructive" });
+      setLoading(false);
+      return;
     }
+
+    const row: any = Array.isArray(s.data) ? s.data[0] : s.data;
+    setStats({
+      total_views: Number(row?.total_views) || 0,
+      unique_visitors: Number(row?.unique_visitors) || 0,
+      views_today: Number(row?.views_today) || 0,
+      visitors_today: Number(row?.visitors_today) || 0,
+      views_7d: Number(row?.views_7d) || 0,
+      visitors_7d: Number(row?.visitors_7d) || 0,
+    });
+    setDays(((d.data as any[]) ?? []).map(r => ({
+      stat_day: String(r.stat_day),
+      view_count: Number(r.view_count) || 0,
+      visitor_count: Number(r.visitor_count) || 0,
+      new_visitor_count: Number(r.new_visitor_count) || 0,
+    })));
     setLoading(false);
   };
 
@@ -138,26 +168,67 @@ function ViewStats() {
 
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
 
+  if (error) {
+    return (
+      <div className="pt-3 space-y-3">
+        <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4">
+          <p className="text-sm font-bold text-red-400 mb-1">Stats could not be loaded</p>
+          <p className="text-xs text-red-300/90 break-words">{error}</p>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            If this mentions a missing function or table, run <span className="font-mono">main_project_stats.sql</span> in the main Supabase project.
+          </p>
+        </div>
+        <button onClick={load} className="w-full text-xs font-semibold py-2.5 rounded-xl border border-border text-muted-foreground">Try again</button>
+      </div>
+    );
+  }
+
   const cards = [
+    { label: "Visitors today", value: stats?.visitors_today ?? 0, accent: true },
+    { label: "Views today", value: stats?.views_today ?? 0, accent: true },
+    { label: "Visitors (last 7 days)", value: stats?.visitors_7d ?? 0 },
+    { label: "Views (last 7 days)", value: stats?.views_7d ?? 0 },
+    { label: "Total unique visitors", value: stats?.unique_visitors ?? 0 },
     { label: "Total views", value: stats?.total_views ?? 0 },
-    { label: "Unique visitors", value: stats?.unique_visitors ?? 0 },
-    { label: "Views today", value: stats?.views_today ?? 0 },
   ];
+  const maxVisitors = Math.max(1, ...days.map(d => d.visitor_count));
 
   return (
     <div className="pt-3 space-y-3">
-      {cards.map(c => (
-        <div key={c.label} className="bg-card border border-border rounded-2xl px-4 py-4 flex items-center justify-between">
-          <p className="text-sm font-semibold text-muted-foreground">{c.label}</p>
-          <p className="text-2xl font-black text-foreground">{c.value.toLocaleString()}</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {cards.map(c => (
+          <div key={c.label} className={`rounded-2xl px-3.5 py-3 border ${c.accent ? "bg-blue-600/10 border-blue-500/30" : "bg-card border-border"}`}>
+            <p className="text-[11px] font-semibold text-muted-foreground">{c.label}</p>
+            <p className="text-2xl font-black text-foreground mt-0.5">{c.value.toLocaleString()}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-3">
+        <p className="text-xs font-bold text-foreground mb-2">Last 14 days</p>
+        <div className="grid grid-cols-[64px_1fr_44px_44px_40px] gap-x-2 text-[10px] font-semibold text-muted-foreground pb-1.5 border-b border-border">
+          <span>Day</span><span>Visitors</span><span className="text-right">Views</span><span className="text-right">Users</span><span className="text-right">New</span>
         </div>
-      ))}
-      <button
-        onClick={load}
-        className="w-full text-xs font-semibold py-2.5 rounded-xl border border-border text-muted-foreground"
-      >
-        Refresh
-      </button>
+        {days.map((d, i) => {
+          const label = i === 0 ? "Today" : new Date(d.stat_day + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+          return (
+            <div key={d.stat_day} className="grid grid-cols-[64px_1fr_44px_44px_40px] gap-x-2 items-center py-1.5 border-b border-border/50 last:border-0 text-xs">
+              <span className={i === 0 ? "font-bold text-foreground" : "text-muted-foreground"}>{label}</span>
+              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-blue-500" style={{ width: `${(d.visitor_count / maxVisitors) * 100}%` }} />
+              </div>
+              <span className="text-right text-foreground">{d.view_count}</span>
+              <span className="text-right font-semibold text-foreground">{d.visitor_count}</span>
+              <span className="text-right text-emerald-500">{d.new_visitor_count}</span>
+            </div>
+          );
+        })}
+        <p className="text-[10px] text-muted-foreground mt-2">
+          Users = different people (devices) that opened the app that day. New = first time ever seen. Days are in Malawi time.
+        </p>
+      </div>
+
+      <button onClick={load} className="w-full text-xs font-semibold py-2.5 rounded-xl border border-border text-muted-foreground">Refresh</button>
     </div>
   );
 }
