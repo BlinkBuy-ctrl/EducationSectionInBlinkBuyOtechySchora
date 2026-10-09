@@ -4,6 +4,11 @@ import { jceResourcesSupabase } from '@/lib/jceResourcesSupabase'
 import { primaryResourcesSupabase } from '@/lib/primaryResourcesSupabase'
 
 export const EDUCATION_LEVELS = ['MSCE', 'JCE', 'Primary'] as const
+
+/** True for .zip files — only allowed in the Teachers Lounge. */
+export function isZipFileName(name: string | null | undefined): boolean {
+  return !!name && name.toLowerCase().endsWith('.zip')
+}
 export type EducationLevel = typeof EDUCATION_LEVELS[number]
 
 // Subject lists per level. "Other" is always included so an uploader whose
@@ -38,6 +43,10 @@ export const RESOURCE_YEARS: string[] = [
 // place that maps a level to its client, so every component that needs to
 // read/write resources for a given level goes through here instead of
 // hardcoding which client to use.
+/** Value of the `section` column that marks a Teachers Lounge upload.
+ *  Everything else is 'general' (the column's default). */
+export const TEACHERS_SECTION = 'teachers'
+
 export function resourcesClientForLevel(level: EducationLevel): SupabaseClient {
   if (level === 'MSCE') return msceResourcesSupabase
   if (level === 'JCE') return jceResourcesSupabase
