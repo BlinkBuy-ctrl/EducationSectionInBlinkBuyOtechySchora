@@ -1,13 +1,13 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle, Image } from "lucide-react";
-import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, RESOURCE_YEARS, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
+import { X, Upload, FileText, Loader2, CheckCircle2, AlertCircle, Image, Archive } from "lucide-react";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, RESOURCE_YEARS, TEACHERS_SECTION, isZipFileName, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { useToast } from "@/hooks/use-toast";
 
 const CATEGORIES = ["Past Papers", "Textbooks", "Notes", "Research", "Other"];
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
-interface Props { userId: string; onClose: () => void; onSuccess: () => void; }
+interface Props { userId: string; onClose: () => void; onSuccess: () => void; /** open pre-set to Primary → Teachers Lounge */ teachers?: boolean; }
 type Status = "idle" | "extracting" | "uploading" | "saving" | "done" | "error";
 
 async function extractCover(file: File): Promise<Blob | null> {
@@ -29,7 +29,7 @@ async function extractCover(file: File): Promise<Blob | null> {
   }
 }
 
-export function UploadModal({ userId, onClose, onSuccess }: Props) {
+export function UploadModal({ userId, onClose, onSuccess, teachers }: Props) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -40,7 +40,9 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const [progress,     setProgress]     = useState(0);
   const [errMsg,       setErrMsg]       = useState("");
   const [form,         setForm]         = useState({ title: "", description: "", category: "Notes" });
-  const [level,        setLevel]        = useState<EducationLevel>("MSCE");
+  const [level,        setLevel]        = useState<EducationLevel>(teachers ? "Primary" : "MSCE");
+  // true = this upload goes to the Teachers Lounge (Primary only)
+  const [teachersSection, setTeachersSection] = useState<boolean>(!!teachers);
   const [subject,      setSubject]      = useState("");
   const [year,         setYear]         = useState("");
 
@@ -54,6 +56,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
   const handleLevelChange = (l: EducationLevel) => {
     setLevel(l);
     setSubject(""); // subject list changes with level, so clear the old pick
+    if (l !== "Primary") setTeachersSection(false); // Teachers Lounge lives under Primary only
   };
 
   const statusLabel: Record<Status, string> = {
@@ -69,6 +72,13 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     if (!f) return;
     if (f.size > MAX_FILE_SIZE) { setErrMsg("File exceeds 50 MB."); return; }
     setErrMsg(""); setFile(f); setCoverBlob(null); setCoverPreview(null);
+
+    // Zip files belong in the Teachers Lounge only, so switch it on for them
+    // straight away (the person can still see/change it below).
+    if (isZipFileName(f.name)) {
+      if (level !== "Primary") { setLevel("Primary"); setSubject(""); }
+      setTeachersSection(true);
+    }
     setForm(p => ({ ...p, title: p.title || f.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ") }));
 
     if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
@@ -87,6 +97,10 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
     if (!form.title.trim()) { setErrMsg("Title required."); return; }
     if (!subject)            { setErrMsg("Pick a subject."); return; }
     if (!year)               { setErrMsg("Pick a year."); return; }
+    if (isZipFileName(file.name) && !(level === "Primary" && teachersSection)) {
+      setErrMsg("Zip files can only be uploaded to the Teachers Lounge (Primary).");
+      return;
+    }
 
     setErrMsg(""); setProgress(5);
 
@@ -95,6 +109,10 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
       const ext  = file.name.split(".").pop()?.toLowerCase() ?? "pdf";
       const base = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const path = `${base}.${ext}`;
+      // Browsers report zips inconsistently (application/zip, application/x-zip-compressed,
+      // or nothing at all on some phones) — always send one known type so the
+      // storage bucket's allowed-types list only needs a single entry for it.
+      const contentType = isZipFileName(file.name) ? "application/zip" : (file.type || "application/octet-stream");
 
       // Upload PDF to otechy-docs
       await new Promise<void>((resolve, reject) => {
@@ -102,12 +120,12 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         activeClient.storage.from("otechy-docs").createSignedUploadUrl(path).then(({ data, error }) => {
           if (error || !data) {
             activeClient.storage.from("otechy-docs").upload(path, file, {
-              upsert: false, contentType: file.type || "application/octet-stream",
+              upsert: false, contentType,
             }).then(({ error: e }) => e ? reject(new Error(e.message)) : resolve());
             return;
           }
           xhr.open("PUT", data.signedUrl);
-          xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+          xhr.setRequestHeader("Content-Type", contentType);
           xhr.upload.onprogress = e => {
             if (e.lengthComputable) setProgress(5 + Math.round((e.loaded / e.total) * 60));
           };
@@ -147,6 +165,9 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         file_name:     file.name,
         file_size:     file.size,
         thumbnail_url: thumbPublicUrl, // full public URL stored directly
+        // Only sent for Teachers Lounge uploads, so normal uploads keep working
+        // even on a backend that doesn't have the `section` column yet.
+        ...(teachersSection ? { section: TEACHERS_SECTION } : {}),
       });
 
       if (dbErr) {
@@ -166,7 +187,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: "📚 New free PDF on SchoraHub!",
+          title: teachersSection ? "🧑‍🏫 New in the Teachers Lounge!" : "📚 New free PDF on SchoraHub!",
           body: `"${form.title.trim()}" just got uploaded — grab it now.`,
           url: "/",
         }),
@@ -193,7 +214,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
               <Upload className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="font-bold text-sm">Upload Resource</p>
+              <p className="font-bold text-sm">{teachersSection ? "Upload to Teachers Lounge" : "Upload Resource"}</p>
               <p className="text-[10px] text-muted-foreground">100% free — share with everyone</p>
             </div>
           </div>
@@ -236,7 +257,7 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
                   {status === "extracting"
                     ? <Loader2 className="w-6 h-6 text-sky-400 animate-spin" />
                     : file
-                    ? <FileText className="w-6 h-6 text-sky-500" />
+                    ? (isZipFileName(file.name) ? <Archive className="w-6 h-6 text-sky-500" /> : <FileText className="w-6 h-6 text-sky-500" />)
                     : <Upload className="w-6 h-6 text-sky-400" />}
                 </div>
                 <p className="text-sm font-medium">
@@ -244,13 +265,13 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
                     : file ? file.name : "Click or drag file here"}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : "PDF, DOC, DOCX — max 50 MB"}
+                  {file ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : "PDF, DOC, DOCX — max 50 MB · ZIP (Teachers Lounge only)"}
                 </p>
               </div>
             )}
           </div>
           <input ref={fileRef} type="file" className="hidden"
-            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept=".pdf,.doc,.docx,.zip,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/zip,application/x-zip-compressed"
             onChange={e => handleFile(e.target.files?.[0] ?? null)} disabled={isLoading} />
 
           {isLoading && status !== "extracting" && (
@@ -293,6 +314,25 @@ export function UploadModal({ userId, onClose, onSuccess }: Props) {
               ))}
             </div>
           </div>
+
+          {level === "Primary" && (
+            <button type="button" disabled={isLoading || (!!file && isZipFileName(file.name))}
+              onClick={() => setTeachersSection(v => !v)}
+              className={`w-full flex items-center gap-3 text-left rounded-xl border px-3 py-2.5 transition-all disabled:opacity-80 ${
+                teachersSection ? "border-sky-500 bg-sky-500/10" : "border-border"
+              }`}>
+              <span className="text-lg">🧑‍🏫</span>
+              <span className="flex-1">
+                <span className="block text-xs font-bold">Teachers Lounge</span>
+                <span className="block text-[10px] text-muted-foreground">
+                  {teachersSection ? "This will appear in the Teachers Lounge tab. ZIP files are allowed." : "Tap to share this with teachers (lesson plans, schemes of work, zips…)"}
+                </span>
+              </span>
+              <span className={`w-5 h-5 rounded-md border flex items-center justify-center text-[11px] font-black ${teachersSection ? "bg-sky-600 border-sky-600 text-white" : "border-border"}`}>
+                {teachersSection ? "✓" : ""}
+              </span>
+            </button>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-muted-foreground mb-1 block">Subject <span className="text-red-500">*</span></label>
