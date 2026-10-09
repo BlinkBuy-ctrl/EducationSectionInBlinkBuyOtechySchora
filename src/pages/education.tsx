@@ -17,6 +17,7 @@ import { AiModeChat } from "@/components/education/AiModeChat";
 import { ResourceCard } from "@/components/education/ResourceCard";
 import { ResourceDetailModal } from "@/components/education/ResourceDetailModal";
 import { UploadModal } from "@/components/education/UploadModal";
+import { TeachersLoungeTab } from "@/components/education/TeachersLoungeTab";
 import { AudioBookCard } from "@/components/education/AudioBookCard";
 import { AudioBookDetailModal } from "@/components/education/AudioBookDetailModal";
 import { AudioBookUploadModal } from "@/components/education/AudioBookUploadModal";
@@ -55,7 +56,7 @@ const CAT_LABEL_KEYS: Record<typeof CATS[number], TranslationKey | null> = {
 };
 type PriceFilter = "all" | "free" | "paid";
 type ContentType = "documents" | "audio";
-type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "jobs" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
+type Tab = "resources" | "teachers" | "scholarships" | "tutors" | "universities" | "bookshops" | "jobs" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const BROWSE_COUNTS_KEY = "otechy_browse_counts_v1";
 // How long the "<Level> Level Loading" screen stays up when switching level
@@ -195,6 +196,8 @@ export default function EducationPage() {
     }
     setTabRaw(next);
   };
+  // true when the upload form was opened from the Teachers Lounge tab
+  const [uploadTeachers, setUploadTeachers] = useState(false);
   const [aiModeOpen,   setAiModeOpen]   = useState(false);
   const [showOnboard,  setShowOnboard]  = useState(false);
 
@@ -327,10 +330,20 @@ export default function EducationPage() {
         return count ?? 0;
       } catch { return null; }
     };
+    // Primary's count leaves out Teachers Lounge uploads. If the `section`
+    // column isn't there yet, fall back to the plain count.
+    const countPrimary = async (): Promise<number | null> => {
+      try {
+        const { count, error } = await resourcesClientForLevel("Primary")
+          .from("otechy_resources").select("id", { count: "exact", head: true }).neq("section", "teachers");
+        if (!error) return count ?? 0;
+      } catch { /* fall through */ }
+      return countRows(resourcesClientForLevel("Primary"), "otechy_resources");
+    };
     const [msce, jce, primary, higherEd] = await Promise.all([
       countRows(resourcesClientForLevel("MSCE"),    "otechy_resources"),
       countRows(resourcesClientForLevel("JCE"),     "otechy_resources"),
-      countRows(resourcesClientForLevel("Primary"), "otechy_resources"),
+      countPrimary(),
       countRows(higherEdSupabase,                   "education_files"),
     ]);
     const patch: Partial<BrowseCounts> = {};
@@ -375,7 +388,9 @@ export default function EducationPage() {
     if (latestLevelRef.current !== lvl) return;
 
     if (rRes.status === "fulfilled" && (!rRes.value.error || noTable(rRes.value.error))) {
-      const rows = rRes.value.data ?? [];
+      // Teachers Lounge uploads live in the same Primary table (section = 'teachers')
+      // but have their own tab — keep them out of normal Browse.
+      const rows = (rRes.value.data ?? []).filter((r: any) => r.section !== "teachers");
       setResources(rows);
       setCache("resources", rows);
       patchCounts({ [lvl]: rows.length } as Partial<BrowseCounts>);
@@ -604,7 +619,11 @@ export default function EducationPage() {
   const saved = resources.filter(r => bookmarks.has(r.id));
   const savedAudiobooks = audiobooks.filter(a => audiobookBookmarks.has(a.id));
 
-  const handleDownload = async (resource: any) => {
+  const handleDownload = async (resource: any, clientOverride?: any) => {
+    // Teachers Lounge files always live on the Primary backend, whatever level
+    // Browse is currently showing — so that tab passes its own client.
+    const dlClient = clientOverride && typeof clientOverride === "object" && "storage" in clientOverride
+      ? clientOverride : activeResourcesClient;
     try {
       const filename = getDownloadFilename(resource);
       const isPdf = filename.toLowerCase().endsWith(".pdf");
@@ -612,18 +631,18 @@ export default function EducationPage() {
       if (isPdf) {
         // PDFs: fetch the file and save it under the exact clean name. (Letting the
         // server name it turns "(" "@" "," into "%28" "%40" "%2C" in the file name.)
-        const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
+        const { data, error } = await dlClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60);
         if (error) throw error;
         toast({ title: t("toast_download_started") });
         const res = await fetch(data.signedUrl);
         if (!res.ok) throw new Error("Could not reach the file");
         const blob = await res.blob();
         window.dispatchEvent(new CustomEvent("otechy:trigger-download", { detail: { blobUrl: URL.createObjectURL(blob), filename } }));
-        bumpDownloadCount(resource);
+        bumpDownloadCount(resource, dlClient);
         return;
       }
 
-      const { data, error } = await activeResourcesClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: filename });
+      const { data, error } = await dlClient.storage.from("otechy-docs").createSignedUrl(resource.file_url, 60, { download: filename });
       if (error) throw error;
       // Hands the URL to Layout's persistent hidden download iframe — no
       // new tab, and no manual document.body manipulation that could race
@@ -635,7 +654,7 @@ export default function EducationPage() {
       // download-count bump + rating refetch below just to see this toast.
       toast({ title: t("toast_download_started") });
 
-      bumpDownloadCount(resource);
+      bumpDownloadCount(resource, dlClient);
     } catch (e: any) {
       toast({ title: t("toast_download_failed"), description: e.message, variant: "destructive" });
     }
@@ -643,11 +662,11 @@ export default function EducationPage() {
 
   // Non-critical bookkeeping — runs in the background so it can never delay
   // the toast, and a failure here can't undo a download that's already started.
-  const bumpDownloadCount = (resource: any) => {
+  const bumpDownloadCount = (resource: any, dlClient: any = activeResourcesClient) => {
     (async () => {
       try {
-        await activeResourcesClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
-        const { data: fresh } = await activeResourcesClient
+        await dlClient.rpc("increment_download", { resource_id: resource.id, caller_id: user.id });
+        const { data: fresh } = await dlClient
           .from("otechy_resources")
           .select("download_count,avg_rating,review_count")
           .eq("id", resource.id)
@@ -750,6 +769,8 @@ export default function EducationPage() {
 
   const handleUploadClick = async () => {
     await ensureProfile();
+    if (tab === "teachers") { setUploadTeachers(true); setShowUpload(true); return; }
+    setUploadTeachers(false);
     if (contentType === "audio") setShowAudioUpload(true);
     else setShowUpload(true);
   };
@@ -758,6 +779,7 @@ export default function EducationPage() {
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
     { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: counts.MSCE + counts.JCE + counts.Primary + audiobooks.length },
     { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: counts.higherEd },
+    { key: "teachers",     emoji: "🧑‍🏫", label: t("menu_teachers_lounge"), count: null },
     { key: "tutors",       emoji: "👨‍🏫", label: t("menu_tutors"),       count: tutors.length       },
     { key: "jobs",         emoji: "💼", label: t("menu_jobs"),          count: jobs.length         },
     { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
@@ -1154,14 +1176,32 @@ export default function EducationPage() {
         <SellerDashboard
           userId={user.id}
           onRefresh={fetchAll}
-          onUploadClick={async () => { await ensureProfile(); setShowUpload(true); }}
+          onUploadClick={async () => { await ensureProfile(); setUploadTeachers(false); setShowUpload(true); }}
           onAudioUploadClick={async () => { await ensureProfile(); setShowAudioUpload(true); }}
           onGoToTutors={() => setTab("tutors")}
         />
       )}
+      {tab === "teachers" && (
+        <TeachersLoungeTab
+          userId={user.id}
+          onDownload={(r: any) => handleDownload(r, resourcesClientForLevel("Primary"))}
+          onUploadClick={() => handleUploadClickRef.current()}
+          ensureProfile={ensureProfile}
+        />
+      )}
       {tab === "aboutus"   && <AboutUs onBack={() => setTab("resources")} />}
 
-      {showUpload && <UploadModal userId={user.id} onClose={() => setShowUpload(false)} onSuccess={() => fetchResources(level)} />}
+      {showUpload && (
+        <UploadModal
+          userId={user.id}
+          teachers={uploadTeachers}
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => {
+            fetchResources(level);
+            window.dispatchEvent(new CustomEvent("otechy:teachers-refresh"));
+          }}
+        />
+      )}
       {showAudioUpload && <AudioBookUploadModal userId={user.id} onClose={() => setShowAudioUpload(false)} onSuccess={fetchAll} />}
       {aiModeOpen && <AiModeChat onClose={() => setAiModeOpen(false)} />}
 
