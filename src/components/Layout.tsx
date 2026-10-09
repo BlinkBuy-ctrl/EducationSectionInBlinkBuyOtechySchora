@@ -238,6 +238,98 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: "adverts" }));
   };
   const goNotifications = () => { navigate("/notifications"); setActiveTab(""); };
+
+  /* ── Swipe left/right between the bottom-nav tabs (WhatsApp style) ──
+     Order matches the bottom bar: Home → Stats → Search → Adverts.
+     Swipe LEFT = next tab, swipe RIGHT = previous tab. */
+  const contentRef   = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef(activeTab);
+  const locRef       = useRef(loc);
+  activeTabRef.current = activeTab;
+  locRef.current       = loc;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    // "" = Home. Locked sections are skipped automatically.
+    const ORDER = ["", "dashboard", "resources", "adverts"].filter(k => !isTabLocked(k));
+    const MIN_X = 60;      // px the finger must travel sideways
+    const MAX_MS = 700;    // slower drags are not swipes
+
+    let startX = 0, startY = 0, startT = 0, tracking = false;
+
+    // Don't hijack: typing, sliders, horizontally scrolling rows (carousels,
+    // category chips), or anything pinned to the screen (readers, overlays).
+    const shouldIgnore = (target: EventTarget | null) => {
+      let n = target as HTMLElement | null;
+      while (n && n !== el) {
+        if (n.nodeType === 1) {
+          const tag = n.tagName;
+          if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || n.isContentEditable) return true;
+          if (n.hasAttribute("data-no-swipe")) return true;
+          const cs = getComputedStyle(n);
+          if (cs.position === "fixed") return true;
+          if ((cs.overflowX === "auto" || cs.overflowX === "scroll") && n.scrollWidth > n.clientWidth + 2) return true;
+        }
+        n = n.parentElement;
+      }
+      return false;
+    };
+
+    const onStart = (e: TouchEvent) => {
+      tracking = false;
+      if (e.touches.length !== 1) return;                 // ignore pinch/zoom
+      if (locRef.current !== "/") return;                 // only on the main tabs
+      if (ORDER.indexOf(activeTabRef.current) === -1) return;
+      if (shouldIgnore(e.target)) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startT = Date.now();
+      tracking = true;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (e.touches.length > 1) tracking = false;
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (Math.abs(dx) < MIN_X) return;
+      if (Math.abs(dx) < Math.abs(dy) * 1.5) return;      // mostly vertical = scrolling
+      if (Date.now() - startT > MAX_MS) return;
+
+      const idx  = ORDER.indexOf(activeTabRef.current);
+      const next = idx + (dx < 0 ? 1 : -1);               // swipe left → next
+      if (next < 0 || next >= ORDER.length) return;       // already at the edge
+
+      const key = ORDER[next];
+      window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: key === "" ? "resources" : key }));
+      setActiveTab(key);                                  // after dispatch so Home stays "Home"
+
+      // Small slide-in so it feels like the page moved with the finger
+      try {
+        contentRef.current?.animate(
+          [{ transform: `translateX(${dx < 0 ? 36 : -36}px)`, opacity: 0.3 }, { transform: "translateX(0)", opacity: 1 }],
+          { duration: 200, easing: "ease-out" }
+        );
+      } catch { /* animation is optional */ }
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove",  onMove,  { passive: true });
+    el.addEventListener("touchend",   onEnd,   { passive: true });
+    el.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove",  onMove);
+      el.removeEventListener("touchend",   onEnd);
+    };
+  }, []);
   const goPost   = () => window.dispatchEvent(new CustomEvent("otechy:open-upload"));
 
   /* ── Soft refresh: re-fetch current page's data only, no app/splash restart ── */
@@ -387,7 +479,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         className="flex-1 overflow-x-hidden relative"
         style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
       >
-        <div className="pb-24">{children}</div>
+        <div ref={contentRef} className="pb-24">{children}</div>
 
         {/* ── Scroll-sense arrows ── */}
         <div className="sticky bottom-4 w-full flex justify-end pr-3 pointer-events-none">
