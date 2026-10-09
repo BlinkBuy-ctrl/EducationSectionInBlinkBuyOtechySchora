@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useRef, useMemo } from "react";
 import type { RefObject, MutableRefObject } from "react";
 import { BookOpen, Upload, FileText, Bookmark, Megaphone, Headphones, Sparkles, Briefcase, ChevronUp, ChevronDown, History } from "lucide-react";
 import { bookshopSupabase } from "@/lib/bookshopSupabase";
+import { higherEdSupabase } from "@/lib/higherEducationSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
 import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
@@ -56,6 +57,23 @@ type PriceFilter = "all" | "free" | "paid";
 type ContentType = "documents" | "audio";
 type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "jobs" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
+const BROWSE_COUNTS_KEY = "otechy_browse_counts_v1";
+
+// Per-level resource totals + the Higher Education files total. Kept in
+// localStorage so the numbers show instantly on reopen (and offline).
+type BrowseCounts = { MSCE: number; JCE: number; Primary: number; higherEd: number };
+const EMPTY_COUNTS: BrowseCounts = { MSCE: 0, JCE: 0, Primary: 0, higherEd: 0 };
+function loadSavedCounts(): BrowseCounts {
+  try {
+    const raw = safeGetItem(BROWSE_COUNTS_KEY);
+    if (!raw) return EMPTY_COUNTS;
+    const p = JSON.parse(raw);
+    return {
+      MSCE: Number(p.MSCE) || 0, JCE: Number(p.JCE) || 0,
+      Primary: Number(p.Primary) || 0, higherEd: Number(p.higherEd) || 0,
+    };
+  } catch { return EMPTY_COUNTS; }
+}
 const TAB_HINT_ANIM_KEY = "otechy_tab_hint_anim_enabled";
 const CAT_HINT_ANIM_KEY = "otechy_cat_hint_anim_enabled";
 
@@ -153,6 +171,7 @@ export default function EducationPage() {
   const [cat,          setCat]          = useState<typeof CATS[number]>("All");
   const [price,        setPrice]        = useState<PriceFilter>("all");
   const [level,        setLevel]        = useState<EducationLevel>("MSCE");
+  const [counts,       setCounts]       = useState<BrowseCounts>(loadSavedCounts);
   const [subject,      setSubject]      = useState<string>("All");
   const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [tab,          setTabRaw]       = useState<Tab>("resources");
@@ -278,6 +297,40 @@ export default function EducationPage() {
     if (cachedAudiobookBookmarks.length) setAudiobookBookmarks(new Set(cachedAudiobookBookmarks.map(b => b.audiobook_id)));
   };
 
+  // Updates some of the counts and saves the result so it survives reloads.
+  const patchCounts = (patch: Partial<BrowseCounts>) => {
+    setCounts(prev => {
+      const next = { ...prev, ...patch };
+      safeSetItem(BROWSE_COUNTS_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  // Counts resources at MSCE, JCE and Primary (each is its own backend) plus
+  // the Higher Education files. Uses head-only count queries, so no rows are
+  // downloaded — just the totals. A failed query keeps the old number.
+  const fetchCounts = async () => {
+    const countRows = async (client: any, table: string): Promise<number | null> => {
+      try {
+        const { count, error } = await client.from(table).select("id", { count: "exact", head: true });
+        if (error) return error.code === "42P01" ? 0 : null;
+        return count ?? 0;
+      } catch { return null; }
+    };
+    const [msce, jce, primary, higherEd] = await Promise.all([
+      countRows(resourcesClientForLevel("MSCE"),    "otechy_resources"),
+      countRows(resourcesClientForLevel("JCE"),     "otechy_resources"),
+      countRows(resourcesClientForLevel("Primary"), "otechy_resources"),
+      countRows(higherEdSupabase,                   "education_files"),
+    ]);
+    const patch: Partial<BrowseCounts> = {};
+    if (msce !== null)     patch.MSCE = msce;
+    if (jce !== null)      patch.JCE = jce;
+    if (primary !== null)  patch.Primary = primary;
+    if (higherEd !== null) patch.higherEd = higherEd;
+    if (Object.keys(patch).length) patchCounts(patch);
+  };
+
   // Resources now live in a separate Supabase project per education level.
   // This fetches (and caches) resources + purchases + bookmarks for
   // whichever level is currently selected — it re-runs every time the
@@ -310,6 +363,7 @@ export default function EducationPage() {
       const rows = rRes.value.data ?? [];
       setResources(rows);
       setCache("resources", rows);
+      patchCounts({ [lvl]: rows.length } as Partial<BrowseCounts>);
     } else if (navigator.onLine) {
       toast({
         title: t("toast_some_content_failed"),
@@ -335,6 +389,11 @@ export default function EducationPage() {
   };
 
   useEffect(() => { fetchResources(level); }, [level, user.id]);
+
+  // Totals for all levels + Higher Education. Re-run whenever the person
+  // changes tab, so uploads/deletes made inside Higher Education (or any
+  // level) are reflected as soon as they come back to the tab bar.
+  useEffect(() => { fetchCounts(); }, [tab, user.id]);
 
   const handleLevelChange = (l: EducationLevel) => {
     setLevel(l);
@@ -652,8 +711,8 @@ export default function EducationPage() {
   handleUploadClickRef.current = handleUploadClick;
 
   const TABS: { key: Tab; emoji: string; label: string; count: number | null }[] = [
-    { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: resources.length + audiobooks.length },
-    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: null            },
+    { key: "resources",    emoji: "📚", label: t("menu_browse"),       count: counts.MSCE + counts.JCE + counts.Primary + audiobooks.length },
+    { key: "universities", emoji: "🎓", label: t("shortcut_higher_education"), count: counts.higherEd },
     { key: "tutors",       emoji: "👨‍🏫", label: t("menu_tutors"),       count: tutors.length       },
     { key: "jobs",         emoji: "💼", label: t("menu_jobs"),          count: jobs.length         },
     { key: "scholarships", emoji: "🏆", label: t("menu_scholarships"), count: scholarships.length },
