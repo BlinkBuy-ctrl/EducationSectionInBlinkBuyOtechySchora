@@ -13,7 +13,7 @@ import {
   Home, BarChart2, Search, Upload, Megaphone,
   ChevronUp, ChevronDown, Headphones, Award, Users,
   Briefcase, Building2, BookText, Bookmark, BookOpen, Info,
-  Rocket, Languages,
+  Rocket, Languages, School,
 } from "lucide-react";
 import OtechyAcademyModal from "@/components/education/OtechyAcademyModal";
 import FocusPlayer, { useFocusPlayer } from "@/components/FocusPlayer";
@@ -51,6 +51,7 @@ const MENU_GROUPS: MenuGroup[] = [
     { icon: Search,     labelKey: "menu_browse",       tab: "resources" },
     { icon: Headphones, labelKey: "menu_audio_books",  tab: "resources" },
     { icon: Building2,  labelKey: "menu_universities", tab: "universities" },
+    { icon: School,     labelKey: "menu_teachers_lounge", tab: "teachers" },
     { icon: Users,      labelKey: "menu_tutors",       tab: "tutors" },
     { icon: Briefcase,  labelKey: "menu_jobs",         tab: "jobs" },
     { icon: Award,      labelKey: "menu_scholarships", tab: "scholarships" },
