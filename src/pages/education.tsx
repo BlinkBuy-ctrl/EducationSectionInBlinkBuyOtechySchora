@@ -5,7 +5,7 @@ import { bookshopSupabase } from "@/lib/bookshopSupabase";
 import { higherEdSupabase } from "@/lib/higherEducationSupabase";
 import { tutorsSupabase } from "@/lib/tutorsSupabase";
 import { scholarshipsSupabase } from "@/lib/scholarshipsSupabase";
-import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
+import { EDUCATION_LEVELS, SUBJECTS_BY_LEVEL, RESOURCE_YEARS, resourcesClientForLevel, type EducationLevel } from "@/lib/resourceLevels";
 import { AuthContext } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
 import { SEARCH_PHRASES, type TranslationKey } from "@/lib/i18n";
@@ -173,6 +173,7 @@ export default function EducationPage() {
   const [level,        setLevel]        = useState<EducationLevel>("MSCE");
   const [counts,       setCounts]       = useState<BrowseCounts>(loadSavedCounts);
   const [subject,      setSubject]      = useState<string>("All");
+  const [year,         setYear]         = useState<string>("All");
   const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [tab,          setTabRaw]       = useState<Tab>("resources");
   // Sections whose backend isn't built yet (see src/lib/lockedTabs.ts) stay
@@ -353,7 +354,7 @@ export default function EducationPage() {
 
     const [rRes, pRes, bRes] = await Promise.allSettled([
       client.from("otechy_resources")
-        .select("id,title,description,category,subject,price,file_url,file_name,file_size,download_count,avg_rating,review_count,uploader_id,thumbnail_url,created_at")
+        .select("*")
         .order("created_at", { ascending: false }),
       client.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
       client.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
@@ -398,6 +399,7 @@ export default function EducationPage() {
   const handleLevelChange = (l: EducationLevel) => {
     setLevel(l);
     setSubject("All"); // subject list changes with level, so reset the old pick
+    setYear("All");    // years available differ per level too
   };
 
   // Tapping a "Continue Reading" card: the book may belong to a different
@@ -408,7 +410,7 @@ export default function EducationPage() {
     const targetClient = resourcesClientForLevel(entry.level as EducationLevel);
     const { data, error } = await targetClient
       .from("otechy_resources")
-      .select("id,uploader_id,title,description,category,subject,price,file_url,file_name,file_size,download_count,avg_rating,review_count,thumbnail_url,created_at")
+      .select("*")
       .eq("id", entry.resourceId)
       .single();
     if (error || !data) {
@@ -530,8 +532,18 @@ export default function EducationPage() {
   ]).filter((r: any) => {
     const mC = cat === "All" || r.category === cat;
     const mSub = subject === "All" || r.subject === subject;
-    return mC && mSub;
+    const mYear = year === "All" || String(r.year ?? "") === year;
+    return mC && mSub && mYear;
   });
+
+  // Years that actually have uploads at this level (newest first, "Other"
+  // last) — so the filter never shows a year with nothing in it.
+  const yearOptions = useMemo(() => {
+    const present = new Set(resources.map((r: any) => String(r.year ?? "")).filter(Boolean));
+    const known = RESOURCE_YEARS.filter(y => present.has(y));
+    const extra = [...present].filter(y => !RESOURCE_YEARS.includes(y)).sort().reverse();
+    return [...known, ...extra];
+  }, [resources]);
 
   const filteredAudiobooks = smartFilter(audiobooks, search, (a: any) => [
     { text: a.title,       weight: 3 },
@@ -908,6 +920,7 @@ export default function EducationPage() {
           {filtersOpen && (
             <>
               {contentType === "documents" ? (
+                <>
                 <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
                   <button onClick={() => setSubject("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${subject === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
                     {t("filter_all_subjects")}
@@ -918,6 +931,19 @@ export default function EducationPage() {
                     </button>
                   ))}
                 </div>
+                {yearOptions.length > 0 && (
+                  <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
+                    <button onClick={() => setYear("All")} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${year === "All" ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                      All Years
+                    </button>
+                    {yearOptions.map(y => (
+                      <button key={y} onClick={() => setYear(y)} className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${year === y ? "bg-sky-600 border-sky-600 text-white" : "border-border text-muted-foreground"}`}>
+                        {y}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                </>
               ) : (
                 <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide pb-1">
                   {(["all","free","paid"] as PriceFilter[]).map(f => (
