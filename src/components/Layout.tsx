@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, startTransition } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -241,8 +241,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   /* ── Swipe left/right between the bottom-nav tabs (WhatsApp style) ──
      Order matches the bottom bar: Home → Stats → Search → Adverts.
-     Swipe LEFT = next tab, swipe RIGHT = previous tab. */
-  const contentRef   = useRef<HTMLDivElement>(null);
+     Swipe LEFT = next tab, swipe RIGHT = previous tab.
+
+     Performance notes (this runs on every touch, so it must stay cheap):
+       • touchstart only stores numbers — no layout reads, no style reads.
+       • All the "should I ignore this?" checks run ONCE, on touchend, and
+         only when the movement already looks like a real sideways swipe.
+       • The tab change is a React transition, so the nav highlight updates
+         instantly and the heavy page content swaps in without blocking.
+       • No animation on the page content (animating a tall page is what
+         makes phones stutter). */
   const activeTabRef = useRef(activeTab);
   const locRef       = useRef(loc);
   activeTabRef.current = activeTab;
@@ -254,10 +262,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
     // "" = Home. Locked sections are skipped automatically.
     const ORDER = ["", "dashboard", "resources", "adverts"].filter(k => !isTabLocked(k));
-    const MIN_X = 60;      // px the finger must travel sideways
-    const MAX_MS = 700;    // slower drags are not swipes
+    const MIN_X       = 50;   // px of sideways travel for a normal swipe
+    const FLICK_X     = 30;   // px is enough if the finger was fast…
+    const FLICK_SPEED = 0.45; // …px per millisecond
+    const MAX_MS      = 700;  // slower drags are not swipes
 
-    let startX = 0, startY = 0, startT = 0, tracking = false;
+    let startX = 0, startY = 0, startT = 0;
+    let startTarget: EventTarget | null = null;
+    let tracking = false;
 
     // Don't hijack: typing, sliders, horizontally scrolling rows (carousels,
     // category chips), or anything pinned to the screen (readers, overlays).
@@ -278,56 +290,58 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     };
 
     const onStart = (e: TouchEvent) => {
-      tracking = false;
-      if (e.touches.length !== 1) return;                 // ignore pinch/zoom
-      if (locRef.current !== "/") return;                 // only on the main tabs
-      if (ORDER.indexOf(activeTabRef.current) === -1) return;
-      if (shouldIgnore(e.target)) return;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      startT = Date.now();
-      tracking = true;
+      // A second finger (pinch/zoom) cancels the gesture.
+      tracking = e.touches.length === 1;
+      if (!tracking) return;
+      const t = e.touches[0];
+      startX = t.clientX;
+      startY = t.clientY;
+      startT = e.timeStamp;
+      startTarget = e.target;
     };
 
-    const onMove = (e: TouchEvent) => {
-      if (e.touches.length > 1) tracking = false;
-    };
+    const onCancel = () => { tracking = false; };
 
     const onEnd = (e: TouchEvent) => {
       if (!tracking) return;
       tracking = false;
-      const t = e.changedTouches[0];
+
+      const t  = e.changedTouches[0];
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
-      if (Math.abs(dx) < MIN_X) return;
-      if (Math.abs(dx) < Math.abs(dy) * 1.5) return;      // mostly vertical = scrolling
-      if (Date.now() - startT > MAX_MS) return;
+      const ax = Math.abs(dx);
+      const ms = Math.max(1, e.timeStamp - startT);
 
+      // Cheap number checks first — most touches (taps, scrolls) stop here.
+      if (ms > MAX_MS) return;
+      if (ax < FLICK_X) return;
+      if (ax < MIN_X && ax / ms < FLICK_SPEED) return;
+      if (ax < Math.abs(dy) * 1.3) return;               // mostly vertical = scrolling
+
+      if (locRef.current !== "/") return;                // only on the main tabs
       const idx  = ORDER.indexOf(activeTabRef.current);
-      const next = idx + (dx < 0 ? 1 : -1);               // swipe left → next
-      if (next < 0 || next >= ORDER.length) return;       // already at the edge
+      if (idx === -1) return;
+      const next = idx + (dx < 0 ? 1 : -1);              // swipe left → next
+      if (next < 0 || next >= ORDER.length) return;      // already at the edge
+
+      if (shouldIgnore(startTarget)) return;
 
       const key = ORDER[next];
-      window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: key === "" ? "resources" : key }));
-      setActiveTab(key);                                  // after dispatch so Home stays "Home"
-
-      // Small slide-in so it feels like the page moved with the finger
-      try {
-        contentRef.current?.animate(
-          [{ transform: `translateX(${dx < 0 ? 36 : -36}px)`, opacity: 0.3 }, { transform: "translateX(0)", opacity: 1 }],
-          { duration: 200, easing: "ease-out" }
-        );
-      } catch { /* animation is optional */ }
+      setActiveTab(key);                                 // highlight right now
+      startTransition(() => {
+        window.dispatchEvent(new CustomEvent("otechy:set-tab", { detail: key === "" ? "resources" : key }));
+        setActiveTab(key);                               // keep Home as "Home"
+      });
+      el.scrollTop = 0;                                  // new tab starts at the top
     };
 
-    el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove",  onMove,  { passive: true });
-    el.addEventListener("touchend",   onEnd,   { passive: true });
-    el.addEventListener("touchcancel", () => { tracking = false; }, { passive: true });
+    el.addEventListener("touchstart",  onStart,  { passive: true });
+    el.addEventListener("touchend",    onEnd,    { passive: true });
+    el.addEventListener("touchcancel", onCancel, { passive: true });
     return () => {
-      el.removeEventListener("touchstart", onStart);
-      el.removeEventListener("touchmove",  onMove);
-      el.removeEventListener("touchend",   onEnd);
+      el.removeEventListener("touchstart",  onStart);
+      el.removeEventListener("touchend",    onEnd);
+      el.removeEventListener("touchcancel", onCancel);
     };
   }, []);
   const goPost   = () => window.dispatchEvent(new CustomEvent("otechy:open-upload"));
@@ -479,7 +493,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         className="flex-1 overflow-x-hidden relative"
         style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
       >
-        <div ref={contentRef} className="pb-24">{children}</div>
+        <div className="pb-24">{children}</div>
 
         {/* ── Scroll-sense arrows ── */}
         <div className="sticky bottom-4 w-full flex justify-end pr-3 pointer-events-none">
