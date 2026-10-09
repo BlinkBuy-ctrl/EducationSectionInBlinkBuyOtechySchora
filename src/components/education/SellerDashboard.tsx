@@ -28,7 +28,7 @@ import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
 import { AdminPanel } from "@/components/admin/AdminPanel";
 import type { AdminProfile } from "@/lib/adminAuth";
 
-const APP_VERSION = "1.0.0"; // keep in sync with package.json
+const APP_VERSION = "1.3.0"; // keep in sync with package.json
 const NOTIF_PREF_KEY = "otechyschora_notifications_enabled";
 
 interface Props { userId: string; onRefresh: () => void; onUploadClick?: () => void; onAudioUploadClick?: () => void; onGoToTutors?: () => void; }
