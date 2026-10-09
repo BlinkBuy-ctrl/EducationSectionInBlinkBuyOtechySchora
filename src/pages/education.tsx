@@ -58,6 +58,10 @@ type ContentType = "documents" | "audio";
 type Tab = "resources" | "scholarships" | "tutors" | "universities" | "bookshops" | "jobs" | "adverts" | "bookmarks" | "dashboard" | "aboutus";
 const ONBOARDING_KEY = "otechy_onboarding_done";
 const BROWSE_COUNTS_KEY = "otechy_browse_counts_v1";
+// How long the "<Level> Level Loading" screen stays up when switching level
+// (it stays longer if the data hasn't arrived yet). Change this number to
+// make it shorter/longer — it's in milliseconds.
+const LEVEL_LOADING_MIN_MS = 3000;
 
 // Per-level resource totals + the Higher Education files total. Kept in
 // localStorage so the numbers show instantly on reopen (and offline).
@@ -174,6 +178,11 @@ export default function EducationPage() {
   const [counts,       setCounts]       = useState<BrowseCounts>(loadSavedCounts);
   const [subject,      setSubject]      = useState<string>("All");
   const [year,         setYear]         = useState<string>("All");
+  // Set while a level switch is loading — shows the "Level Loading" screen
+  // and hides the previous level's books so they never flash.
+  const [levelLoading, setLevelLoading] = useState<EducationLevel | null>(null);
+  const switchingRef   = useRef(false);
+  const latestLevelRef = useRef<EducationLevel>("MSCE");
   const [filtersOpen,  setFiltersOpen]  = useState(false);
   const [tab,          setTabRaw]       = useState<Tab>("resources");
   // Sections whose backend isn't built yet (see src/lib/lockedTabs.ts) stay
@@ -340,8 +349,9 @@ export default function EducationPage() {
     const noTable = (e: any) => e?.code === "42P01";
     const client = resourcesClientForLevel(lvl);
 
-    // Cache-first flash on the very first load only.
-    if (resources.length === 0) {
+    // Cache-first flash on the very first load only (never on a level switch —
+    // the cache holds the previous level's books).
+    if (resources.length === 0 && !switchingRef.current) {
       const [cachedResources, cachedPurchases, cachedBookmarks] = await Promise.all([
         getCache<any>("resources"),
         getCache<{ id: string; resource_id: string }>("purchases"),
@@ -359,6 +369,10 @@ export default function EducationPage() {
       client.from("otechy_purchases").select("resource_id").eq("buyer_id", user.id),
       client.from("otechy_bookmarks").select("resource_id").eq("user_id", user.id),
     ]);
+
+    // The person switched level again while this was loading — drop this
+    // (now outdated) answer so it can't overwrite the newer level's books.
+    if (latestLevelRef.current !== lvl) return;
 
     if (rRes.status === "fulfilled" && (!rRes.value.error || noTable(rRes.value.error))) {
       const rows = rRes.value.data ?? [];
@@ -389,7 +403,22 @@ export default function EducationPage() {
     }
   };
 
-  useEffect(() => { fetchResources(level); }, [level, user.id]);
+  useEffect(() => {
+    latestLevelRef.current = level;
+    let cancelled = false;
+    const isSwitch = switchingRef.current;
+    const started = Date.now();
+    fetchResources(level).finally(() => {
+      if (cancelled) return;
+      const remaining = isSwitch ? LEVEL_LOADING_MIN_MS - (Date.now() - started) : 0;
+      setTimeout(() => {
+        if (cancelled) return;
+        switchingRef.current = false;
+        setLevelLoading(null);
+      }, Math.max(0, remaining));
+    });
+    return () => { cancelled = true; };
+  }, [level, user.id]);
 
   // Totals for all levels + Higher Education. Re-run whenever the person
   // changes tab, so uploads/deletes made inside Higher Education (or any
@@ -397,6 +426,10 @@ export default function EducationPage() {
   useEffect(() => { fetchCounts(); }, [tab, user.id]);
 
   const handleLevelChange = (l: EducationLevel) => {
+    if (l === level) return;
+    switchingRef.current = true;
+    setResources([]);      // clear the old level's books right away
+    setLevelLoading(l);
     setLevel(l);
     setSubject("All"); // subject list changes with level, so reset the old pick
     setYear("All");    // years available differ per level too
@@ -890,7 +923,7 @@ export default function EducationPage() {
               Always visible (not part of the collapsible filters) since it's
               the primary choice, not a refinement. */}
           {contentType === "documents" && (
-            <div className="mb-2">
+            <div className="mb-3">
               <div className="grid grid-cols-3 gap-2">
                 {EDUCATION_LEVELS.map(l => (
                   <button key={l} onClick={() => handleLevelChange(l)}
@@ -901,7 +934,6 @@ export default function EducationPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1.5 px-0.5">{t("pick_level_reminder")}</p>
             </div>
           )}
 
@@ -911,9 +943,9 @@ export default function EducationPage() {
           <button
             onClick={() => setFiltersOpen(o => !o)}
             aria-label={t("aria_toggle_filters")}
-            className="mb-3 flex items-center gap-1.5 text-[11px] font-semibold text-sky-500 active:scale-95 transition-transform"
+            className="mb-3 flex items-center gap-2 text-sm font-extrabold text-sky-500 py-1 active:scale-95 transition-transform"
           >
-            {filtersOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {filtersOpen ? <ChevronUp className="w-[18px] h-[18px]" strokeWidth={3} /> : <ChevronDown className="w-[18px] h-[18px]" strokeWidth={3} />}
             {filtersOpen ? t("filters_hide") : t("filters_show")}
           </button>
 
@@ -1009,7 +1041,15 @@ export default function EducationPage() {
               </div>
             )
           ) : (
-            loading && filtered.length === 0 ? (
+            levelLoading ? (
+              <FetchingState
+                icon={BookOpen}
+                label={`${levelLoading} Level Loading, please wait`}
+                accentBg="bg-sky-500/10"
+                accentText="text-sky-400"
+                ringColor="border-t-sky-500"
+              />
+            ) : loading && filtered.length === 0 ? (
               <FetchingState
                 icon={BookOpen}
                 label={t("fetching_resources")}
